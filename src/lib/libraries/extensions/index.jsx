@@ -379,7 +379,7 @@ export default [
         ),
         tags: ['tw'],
         incompatibleWithScratch: true,
-        featured: true
+        featured: false
     },
     {
         name: (
@@ -400,7 +400,7 @@ export default [
         ),
         incompatibleWithScratch: true,
         tags: ['tw'],
-        featured: true
+        featured: false
     },
     {
         name: (
@@ -420,7 +420,7 @@ export default [
             />
         ),
         tags: ['tw'],
-        featured: true
+        featured: false
         // Not marked as incompatible with Scratch so that clicking on it doesn't show a prompt
     }
 ];
@@ -445,7 +445,7 @@ export const galleryLoading = {
         />
     ),
     tags: ['tw'],
-    featured: true
+    featured: false
 };
 
 export const galleryMore = {
@@ -468,7 +468,7 @@ export const galleryMore = {
         />
     ),
     tags: ['tw'],
-    featured: true
+    featured: false
 };
 
 export const galleryError = {
@@ -491,5 +491,5 @@ export const galleryError = {
         />
     ),
     tags: ['tw'],
-    featured: true
+    featured: false
 };
