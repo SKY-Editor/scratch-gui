@@ -4,7 +4,10 @@ import PropTypes from 'prop-types';
 import log from './log';
 import {getIsShowingProject} from '../reducers/project-state';
 
-const PACKAGER_URL = 'https://packager.turbowarp.org';
+// SKY Editor: 打包功能已从官方 packager.turbowarp.org 重定向到本地 SKY 打包器。
+// 日后部署到正式域名时，仅需修改下方 PACKAGER_URL 即可（PACKAGER_ORIGIN 自动同源跟随）。
+// 注意：PACKAGER_ORIGIN 必须与 PACKAGER_URL 同源，它同时用于 postMessage 消息来源校验。
+const PACKAGER_URL = 'http://localhost:8947';
 const PACKAGER_ORIGIN = PACKAGER_URL;
 
 const PackagerIntegrationHOC = function (WrappedComponent) {
