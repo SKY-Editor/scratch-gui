@@ -5,6 +5,9 @@
   border: none;
   border-top: 2px solid $ui-black-transparent;
   margin: 0.5rem 0;
+  /* SKY Editor 窗口化扩展库中卡片区为 grid：分组标题必须独占整行，
+     否则会作为普通网格项与卡片同排（flex 布局下该属性无副作用） */
+  grid-column: 1 / -1;
 }
 
 .separator-with-title {
@@ -12,6 +15,8 @@
   display: flex;
   align-items: center;
   margin: 0.75rem 0 0.25rem;
+  /* 同上：grid 下独占整行，避免与卡片处于同一水平线 */
+  grid-column: 1 / -1;
 }
 
 .separator-with-title::before,
