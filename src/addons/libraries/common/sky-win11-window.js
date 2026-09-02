@@ -18,6 +18,27 @@ const SVG = {
   close: '<svg width="10" height="10" viewBox="0 0 10 10"><line x1="0.5" y1="0.5" x2="9.5" y2="9.5" stroke="currentColor" stroke-width="1"/><line x1="9.5" y1="0.5" x2="0.5" y2="9.5" stroke="currentColor" stroke-width="1"/></svg>',
 };
 
+// Windows-style open/close animation styles shared by every addon using this
+// engine. Injected once globally so hosts do not need to repeat the CSS.
+// Duration must match CLOSE_MS below.
+const CLOSE_MS = 160;
+const OPEN_MS = 180;
+let win11AnimationStyleInjected = false;
+const injectWin11AnimationStyle = () => {
+  if (win11AnimationStyleInjected) return;
+  win11AnimationStyleInjected = true;
+  if (document.getElementById("sky-win11-window-animation-style")) return;
+  const style = document.createElement("style");
+  style.id = "sky-win11-window-animation-style";
+  style.textContent = [
+    ".win11-opening{animation:sky-win11-open " + OPEN_MS + "ms ease}",
+    ".win11-closing{animation:sky-win11-close " + CLOSE_MS + "ms ease forwards!important;pointer-events:none!important}",
+    "@keyframes sky-win11-open{from{transform:scale(.88);opacity:0}to{transform:scale(1);opacity:1}}",
+    "@keyframes sky-win11-close{from{transform:scale(1);opacity:1}to{transform:scale(.88);opacity:0}}",
+  ].join("\n");
+  (document.head || document.documentElement).appendChild(style);
+};
+
 export default function createSkyWin11Window (root, options) {
   const {
     headerElement,
@@ -27,6 +48,18 @@ export default function createSkyWin11Window (root, options) {
     disableMaximize = false,
     disableResize = false,
   } = options;
+
+  injectWin11AnimationStyle();
+
+  // All close paths go through requestClose so the shrink + fade-out animation
+  // always plays before the host really removes the window via onClose.
+  let closing = false;
+  const requestClose = () => {
+    if (closing) return;
+    closing = true;
+    root.classList.add("win11-closing");
+    window.setTimeout(() => onClose(), CLOSE_MS);
+  };
 
   let enabled = false;
   let positioned = false;
@@ -54,7 +87,7 @@ export default function createSkyWin11Window (root, options) {
   };
   const minButton = makeButton(SVG.min, "最小化", "win11-button", () => toggleMinimized());
   const maxButton = makeButton(SVG.max, "最大化", "win11-button", () => toggleMaximize());
-  const closeButton = makeButton(SVG.close, "关闭", "win11-button win11-close", onClose);
+  const closeButton = makeButton(SVG.close, "关闭", "win11-button win11-close", () => requestClose());
   controls.append(minButton, maxButton, closeButton);
   // 注入由 attachChrome/detachChrome 管理：仅 enabled（sky 主题）时挂载到 DOM，
   // 禁用时彻底移除，避免其他主题（如 TurboWarp）残留 win11 元素。
@@ -104,7 +137,7 @@ export default function createSkyWin11Window (root, options) {
   addMenuItem("最小化(N)", () => setMinimized(true), () => false);
   addMenuItem("最大化(X)", () => toggleMaximize(), () => maximized || disableMaximize);
   addDivider();
-  addMenuItem("关闭(C)", () => onClose(), () => false);
+  addMenuItem("关闭(C)", () => requestClose(), () => false);
 
   const closeMenu = () => {
     menu.style.display = "none";
@@ -374,7 +407,7 @@ export default function createSkyWin11Window (root, options) {
       } else if (menuOpen) {
         closeMenu();
       } else {
-        onClose();
+        requestClose();
       }
       return;
     }
@@ -413,7 +446,7 @@ export default function createSkyWin11Window (root, options) {
       break;
     case "c":
       closeMenu();
-      onClose();
+      requestClose();
       break;
     default:
       break;
@@ -453,12 +486,14 @@ export default function createSkyWin11Window (root, options) {
 
   // ---- 对外 API ----
   const setEnabled = (on) => {
+    const wasEnabled = enabled;
     enabled = on;
     if (!on) {
       cancelDrag();
       commitInteraction();
       closeMenu();
-      root.classList.remove("win11-maximized", "win11-minimized", "win11-interacting");
+      closing = false;
+      root.classList.remove("win11-maximized", "win11-minimized", "win11-interacting", "win11-closing", "win11-opening");
       root.style.transform = "";
       root.style.left = "";
       root.style.top = "";
@@ -476,6 +511,15 @@ export default function createSkyWin11Window (root, options) {
       };
     }
     applyLayout();
+    // Play the scale-up + fade-in open animation only on the disabled→enabled
+    // transition. Repeated calls with the same state (e.g. hosts re-syncing on
+    // every redux statechanged) must stay idempotent, otherwise the window
+    // appears to "restart" (replay its open animation) on unrelated page updates.
+    if (!wasEnabled) {
+      root.classList.remove("win11-opening");
+      void root.offsetWidth;
+      root.classList.add("win11-opening");
+    }
   };
   const destroy = () => {
     setEnabled(false);

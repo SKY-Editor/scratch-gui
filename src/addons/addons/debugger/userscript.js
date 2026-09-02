@@ -127,6 +127,10 @@ export default async function ({ addon, console, msg }) {
     className: "sa-debugger-tab-content",
   });
 
+  // SKYEditor 统一窗口样式下，标签页与功能按钮仍保留在标题栏内
+  // （与其它页面窗口标题栏观感一致：图标+标题 在左、标签页+功能按钮 中右、
+  //  窗口三控件 最右），不再单独拆分内容区顶部工具栏。
+
   const compilerWarning = document.createElement("a");
   compilerWarning.addEventListener("click", () => {
     addon.tab.redux.dispatch({
@@ -147,6 +151,13 @@ export default async function ({ addon, console, msg }) {
     isInterfaceVisible = _isVisible;
     interfaceContainer.style.display = isInterfaceVisible ? "flex" : "";
     if (isInterfaceVisible) {
+      // 与其它页面窗口一致：每次显示时重放 Windows 式打开动画（放大淡入）。
+      // 非 sky-editor 主题下不加类、不影响 TurboWarp 原版行为。
+      if (isSkyWindow()) {
+        interfaceContainer.classList.remove("win11-opening");
+        void interfaceContainer.offsetWidth;
+        interfaceContainer.classList.add("win11-opening");
+      }
       activeTab.show();
     } else {
       activeTab.hide();
@@ -346,6 +357,8 @@ export default async function ({ addon, console, msg }) {
     interfaceContainer.classList.toggle("sa-debugger-sky-window", isSky);
     skyTitleElement.style.display = isSky ? "" : "none";
     closeButton.element.style.display = isSky ? "none" : "";
+    // 标签页与功能按钮始终保留在标题栏内（SKY 模式与其它主题一致），
+    // 不再迁移到内容区顶部工具栏。
     skyWindow.setEnabled(isSky);
     if (isSky && skyDragBound) {
       interfaceHeader.removeEventListener("mousedown", handleStartDrag);
@@ -733,6 +746,9 @@ export default async function ({ addon, console, msg }) {
     return ogStartHats.call(this, hat, optMatchFields, ...args);
   };
 
+  // 非编辑器视图（播放器/全屏预览）下窗口会被临时隐藏；记录恢复标记，
+  // 切回编辑器时自动还原窗口（保留当前页签与位置），避免被"重启"。
+  let pendingRestoreVisible = false;
   while (true) {
     await addon.tab.waitForElement(
       '[class^="stage-header_stage-size-row"], [class^="stage-header_fullscreen-buttons-row_"]',
@@ -748,9 +764,16 @@ export default async function ({ addon, console, msg }) {
     );
     if (addon.tab.editorMode === "editor") {
       addon.tab.appendToSharedSpace({ space: "stageHeader", element: debuggerButtonOuter, order: 0 });
+      if (pendingRestoreVisible) {
+        pendingRestoreVisible = false;
+        setInterfaceVisible(true);
+      }
     } else {
       debuggerButtonOuter.remove();
-      setInterfaceVisible(false);
+      if (isInterfaceVisible) {
+        pendingRestoreVisible = true;
+        setInterfaceVisible(false);
+      }
     }
   }
 }
