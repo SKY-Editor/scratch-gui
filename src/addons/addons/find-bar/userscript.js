@@ -5,6 +5,37 @@ import Utils from "./blockly/Utils.js";
 export default async function ({ addon, msg, console }) {
   const Blockly = await addon.tab.traps.getBlockly();
 
+  // SKYEditor：竖向标签栏（tabLayout==='vertical'）的挂载点是侧边栏 tab-list。
+  // 若把 .sa-find-bar 注入侧边栏末尾，会在按下搜索按钮/窗口开合瞬间于侧边栏
+  // 底部露出白色输入条。因此竖向布局一律改挂到编辑器根部的隐藏宿主
+  // （.sky-find-host）：打开独立搜索窗口时由 SkySearchWindow 移入窗口，
+  // 关闭时移回宿主，侧边栏 DOM 中自始至终不存在搜索栏，从根本上杜绝白条。
+  // 横向布局保持经典行为：直接挂到传入的横向 tab-list 容器。
+  let skyFindHost = null;
+  const isVerticalTabLayout = () => {
+    try {
+      const s = addon.tab.redux && addon.tab.redux.state;
+      return !!(s && s.scratchGui && s.scratchGui.tabLayout === "vertical");
+    } catch (e) {
+      return false;
+    }
+  };
+  const getFindBarHost = (root) => {
+    if (isVerticalTabLayout()) {
+      if (!skyFindHost) {
+        skyFindHost = document.createElement("div");
+        skyFindHost.className = "sky-find-host";
+        skyFindHost.setAttribute(
+          "style",
+          "position:fixed;left:-9999px;top:0;width:0;height:0;overflow:hidden;"
+        );
+        document.body.appendChild(skyFindHost);
+      }
+      return skyFindHost;
+    }
+    return root;
+  };
+
   class FindBar {
     constructor() {
       this.utils = new Utils(addon);
@@ -18,6 +49,21 @@ export default async function ({ addon, msg, console }) {
       this.dropdown = new Dropdown(this.utils);
 
       document.addEventListener("keydown", (e) => this.eventKeyDown(e), true);
+
+      // SKYEditor：独立搜索窗口打开时强制展开下拉。
+      // 窗口（Win11Window）的焦点管理会在打开/点击时抢占焦点，导致输入框拿不到
+      // focus、showDropDown 永不触发、visible 类不添加、下拉不显示。这里改为由
+      // SkySearchWindow 打开后派发 sky-search-window-open 事件来强制展开，
+      // 使下拉展示不再依赖输入框焦点。
+      document.addEventListener("sky-search-window-open", () => {
+        if (addon.self.disabled || !this.findBarOuter) return;
+        if (!this.isSkySearchWindow) return;
+        // 先收起再展开：确保窗口入场动画结束后能按最终坐标重新定位
+        if (this.dropdownOut.classList.contains("visible")) {
+          this.hideDropDown();
+        }
+        this.showDropDown();
+      });
     }
 
     get workspace() {
@@ -28,7 +74,8 @@ export default async function ({ addon, msg, console }) {
       this.findBarOuter = document.createElement("div");
       this.findBarOuter.className = "sa-find-bar";
       addon.tab.displayNoneWhileDisabled(this.findBarOuter, { display: "flex" });
-      root.appendChild(this.findBarOuter);
+      // SKYEditor：竖向布局下改挂隐藏宿主（见 getFindBarHost），侧边栏不注入搜索栏
+      getFindBarHost(root).appendChild(this.findBarOuter);
 
       this.findWrapper = this.findBarOuter.appendChild(document.createElement("span"));
       this.findWrapper.className = "sa-find-wrapper";
@@ -56,11 +103,22 @@ export default async function ({ addon, msg, console }) {
       this.findInput.addEventListener("focus", () => this.inputChange());
       this.findInput.addEventListener("keydown", (e) => this.inputKeyDown(e));
       this.findInput.addEventListener("keyup", () => this.inputChange());
-      this.findInput.addEventListener("focusout", () => this.hideDropDown());
+      this.findInput.addEventListener("focusout", () => {
+        // SKYEditor：独立搜索窗口内，窗口焦点管理会在点击/交互时抢占输入框
+        // 焦点（blur/focusout），导致下拉被误关闭。窗口内下拉的显示/收起完全
+        // 由 sky-search-window-open 事件与窗口生命周期控制，不在此处理隐藏。
+        if (this.isSkySearchWindow) return;
+        this.hideDropDown();
+      });
     }
 
     tabChanged() {
       if (!this.findBarOuter) {
+        return;
+      }
+      // SKYEditor：搜索栏在独立搜索窗口内时始终显示，不受当前标签页影响
+      if (this.isSkySearchWindow) {
+        this.findBarOuter.hidden = false;
         return;
       }
       const tab = addon.tab.redux.state.scratchGui.editorTab.activeTabIndex;
@@ -135,8 +193,14 @@ export default async function ({ addon, msg, console }) {
 
       if (e.key.toLowerCase() === "f" && ctrlKey && !e.shiftKey) {
         // Ctrl + F (Override default Ctrl+F find)
-        this.findInput.focus();
-        this.findInput.select();
+        // SKYEditor：搜索栏不在独立搜索窗口内（仍被藏在侧边栏）时，
+        // 改由 gui 打开独立搜索窗口，而不是聚焦一个不可见的输入框。
+        if (this.isSkySearchWindow) {
+          this.findInput.focus();
+          this.findInput.select();
+        } else {
+          document.dispatchEvent(new CustomEvent("sky-open-search-window"));
+        }
         e.cancelBubble = true;
         e.preventDefault();
         return true;
@@ -181,7 +245,7 @@ export default async function ({ addon, msg, console }) {
 
       this.dropdownOut.classList.add("visible");
       let scratchBlocks =
-        this.selectedTab === 0
+        this.isSkySearchWindow || this.selectedTab === 0
           ? this.getScratchBlocks()
           : this.selectedTab === 1
             ? this.getScratchCostumes()
@@ -209,6 +273,15 @@ export default async function ({ addon, msg, console }) {
 
     hideDropDown() {
       this.dropdownOut.classList.remove("visible");
+    }
+
+    // SKYEditor：搜索栏被 SkySearchWindow 移入独立窗口时的判断依据。
+    // 窗口内无论当前编辑器处于哪个标签页，都按"积木列表"展示搜索项目。
+    get isSkySearchWindow() {
+      return this.findBarOuter && (
+        this.findBarOuter.classList.contains('sa-find-bar-in-sky-window') ||
+        !!this.findBarOuter.closest('[class*="win11-window"], [class*="sky-search-window"]')
+      );
     }
 
     get selectedTab() {
