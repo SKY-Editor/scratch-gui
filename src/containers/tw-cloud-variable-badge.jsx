@@ -22,6 +22,7 @@ class TWCloudVariableBadge extends React.Component {
         return (
             <CloudVariableBadge
                 cloudHost={this.props.cloudHost}
+                cloudHostName={this.props.cloudHostName}
                 onSetCloudHost={this.handleChangeCloudHost}
                 onOpenChangeUsername={this.props.onOpenChangeUsername}
             />
@@ -31,12 +32,14 @@ class TWCloudVariableBadge extends React.Component {
 
 TWCloudVariableBadge.propTypes = {
     cloudHost: PropTypes.string,
+    cloudHostName: PropTypes.string,
     onSetCloudHost: PropTypes.func,
     onOpenChangeUsername: PropTypes.func
 };
 
 const mapStateToProps = state => ({
-    cloudHost: state.scratchGui.tw.cloudHost
+    cloudHost: state.scratchGui.tw.cloudHost,
+    cloudHostName: state.scratchGui.tw.cloudHostName
 });
 
 const mapDispatchToProps = dispatch => ({

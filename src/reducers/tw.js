@@ -15,6 +15,7 @@ const SET_FILE_HANDLE = 'tw/SET_FILE_HANDLE';
 const SET_USERNAME_INVALID = 'tw/SET_USERNAME_INVALID';
 const SET_HAS_CLOUD_VARIABLES = 'tw/SET_HAS_CLOUD_VARIABLES';
 const SET_CLOUD_HOST = 'tw/SET_CLOUD_HOST';
+const SET_CLOUD_HOST_NAME = 'tw/SET_CLOUD_HOST_NAME';
 const SET_PLATFORM_MISMATCH_DETAILS = 'tw/SET_PLATFORM_MISMATCH_DETAILS';
 const SET_PROJECT_ERROR = 'tw/SET_PROJECT_ERROR';
 
@@ -48,6 +49,7 @@ export const initialState = {
     usernameInvalid: false,
     hasCloudVariables: false,
     cloudHost: '',
+    cloudHostName: (typeof localStorage !== 'undefined' && localStorage.getItem('sky:cloudHostName')) || '',
     platformMismatchDetails: {
         platform: null,
         callback: null
@@ -128,6 +130,10 @@ const reducer = function (state, action) {
     case SET_CLOUD_HOST:
         return Object.assign({}, state, {
             cloudHost: action.cloudHost
+        });
+    case SET_CLOUD_HOST_NAME:
+        return Object.assign({}, state, {
+            cloudHostName: action.cloudHostName
         });
     case SET_PLATFORM_MISMATCH_DETAILS:
         return Object.assign({}, state, {
@@ -263,6 +269,13 @@ const setCloudHost = function (cloudHost) {
     };
 };
 
+const setCloudHostName = function (cloudHostName) {
+    return {
+        type: SET_CLOUD_HOST_NAME,
+        cloudHostName
+    };
+};
+
 const setPlatformMismatchDetails = function (platform, callback) {
     return {
         type: SET_PLATFORM_MISMATCH_DETAILS,
@@ -298,6 +311,7 @@ export {
     setUsernameInvalid,
     setHasCloudVariables,
     setCloudHost,
+    setCloudHostName,
     setPlatformMismatchDetails,
     setProjectError
 };

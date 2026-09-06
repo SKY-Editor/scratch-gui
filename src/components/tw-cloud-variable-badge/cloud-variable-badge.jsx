@@ -10,6 +10,10 @@ const hosts = [
     {
         name: 'US East',
         cloudHost: 'wss://clouddata.turbowarp.org'
+    },
+    {
+        name: '创客次元',
+        cloudHost: 'wss://vable.ctspace.xyz'
     }
 ];
 
@@ -82,7 +86,7 @@ const CloudVariableBadge = props => {
                     description="Appears when using a non-TurboWarp provided cloud variable server. {server} is replaced with the server's URL, eg. wss://clouddata.turbowarp.org"
                     id="tw.customCloudServer"
                     values={{
-                        server: props.cloudHost
+                        server: props.cloudHostName || props.cloudHost
                     }}
                 />
             )}
@@ -123,6 +127,7 @@ const CloudVariableBadge = props => {
 
 CloudVariableBadge.propTypes = {
     cloudHost: PropTypes.string,
+    cloudHostName: PropTypes.string,
     onSetCloudHost: PropTypes.func,
     onOpenChangeUsername: PropTypes.func
 };

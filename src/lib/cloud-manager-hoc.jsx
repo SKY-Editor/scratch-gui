@@ -45,7 +45,9 @@ const cloudManagerHOC = function (WrappedComponent) {
             }
         }
         componentWillReceiveProps (nextProps) {
-            if (this.props.reduxCloudHost !== nextProps.cloudHost) {
+            // 仅当 redux 中云变量服务器地址尚未初始化（空值）时，同步外部传入的 cloudHost。
+            // 设置窗口 / 云变量徽标的后续修改一律以 redux 为准，避免被外部静态默认值回弹覆盖。
+            if (!this.props.reduxCloudHost && nextProps.cloudHost) {
                 this.props.onSetReduxCloudHost(nextProps.cloudHost);
             }
         }
