@@ -1,4 +1,5 @@
 import { onPauseChanged, isPaused, singleStep, onSingleStep, getRunningThread } from "./module.js";
+import { translateKey, registerLanguageRefresh } from "./module.js";
 import LogView from "./log-view.js";
 import Highlighter from "../editor-stepping/highlighter.js";
 
@@ -8,18 +9,18 @@ const concatInPlace = (copyInto, copyFrom) => {
   }
 };
 
-export default async function createThreadsTab({ debug, addon, console, msg }) {
+export default async function createThreadsTab({ debug, addon, console }) {
   const vm = addon.tab.traps.vm;
 
   const tab = debug.createHeaderTab({
-    text: msg("tab-threads"),
+    text: translateKey("debugger/tab-threads"),
     icon: addon.self.getResource("/icons/threads.svg") /* rewritten by pull.js */,
   });
 
   const logView = new LogView();
   logView.canAutoScrollToEnd = false;
   logView.outerElement.classList.add("sa-debugger-threads");
-  logView.placeholderElement.textContent = msg("no-threads-running");
+  logView.placeholderElement.textContent = translateKey("debugger/no-threads-running");
 
   const highlighter = new Highlighter(10, "#ff0000");
 
@@ -49,7 +50,7 @@ export default async function createThreadsTab({ debug, addon, console, msg }) {
 
       const id = document.createElement("div");
       id.className = "sa-debugger-thread-id";
-      id.textContent = msg("thread", {
+      id.textContent = translateKey("debugger/thread", {
         id: row.id,
       });
       root.appendChild(id);
@@ -65,7 +66,7 @@ export default async function createThreadsTab({ debug, addon, console, msg }) {
     if (row.type === "compiled") {
       const el = document.createElement('div');
       el.className = "sa-debugger-thread-compiled";
-      el.textContent = "Compiled threads can't be stepped and have no stack information.";
+      el.textContent = translateKey("debugger/compiled-threads");
       root.appendChild(el);
     }
 
@@ -216,9 +217,9 @@ export default async function createThreadsTab({ debug, addon, console, msg }) {
   });
 
   const stepButton = debug.createHeaderButton({
-    text: msg("step"),
+    text: translateKey("debugger/step"),
     icon: addon.self.getResource("/icons/step.svg") /* rewritten by pull.js */,
-    description: msg("step-desc"),
+    description: translateKey("debugger/step-desc"),
   });
   stepButton.element.addEventListener("click", () => {
     singleStep();
@@ -265,6 +266,20 @@ export default async function createThreadsTab({ debug, addon, console, msg }) {
   const hide = () => {
     logView.hide();
   };
+
+  // 语言热同步：页签名 / 空状态占位 / 单步按钮 / 已渲染线程行文本随语言重绘。
+  // 注意：tab 是 createHeaderTab 的返回值，文本节点为 tab.text（此前误写为
+  // tab.tab.text，运行期 TypeError 会中断整个刷新回调，导致中文态仍是英文）。
+  registerLanguageRefresh(() => {
+    tab.text.textContent = translateKey("debugger/tab-threads");
+    logView.placeholderElement.textContent = translateKey("debugger/no-threads-running");
+    stepButton.text.textContent = translateKey("debugger/step");
+    stepButton.element.title = translateKey("debugger/step-desc");
+    // 已渲染线程行按新语言重建：行文本由 generateRow 每次经 translateKey 生成，
+    // 但 LogView 按行对象缓存元素，不清理元素缓存则文本不会刷新
+    // （rerenderAll 会丢弃元素缓存；页面不可见时只清缓存，等 show() 重建）。
+    logView.rerenderAll();
+  });
 
   return {
     tab,
