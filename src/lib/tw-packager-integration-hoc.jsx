@@ -10,6 +10,16 @@ import {getIsShowingProject} from '../reducers/project-state';
 const PACKAGER_URL = 'http://localhost:8947';
 const PACKAGER_ORIGIN = PACKAGER_URL;
 
+export {
+    PACKAGER_URL,
+    PACKAGER_ORIGIN
+};
+
+// 编辑器主题 -> 打包/解包器主题名（与 packager-window.jsx 保持一致的亮/暗判定）
+const getEditorThemeName = theme => (
+    theme && typeof theme.isDark === 'function' && theme.isDark() ? 'dark' : 'light'
+);
+
 const PackagerIntegrationHOC = function (WrappedComponent) {
     class PackagerIntegrationComponent extends React.Component {
         constructor (props) {
@@ -33,11 +43,28 @@ const PackagerIntegrationHOC = function (WrappedComponent) {
                 return;
             }
 
+            const packagerData = e.data && e.data.p4;
+            if (!packagerData || !packagerData.type) {
+                return;
+            }
+
+            // 打包器窗口内嵌加载完成时会主动索取一次当前主题/语言，
+            // 此处直接回发，保证与编辑器当前状态一致（不依赖时机）。
+            if (packagerData.type === 'request-editor-state') {
+                e.source.postMessage({
+                    p4: {
+                        type: 'editor-sync',
+                        theme: this.props.editorThemeName,
+                        locale: this.props.editorLocale
+                    }
+                }, e.origin);
+                return;
+            }
+
             if (!this.props.canOpenPackager) {
                 return;
             }
 
-            const packagerData = e.data.p4;
             if (packagerData.type !== 'ready-for-import') {
                 return;
             }
@@ -73,6 +100,8 @@ const PackagerIntegrationHOC = function (WrappedComponent) {
             const {
                 /* eslint-disable no-unused-vars */
                 canOpenPackager,
+                editorThemeName,
+                editorLocale,
                 /* eslint-enable no-unused-vars */
                 ...props
             } = this.props;
@@ -89,12 +118,19 @@ const PackagerIntegrationHOC = function (WrappedComponent) {
         reduxProjectTitle: PropTypes.string,
         vm: PropTypes.shape({
             saveProjectSb3: PropTypes.func
-        })
+        }),
+        editorThemeName: PropTypes.string,
+        editorLocale: PropTypes.string
     };
     const mapStateToProps = state => ({
         canOpenPackager: getIsShowingProject(state.scratchGui.projectState.loadingState),
         reduxProjectTitle: state.scratchGui.projectTitle,
-        vm: state.scratchGui.vm
+        vm: state.scratchGui.vm,
+        // 供 request-editor-state 回发使用（字段位置与 packager-window.jsx 一致）
+        editorThemeName: getEditorThemeName(
+            state.scratchGui && state.scratchGui.theme && state.scratchGui.theme.theme
+        ),
+        editorLocale: (state.locales && state.locales.locale) || 'en'
     });
     const mapDispatchToProps = () => ({});
     return connect(
