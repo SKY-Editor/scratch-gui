@@ -1,6 +1,9 @@
-import React, {useEffect, useMemo, useRef} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {injectIntl} from 'react-intl';
 import styles from './music-player.css';
-import {CloseIcon, NoteIcon} from './icons.jsx';
+import {mpMessage, displayArtist} from './i18n';
+import {CloseIcon} from './icons.jsx';
+import TrackCover from './cover.jsx';
 
 // LRC 解析：[mm:ss(.xx)]歌词
 export const parseLRC = (lrc) => {
@@ -21,23 +24,39 @@ export const parseLRC = (lrc) => {
 // 歌词页（曲谱）：覆盖在播放器内容区之上的全窗口层（参照网易云 PC 歌词页）。
 // 打开动画：封面从播放栏左下角（coverInit，getBoundingClientRect 记录）FLIP 放大
 // 平移到窗口左侧居中位置，背景从透明渐变为深黑；关闭时反向移回。
-const LyricPage = function ({track, currentTime, coverInit, onClose}) {
+const LyricPage = function ({intl, track, audioRef, coverInit, onClose}) {
+    const t = (key, values) => mpMessage(intl, key, values);
     const lyrics = useMemo(() => parseLRC(track.lyrics), [track.lyrics]);
     const listRef = useRef(null);
     const coverRef = useRef(null);
     const bgRef = useRef(null);
     const initRef = useRef(coverInit || null);
+    const [activeIndex, setActiveIndex] = useState(-1);
 
-    // 当前播放句 index（按 currentTime 定位 LRC 时间戳）
-    let activeIndex = -1;
-    if (lyrics.length > 0) {
-        for (let i = lyrics.length - 1; i >= 0; i--) {
-            if (currentTime >= lyrics[i].time) {
-                activeIndex = i;
-                break;
+    // 歌词高亮独立驱动：组件内部 rAF 逐帧读 audio.currentTime，
+    // 仅在「当前播放句」变化时才 setState，避免父组件高频重渲染拖慢主线程。
+    useEffect(() => {
+        if (lyrics.length === 0) return;
+        let raf = 0;
+        let lastIdx = -1;
+        const tick = () => {
+            const audio = audioRef && audioRef.current;
+            if (audio) {
+                const now = audio.currentTime || 0;
+                let idx = -1;
+                for (let i = lyrics.length - 1; i >= 0; i--) {
+                    if (now >= lyrics[i].time) { idx = i; break; }
+                }
+                if (idx !== lastIdx) {
+                    lastIdx = idx;
+                    setActiveIndex(idx);
+                }
             }
-        }
-    }
+            raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(raf);
+    }, [audioRef, lyrics]);
 
     // 歌词区滚动到当前句并保持居中
     useEffect(() => {
@@ -100,23 +119,23 @@ const LyricPage = function ({track, currentTime, coverInit, onClose}) {
         <div className={styles.lyricOverlay} onClick={handleClose}>
             <div className={styles.lyricBg} ref={bgRef} />
             <div className={styles.lyricContent} onClick={e => e.stopPropagation()}>
-                <button className={styles.lyricClose} onClick={handleClose} title="关闭歌词页">
+                <button className={styles.lyricClose} onClick={handleClose} title={t('closeLyrics')}>
                     <CloseIcon size={16} />
                 </button>
                 <div className={styles.lyricCoverWrap}>
-                    <div
+                    <TrackCover
+                        track={track}
                         className={styles.lyricCover}
+                        iconSize={42}
                         ref={coverRef}
-                        style={{'--c1': track.c1, '--c2': track.c2}}
-                    >
-                        <NoteIcon size={42} />
-                    </div>
+                    />
                 </div>
                 <div className={styles.lyricSide}>
                     <div className={styles.lyricTitle}>{track.title}</div>
-                    <div className={styles.lyricArtist}>{track.artist}</div>
+                    <div className={styles.lyricArtist}>{displayArtist(intl, track.artist)}</div>
                     <div className={styles.lyricList} ref={listRef}>
                     {lyrics.length > 0 ? (
+                        // LRC 时间轴歌词：跟随播放定位高亮
                         lyrics.map((l, i) => (
                             <div
                                 key={i}
@@ -127,8 +146,13 @@ const LyricPage = function ({track, currentTime, coverInit, onClose}) {
                                 {l.text}
                             </div>
                         ))
+                    ) : track.lyrics ? (
+                        // 纯文本歌词（无 [mm:ss] 时间戳）：静态展示，不做高亮跟随
+                        track.lyrics.split('\n').map((line, i) => (
+                            <div key={i} className={styles.lyricLine}>{line}</div>
+                        ))
                     ) : (
-                        <div className={`${styles.lyricLine} ${styles.lyricLineActive}`}>纯音乐</div>
+                        <div className={`${styles.lyricLine} ${styles.lyricLineActive}`}>{t('instrumental')}</div>
                     )}
                     </div>
                 </div>
@@ -137,4 +161,4 @@ const LyricPage = function ({track, currentTime, coverInit, onClose}) {
     );
 };
 
-export default LyricPage;
+export default injectIntl(LyricPage);
