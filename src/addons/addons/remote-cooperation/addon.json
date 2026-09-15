@@ -1,0 +1,25 @@
+{
+  "name": "Remote Cooperation",
+  "description": "远程协作：在编辑器标签栏新增「远程协作」面板，可连接轻量信令服务（默认 ws://localhost:8090），创建/加入/离开协作房间，实时同步成员与 CRDT 数据。方案A 前端 GUI 阶段，后台复用 backend-prototype 的 protocol.js / client.js 同步语义。",
+  "tags": ["editor"],
+  "credits": [
+    {
+      "name": "SKY Editor Team"
+    }
+  ],
+  "userscripts": [
+    {
+      "url": "userscript.js",
+      "matches": ["projects"]
+    }
+  ],
+  "userstyles": [
+    {
+      "url": "style.css",
+      "matches": ["projects"]
+    }
+  ],
+  "dynamicEnable": true,
+  "dynamicDisable": true,
+  "enabledByDefault": true
+}
