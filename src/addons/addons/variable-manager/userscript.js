@@ -1,6 +1,14 @@
 export default async function ({ addon, console, msg }) {
   const vm = addon.tab.traps.vm;
 
+  // SKY Editor：SKY 主题下变量标签改由 gui.jsx 原生渲染（内容型 Tab，位于
+  // 代码/造型/声音/远程协作之后，索引统一为 4，横向/竖向一致）；插件不再注入
+  // 自己的变量 <li> 标签，仅负责向原生变量面板容器注入 .sa-var-manager 内容。
+  // 非 SKY 主题保持 Scratch Addons 原逻辑（变量标签为第 4 个 tab，索引 3）。
+  // 所有索引判断统一走 varTabIndex()，避免与 Remote Coop（SKY 下索引 3）串扰。
+  const isSkyTheme = () => addon.tab.redux.state?.scratchGui?.uiTheme === "sky-editor";
+  const varTabIndex = () => (isSkyTheme() ? 4 : 3);
+
   let localVariables = [];
   let globalVariables = [];
   let preventUpdate = false;
@@ -280,7 +288,7 @@ export default async function ({ addon, console, msg }) {
   }
 
   function fullReload() {
-    if (addon.tab.redux.state?.scratchGui?.editorTab?.activeTabIndex !== 3 || preventUpdate) return;
+    if (addon.tab.redux.state?.scratchGui?.editorTab?.activeTabIndex !== varTabIndex() || preventUpdate) return;
 
     const editingTarget = vm.runtime.getEditingTarget();
     const stage = vm.runtime.getTargetForStage();
@@ -313,7 +321,7 @@ export default async function ({ addon, console, msg }) {
   }
 
   function quickReload() {
-    if (addon.tab.redux.state?.scratchGui?.editorTab?.activeTabIndex !== 3 || preventUpdate) return;
+    if (addon.tab.redux.state?.scratchGui?.editorTab?.activeTabIndex !== varTabIndex() || preventUpdate) return;
 
     for (const variable of localVariables) {
       variable.updateValue();
@@ -329,7 +337,7 @@ export default async function ({ addon, console, msg }) {
   }
 
   varTab.addEventListener("click", (e) => {
-    addon.tab.redux.dispatch({ type: "scratch-gui/navigation/ACTIVATE_TAB", activeTabIndex: 3 });
+    addon.tab.redux.dispatch({ type: "scratch-gui/navigation/ACTIVATE_TAB", activeTabIndex: varTabIndex() });
   });
 
   function setVisible(visible) {
@@ -339,7 +347,11 @@ export default async function ({ addon, console, msg }) {
         addon.tab.scratchClass("gui_is-selected")
       );
       const contentArea = document.querySelector("[class^=gui_tabs]");
-      contentArea.insertAdjacentElement("beforeend", manager);
+      // SKY Editor: 若存在竖向标签栏的原生变量面板容器（gui.jsx 第 4 个 TabPanel），
+      // 把变量面板注入到该容器内，避免被面板层遮挡；否则回退到 tabs 容器末尾。
+      const skyVarPanel = contentArea.querySelector("[class*=sky-variable-panel]");
+      const mountTarget = skyVarPanel || contentArea;
+      mountTarget.insertAdjacentElement("beforeend", manager);
       fullReload();
     } else {
       varTab.classList.remove(
@@ -355,7 +367,7 @@ export default async function ({ addon, console, msg }) {
   addon.tab.redux.addEventListener("statechanged", ({ detail }) => {
     if (detail.action.type === "scratch-gui/navigation/ACTIVATE_TAB") {
       const varManagerWasSelected = document.body.contains(manager);
-      const switchedToVarManager = detail.action.activeTabIndex === 3;
+      const switchedToVarManager = detail.action.activeTabIndex === varTabIndex();
 
       if (varManagerWasSelected && !switchedToVarManager) {
         // Fixes #5773
@@ -364,7 +376,7 @@ export default async function ({ addon, console, msg }) {
 
       setVisible(switchedToVarManager);
     } else if (detail.action.type === "scratch-gui/mode/SET_PLAYER") {
-      if (!detail.action.isPlayerOnly && addon.tab.redux.state.scratchGui.editorTab.activeTabIndex === 3) {
+      if (!detail.action.isPlayerOnly && addon.tab.redux.state.scratchGui.editorTab.activeTabIndex === varTabIndex()) {
         // DOM doesn't actually exist yet
         queueMicrotask(() => setVisible(true));
       }
@@ -398,7 +410,7 @@ export default async function ({ addon, console, msg }) {
   };
 
   addon.self.addEventListener("disabled", () => {
-    if (addon.tab.redux.state.scratchGui.editorTab.activeTabIndex === 3) {
+    if (addon.tab.redux.state.scratchGui.editorTab.activeTabIndex === varTabIndex()) {
       addon.tab.redux.dispatch({ type: "scratch-gui/navigation/ACTIVATE_TAB", activeTabIndex: 2 });
     }
   });
@@ -409,6 +421,17 @@ export default async function ({ addon, console, msg }) {
       reduxEvents: ["scratch-gui/mode/SET_PLAYER", "fontsLoaded/SET_FONTS_LOADED", "scratch-gui/locales/SELECT_LOCALE"],
       reduxCondition: (state) => !state.scratchGui.mode.isPlayerOnly,
     });
+    // 防御：主题运行时切换（SKY <-> TW）后，清理之前 appendToSharedSpace 注入的
+    // 插件变量标签，避免 SKY 下残留重复标签；SKY 下变量标签由 gui.jsx 原生渲染。
+    if (varTab.parentNode) {
+      varTab.remove();
+    }
+    if (isSkyTheme()) {
+      // SKY Editor：变量标签已由 gui.jsx 原生渲染（sky-variables-tab），
+      // 不再注入插件 <li>，避免与 Remote Coop 标签在 react-tabs 索引上
+      // 互相串扰（点一个另一个也选中）。面板内容仍由 setVisible 挂载。
+      continue;
+    }
     addon.tab.appendToSharedSpace({ space: "afterSoundTab", element: varTab, order: 3 });
   }
 }

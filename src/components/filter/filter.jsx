@@ -14,7 +14,9 @@ const FilterComponent = props => {
         onClear,
         placeholderText,
         filterQuery,
-        inputClassName
+        inputClassName,
+        iconClassName,
+        xIconWrapperClassName
     } = props;
     return (
         <div
@@ -23,7 +25,7 @@ const FilterComponent = props => {
             })}
         >
             <TWRenderRecoloredImage
-                className={styles.filterIcon}
+                className={classNames(styles.filterIcon, iconClassName)}
                 src={filterIcon}
             />
             <input
@@ -34,7 +36,7 @@ const FilterComponent = props => {
                 onChange={onChange}
             />
             <div
-                className={styles.xIconWrapper}
+                className={classNames(styles.xIconWrapper, xIconWrapperClassName)}
                 onClick={onClear}
             >
                 <TWRenderRecoloredImage
@@ -49,10 +51,12 @@ const FilterComponent = props => {
 FilterComponent.propTypes = {
     className: PropTypes.string,
     filterQuery: PropTypes.string,
+    iconClassName: PropTypes.string,
     inputClassName: PropTypes.string,
     onChange: PropTypes.func,
     onClear: PropTypes.func,
-    placeholderText: PropTypes.string
+    placeholderText: PropTypes.string,
+    xIconWrapperClassName: PropTypes.string
 };
 FilterComponent.defaultProps = {
     placeholderText: 'Search'
