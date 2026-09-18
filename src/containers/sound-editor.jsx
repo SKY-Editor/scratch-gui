@@ -15,11 +15,22 @@ import {
 import AudioEffects from '../lib/audio/audio-effects.js';
 import SoundEditorComponent from '../components/sound-editor/sound-editor.jsx';
 import AudioBufferPlayer from '../lib/audio/audio-buffer-player.js';
+import MultiTrackPlayer from '../lib/audio/multi-track-player.js';
+import {
+    applyEnvelopeToSamples,
+    computeSpectrumFrames,
+    mixTracksToMono,
+    renderMidiToSamples,
+    exportMidiSMF
+} from '../lib/audio/sky-audio-dsp.js';
 import log from '../lib/log.js';
 
 const UNDO_STACK_SIZE = 99;
 
 const MAX_RMS = 1.2;
+
+// Minimum visible width (as a fraction of the whole sound) when zoomed in.
+const MIN_ZOOM_WIDTH = 0.02;
 
 class SoundEditor extends React.Component {
     constructor (props) {
@@ -34,7 +45,12 @@ class SoundEditor extends React.Component {
             'handleStopPlaying',
             'handleUpdatePlayhead',
             'handleDelete',
+            'handleDeleteInverse',
+            'handleCut',
             'handleUpdateTrim',
+            'handlePause',
+            'handleResume',
+            'handleToggleLoop',
             'handleEffect',
             'handleUndo',
             'handleRedo',
@@ -45,20 +61,65 @@ class SoundEditor extends React.Component {
             'handleKeyPress',
             'handleContainerClick',
             'setRef',
-            'resampleBufferToRate'
+            'resampleBufferToRate',
+            'handleZoomToSelection',
+            'handleZoomIn',
+            'handleZoomOut',
+            'handleZoomReset',
+            'handleZoomSlider',
+            'handleGainSliderChange',
+            'handleGainSliderCommit',
+            'handleApplyGain',
+            'handleNormalize',
+            'handleKeepSelection',
+            'handleSilenceSelection',
+            'handleSetActiveView',
+            'handleEnvelopeChange',
+            'handleApplyEnvelope',
+            'ensureTracks',
+            'ensureSpectrumFrames',
+            'handleTrackAdd',
+            'handleRemoveTrack',
+            'handleMoveTrack',
+            'handleToggleMute',
+            'handleToggleSolo',
+            'handleVolumeChange',
+            'handlePanChange',
+            'updateMultiTrackPlayback',
+            'handleMixerPlay',
+            'handleMixerStop',
+            'stopMultiTrack',
+            'handleCommitMix',
+            'handleNotesChange',
+            'handleRenderNotes',
+            'handleExportMidi'
         ]);
         this.state = {
             copyBuffer: null,
             chunkLevels: computeChunkedRMS(this.props.samples),
             playhead: null, // null is not playing, [0 -> 1] is playing percent
+            paused: false, // true if playback is paused at the current playhead
+            isLooping: false, // true if playback should loop
             trimStart: null,
-            trimEnd: null
+            trimEnd: null,
+            zoomStart: 0,
+            zoomEnd: 1,
+            previewGainDb: 0,
+            activeView: 'wave', // 'wave' | 'spectrum' | 'pianoroll' | 'mixer'
+            envelope: [{t: 0, value: 1}, {t: 1, value: 1}],
+            tracks: null, // mixer tracks, lazily initialized on first use
+            spectrumFrames: null, // computed lazily for the spectrum view
+            notes: [], // piano-roll notes
+            mixerPlaying: false
         };
 
         this.redoStack = [];
         this.undoStack = [];
+        this.currentEncodedWav = null; // Cached WAV data for the current buffer state
 
         this.ref = null;
+        this.multiTrackPlayer = null;
+        this.nextTrackId = 2; // Track 1 is created by ensureTracks
     }
     componentDidMount () {
         this.audioBufferPlayer = new AudioBufferPlayer(this.props.samples, this.props.sampleRate);
@@ -72,12 +133,26 @@ class SoundEditor extends React.Component {
             this.resetState(newProps.samples, newProps.sampleRate);
             this.setState({
                 trimStart: null,
-                trimEnd: null
+                trimEnd: null,
+                zoomStart: 0,
+                zoomEnd: 1,
+                previewGainDb: 0,
+                activeView: 'wave',
+                envelope: [{t: 0, value: 1}, {t: 1, value: 1}],
+                tracks: null,
+                spectrumFrames: null,
+                notes: [],
+                mixerPlaying: false
             });
+            this.stopMultiTrack();
         }
     }
     componentWillUnmount () {
         this.audioBufferPlayer.stop();
+        if (this.multiTrackPlayer) {
+            this.multiTrackPlayer.stop();
+            this.multiTrackPlayer = null;
+        }
 
         document.removeEventListener('keydown', this.handleKeyPress);
     }
@@ -92,8 +167,10 @@ class SoundEditor extends React.Component {
         }
         if (event.key === ' ') {
             event.preventDefault();
-            if (this.state.playhead) {
-                this.handleStopPlaying();
+            if (this.state.paused) {
+                this.handleResume();
+            } else if (this.state.playhead) {
+                this.handlePause();
             } else {
                 this.handlePlay();
             }
@@ -141,28 +218,44 @@ class SoundEditor extends React.Component {
             playhead: null
         });
     }
-    submitNewSamples (samples, sampleRate, skipUndo) {
-        return downsampleIfNeeded({samples, sampleRate}, this.resampleBufferToRate)
-            .then(({samples: newSamples, sampleRate: newSampleRate}) =>
-                WavEncoder.encode({
-                    sampleRate: newSampleRate,
-                    channelData: [newSamples]
-                }).then(wavBuffer => {
-                    if (!skipUndo) {
-                        this.redoStack = [];
-                        if (this.undoStack.length >= UNDO_STACK_SIZE) {
-                            this.undoStack.shift(); // Drop the first element off the array
-                        }
-                        this.undoStack.push(this.getUndoItem());
+    submitNewSamples (samples, sampleRate, skipUndo, cachedWavBuffer) {
+        const encodePromise = cachedWavBuffer ?
+            Promise.resolve({
+                wavBuffer: cachedWavBuffer,
+                newSamples: samples,
+                newSampleRate: sampleRate
+            }) :
+            downsampleIfNeeded({samples, sampleRate}, this.resampleBufferToRate)
+                .then(({samples: newSamples, sampleRate: newSampleRate}) =>
+                    WavEncoder.encode({
+                        sampleRate: newSampleRate,
+                        channelData: [newSamples]
+                    }).then(wavBuffer => ({wavBuffer, newSamples, newSampleRate})));
+        return encodePromise
+            .then(({wavBuffer, newSamples, newSampleRate}) => {
+                if (!skipUndo) {
+                    this.redoStack = [];
+                    if (this.undoStack.length >= UNDO_STACK_SIZE) {
+                        this.undoStack.shift(); // Drop the first element off the array
                     }
-                    this.resetState(newSamples, newSampleRate);
-                    this.props.vm.updateSoundBuffer(
-                        this.props.soundIndex,
-                        this.audioBufferPlayer.buffer,
-                        new Uint8Array(wavBuffer));
-                    return true; // Edit was successful
-                })
-            )
+                    this.undoStack.push(this.getUndoItem());
+                }
+                this.currentEncodedWav = wavBuffer;
+                this.resetState(newSamples, newSampleRate);
+                // Keep track 0 in sync with the committed main buffer, so the
+                // mixer always starts from the latest sound.
+                if (this.state.tracks) {
+                    this.setState({
+                        tracks: this.state.tracks.map((t, i) => (i === 0 ?
+                            {...t, samples: new Float32Array(newSamples)} : t))
+                    });
+                }
+                this.props.vm.updateSoundBuffer(
+                    this.props.soundIndex,
+                    this.audioBufferPlayer.buffer,
+                    new Uint8Array(wavBuffer));
+                return true; // Edit was successful
+            })
             .catch(e => {
                 // Encoding failed, or the sound was too large to save so edit is rejected
                 log.error(`Encountered error while trying to encode sound update: ${e.message}`);
@@ -182,7 +275,7 @@ class SoundEditor extends React.Component {
         this.handleStoppedPlaying();
     }
     handleStoppedPlaying () {
-        this.setState({playhead: null});
+        this.setState({playhead: null, paused: false});
     }
     handleUpdatePlayhead (playhead) {
         this.setState({playhead});
@@ -231,6 +324,31 @@ class SoundEditor extends React.Component {
                 });
             }
         });
+    }
+    handleCut () {
+        if (this.state.trimStart === null) return;
+        this.copy(() => {
+            this.handleDelete();
+        });
+    }
+    handlePause () {
+        if (!this.state.playhead) return;
+        this.audioBufferPlayer.pause();
+        this.setState({paused: true});
+    }
+    handleResume () {
+        if (!this.state.paused) return;
+        this.audioBufferPlayer.resume(
+            this.state.trimStart || 0,
+            this.state.trimEnd || 1,
+            this.handleUpdatePlayhead,
+            this.handleStoppedPlaying);
+        this.setState({paused: false});
+    }
+    handleToggleLoop () {
+        const isLooping = !this.state.isLooping;
+        this.audioBufferPlayer.setLoop(isLooping);
+        this.setState({isLooping});
     }
     handleUpdateTrim (trimStart, trimEnd) {
         this.setState({trimStart, trimEnd});
@@ -289,14 +407,15 @@ class SoundEditor extends React.Component {
         return {
             ...this.copyCurrentBuffer(),
             trimStart: this.state.trimStart,
-            trimEnd: this.state.trimEnd
+            trimEnd: this.state.trimEnd,
+            encodedWav: this.currentEncodedWav
         };
     }
     handleUndo () {
         this.redoStack.push(this.getUndoItem());
-        const {samples, sampleRate, trimStart, trimEnd} = this.undoStack.pop();
+        const {samples, sampleRate, trimStart, trimEnd, encodedWav} = this.undoStack.pop();
         if (samples) {
-            return this.submitNewSamples(samples, sampleRate, true).then(success => {
+            return this.submitNewSamples(samples, sampleRate, true, encodedWav).then(success => {
                 if (success) {
                     this.setState({trimStart: trimStart, trimEnd: trimEnd}, this.handlePlay);
                 }
@@ -304,10 +423,10 @@ class SoundEditor extends React.Component {
         }
     }
     handleRedo () {
-        const {samples, sampleRate, trimStart, trimEnd} = this.redoStack.pop();
+        const {samples, sampleRate, trimStart, trimEnd, encodedWav} = this.redoStack.pop();
         if (samples) {
             this.undoStack.push(this.getUndoItem());
-            return this.submitNewSamples(samples, sampleRate, true).then(success => {
+            return this.submitNewSamples(samples, sampleRate, true, encodedWav).then(success => {
                 if (success) {
                     this.setState({trimStart: trimStart, trimEnd: trimEnd}, this.handlePlay);
                 }
@@ -434,36 +553,387 @@ class SoundEditor extends React.Component {
             this.handleUpdateTrim(null, null);
         }
     }
+    // Zooming (advanced style). zoomStart/zoomEnd are fractions [0,1] of the
+    // whole sound currently visible in the waveform.
+    handleZoomIn () {
+        this.setState(prevState => {
+            const range = prevState.zoomEnd - prevState.zoomStart;
+            const newRange = Math.max(MIN_ZOOM_WIDTH, range / 2);
+            const center = (prevState.zoomStart + prevState.zoomEnd) / 2;
+            const zoomStart = Math.max(0, center - (newRange / 2));
+            const zoomEnd = Math.min(1, zoomStart + newRange);
+            return {zoomStart, zoomEnd};
+        });
+    }
+    handleZoomOut () {
+        this.setState(prevState => {
+            const range = prevState.zoomEnd - prevState.zoomStart;
+            const newRange = Math.min(1, range * 2);
+            const center = (prevState.zoomStart + prevState.zoomEnd) / 2;
+            let zoomStart = Math.max(0, center - (newRange / 2));
+            const zoomEnd = Math.min(1, zoomStart + newRange);
+            if (zoomEnd - zoomStart < 1) {
+                zoomStart = Math.max(0, zoomEnd - newRange);
+            }
+            return {zoomStart, zoomEnd};
+        });
+    }
+    handleZoomReset () {
+        this.setState({
+            zoomStart: 0,
+            zoomEnd: 1
+        });
+    }
+    handleZoomToSelection () {
+        const {trimStart, trimEnd} = this.state;
+        if (trimStart === null || trimEnd === null) {
+            this.handleZoomIn();
+            return;
+        }
+        const range = trimEnd - trimStart;
+        const newRange = Math.max(MIN_ZOOM_WIDTH, range * 1.1);
+        const center = (trimStart + trimEnd) / 2;
+        let zoomStart = Math.max(0, center - (newRange / 2));
+        const zoomEnd = Math.min(1, zoomStart + newRange);
+        if (zoomEnd - zoomStart < newRange) {
+            zoomStart = Math.max(0, zoomEnd - newRange);
+        }
+        this.setState({zoomStart, zoomEnd});
+    }
+    handleZoomSlider (level) {
+        // `level` is 0 (whole sound) .. 1 (maximum zoom), mapped logarithmically.
+        this.setState(prevState => {
+            const newRange = Math.max(MIN_ZOOM_WIDTH, Math.pow(MIN_ZOOM_WIDTH, 1 - level));
+            const center = (prevState.zoomStart + prevState.zoomEnd) / 2;
+            let zoomStart = Math.max(0, center - (newRange / 2));
+            const zoomEnd = Math.min(1, zoomStart + newRange);
+            if (zoomEnd - zoomStart < newRange) {
+                zoomStart = Math.max(0, zoomEnd - newRange);
+            }
+            return {zoomStart, zoomEnd};
+        });
+    }
+    // Gain preview & apply (advanced style). The slider previews the gain
+    // change with an offline render; the Apply button commits it through the
+    // normal submitNewSamples / undo stack.
+    handleGainSliderChange (gainDb) {
+        this.setState({previewGainDb: gainDb});
+    }
+    handleGainSliderCommit (gainDb) {
+        this.setState({previewGainDb: gainDb});
+        this.handleApplyGain(gainDb);
+    }
+    handleApplyGain (gainDb) {
+        const gainFactor = Math.pow(10, gainDb / 20);
+        const buffer = this.copyCurrentBuffer();
+        // copyCurrentBuffer returns a live view of the audio buffer, so make a
+        // copy before mutating samples.
+        const samples = new Float32Array(buffer.samples);
+        const {trimStart, trimEnd} = this.state;
+        const startIndex = trimStart === null ? 0 : Math.round(trimStart * samples.length);
+        const endIndex = trimEnd === null ? samples.length : Math.round(trimEnd * samples.length);
+        for (let i = startIndex; i < endIndex; i++) {
+            samples[i] *= gainFactor;
+        }
+        this.submitNewSamples(samples, buffer.sampleRate, false).then(success => {
+            if (success) {
+                this.setState({previewGainDb: 0});
+            }
+        });
+    }
+    // Normalize to 0dBFS: scale the selection (or whole sound) so that its
+    // peak sample reaches 1.0, then soft-clip the result.
+    handleNormalize () {
+        const buffer = this.copyCurrentBuffer();
+        const samples = new Float32Array(buffer.samples);
+        const {trimStart, trimEnd} = this.state;
+        const startIndex = trimStart === null ? 0 : Math.round(trimStart * samples.length);
+        const endIndex = trimEnd === null ? samples.length : Math.round(trimEnd * samples.length);
+        let peak = 0;
+        for (let i = startIndex; i < endIndex; i++) {
+            const abs = Math.abs(samples[i]);
+            if (abs > peak) peak = abs;
+        }
+        if (peak <= 0) {
+            return;
+        }
+        const scale = 1 / peak;
+        for (let i = startIndex; i < endIndex; i++) {
+            samples[i] = Math.tanh(samples[i] * scale * 0.9) / Math.tanh(0.9);
+        }
+        this.submitNewSamples(samples, buffer.sampleRate, false);
+    }
+    // Keep only the selection: cut away everything outside trimStart/trimEnd.
+    handleKeepSelection () {
+        if (this.state.trimStart === null || this.state.trimEnd === null) {
+            return;
+        }
+        const buffer = this.copyCurrentBuffer();
+        const trimStartSamples = Math.round(this.state.trimStart * buffer.samples.length);
+        const trimEndSamples = Math.round(this.state.trimEnd * buffer.samples.length);
+        const newSamples = buffer.samples.slice(trimStartSamples, trimEndSamples);
+        this.submitNewSamples(newSamples, buffer.sampleRate, false);
+    }
+    // Silence the selection: zero out the samples, keeping the duration.
+    handleSilenceSelection () {
+        const buffer = this.copyCurrentBuffer();
+        // Live view -> copy before mutating.
+        const samples = new Float32Array(buffer.samples);
+        const {trimStart, trimEnd} = this.state;
+        const startIndex = trimStart === null ? 0 : Math.round(trimStart * samples.length);
+        const endIndex = trimEnd === null ? samples.length : Math.round(trimEnd * samples.length);
+        for (let i = startIndex; i < endIndex; i++) {
+            samples[i] = 0;
+        }
+        this.submitNewSamples(samples, buffer.sampleRate, false);
+    }
+    // -----------------------------------------------------------------------
+    // Gandi-style advanced features (advanced style only):
+    // volume envelope / spectrum view / multi-track mixer / piano roll + MIDI
+    // -----------------------------------------------------------------------
+    handleSetActiveView (view) {
+        if (view === 'spectrum') {
+            this.ensureSpectrumFrames();
+        } else if (view === 'mixer' || view === 'pianoroll') {
+            this.ensureTracks();
+        }
+        if (view !== 'mixer' && this.state.mixerPlaying) {
+            this.stopMultiTrack();
+        }
+        this.setState({activeView: view});
+    }
+    // --- Volume envelope ---------------------------------------------------
+    handleEnvelopeChange (envelope) {
+        this.setState({envelope});
+    }
+    handleApplyEnvelope () {
+        const buffer = this.copyCurrentBuffer();
+        // applyEnvelopeToSamples returns a deep copy; the live buffer is never
+        // mutated, and the result goes through the normal undo stack.
+        const samples = applyEnvelopeToSamples(buffer.samples, this.state.envelope);
+        this.submitNewSamples(samples, buffer.sampleRate, false);
+    }
+    // --- Spectrum view -----------------------------------------------------
+    ensureSpectrumFrames () {
+        if (this.state.spectrumFrames) {
+            return this.state.spectrumFrames;
+        }
+        const buffer = this.copyCurrentBuffer();
+        const frames = computeSpectrumFrames(buffer.samples, buffer.sampleRate);
+        this.setState({spectrumFrames: frames});
+        return frames;
+    }
+    // --- Multi-track mixer -------------------------------------------------
+    ensureTracks () {
+        if (this.state.tracks) {
+            return this.state.tracks;
+        }
+        const buffer = this.copyCurrentBuffer();
+        const tracks = [{
+            id: 1,
+            name: 'Track 1',
+            samples: new Float32Array(buffer.samples), // deep copy of the live view
+            sampleRate: buffer.sampleRate,
+            volume: 0.8,
+            pan: 0,
+            muted: false,
+            solo: false
+        }];
+        this.setState({tracks});
+        return tracks;
+    }
+    handleTrackAdd () {
+        const tracks = this.ensureTracks();
+        let maxLen = 1;
+        for (const t of tracks) {
+            if (t.samples && t.samples.length > maxLen) {
+                maxLen = t.samples.length;
+            }
+        }
+        const newTrack = {
+            id: this.nextTrackId++,
+            name: `Track ${tracks.length + 1}`,
+            samples: new Float32Array(maxLen), // silent track
+            sampleRate: tracks[0] ? tracks[0].sampleRate : this.props.sampleRate,
+            volume: 0.8,
+            pan: 0,
+            muted: false,
+            solo: false
+        };
+        this.setState({tracks: [...tracks, newTrack]});
+    }
+    handleRemoveTrack (id) {
+        const tracks = this.state.tracks || [];
+        if (tracks.length <= 1) {
+            return; // Always keep at least one track.
+        }
+        this.setState({tracks: tracks.filter(t => t.id !== id)});
+    }
+    handleMoveTrack (id, dir) {
+        const tracks = (this.state.tracks || []).slice();
+        const index = tracks.findIndex(t => t.id === id);
+        const target = dir === 'up' ? index - 1 : index + 1;
+        if (index < 0 || target < 0 || target >= tracks.length) {
+            return;
+        }
+        const [track] = tracks.splice(index, 1);
+        tracks.splice(target, 0, track);
+        this.setState({tracks});
+        this.updateMultiTrackPlayback(tracks);
+    }
+    handleToggleMute (id) {
+        const tracks = this.ensureTracks().map(t => (t.id === id ? {...t, muted: !t.muted} : t));
+        this.setState({tracks});
+        this.updateMultiTrackPlayback(tracks);
+    }
+    handleToggleSolo (id) {
+        const tracks = this.ensureTracks().map(t => (t.id === id ? {...t, solo: !t.solo} : t));
+        this.setState({tracks});
+        this.updateMultiTrackPlayback(tracks);
+    }
+    handleVolumeChange (id, volume) {
+        const tracks = this.ensureTracks().map(t => (t.id === id ? {...t, volume} : t));
+        this.setState({tracks});
+        this.updateMultiTrackPlayback(tracks);
+    }
+    handlePanChange (id, pan) {
+        const tracks = this.ensureTracks().map(t => (t.id === id ? {...t, pan} : t));
+        this.setState({tracks});
+        this.updateMultiTrackPlayback(tracks);
+    }
+    updateMultiTrackPlayback (tracks) {
+        if (this.multiTrackPlayer && this.state.mixerPlaying) {
+            this.multiTrackPlayer.updateTracks(tracks);
+        }
+    }
+    handleMixerPlay () {
+        const tracks = this.ensureTracks();
+        this.handleStopPlaying(); // Stop single-buffer playback first.
+        if (!this.multiTrackPlayer) {
+            this.multiTrackPlayer = new MultiTrackPlayer(tracks, tracks[0].sampleRate);
+        }
+        this.multiTrackPlayer.play(tracks, () => {}, () => {
+            this.setState({mixerPlaying: false});
+        });
+        this.setState({mixerPlaying: true});
+    }
+    handleMixerStop () {
+        this.stopMultiTrack();
+    }
+    stopMultiTrack () {
+        if (this.multiTrackPlayer) {
+            this.multiTrackPlayer.stop();
+        }
+        this.multiTrackPlayer = null;
+        if (this.state.mixerPlaying) {
+            this.setState({mixerPlaying: false});
+        }
+    }
+    handleCommitMix () {
+        const tracks = this.state.tracks;
+        if (!tracks || tracks.length === 0) {
+            return;
+        }
+        const mixed = mixTracksToMono(tracks);
+        if (!mixed) {
+            return;
+        }
+        const sampleRate = tracks[0].sampleRate;
+        this.stopMultiTrack();
+        // Clear the multi-track state BEFORE submitting, so the track-0 sync in
+        // submitNewSamples does not copy the mix back into a track.
+        this.setState({tracks: null, activeView: 'wave'});
+        this.submitNewSamples(mixed, sampleRate, false);
+    }
+    // --- Piano roll / MIDI -------------------------------------------------
+    handleNotesChange (notes) {
+        this.setState({notes});
+    }
+    handleRenderNotes () {
+        const notes = this.state.notes;
+        if (!notes || notes.length === 0) {
+            return;
+        }
+        const tracks = this.ensureTracks();
+        const sampleRate = tracks[0].sampleRate;
+        // Offline synthesis: oscillator + ADSR into a mono Float32Array that
+        // replaces track 0's samples. No scratch-vm involvement until the user
+        // commits the mix.
+        const samples = renderMidiToSamples(notes, sampleRate);
+        const updated = tracks.map((t, i) => (i === 0 ? {...t, samples} : t));
+        this.setState({tracks: updated});
+    }
+    handleExportMidi () {
+        const notes = this.state.notes;
+        if (!notes || notes.length === 0) {
+            return;
+        }
+        const midiBytes = exportMidiSMF(notes);
+        const blob = new Blob([midiBytes.buffer], {type: 'audio/midi'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${this.props.name || 'sound'}.mid`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
     render () {
         const {effectTypes} = AudioEffects;
         return (
             <SoundEditorComponent
                 isStereo={this.props.isStereo}
+                isAdvancedStyle={this.props.audioEditorStyle === 'advanced'}
                 duration={this.props.duration}
                 size={this.props.size}
+                samples={this.props.samples}
+                sampleRate={this.props.sampleRate}
                 canPaste={this.state.copyBuffer !== null}
                 canRedo={this.redoStack.length > 0}
                 canUndo={this.undoStack.length > 0}
                 chunkLevels={this.state.chunkLevels}
+                isLooping={this.state.isLooping}
                 name={this.props.name}
+                paused={this.state.paused}
                 playhead={this.state.playhead}
                 setRef={this.setRef}
                 tooLoud={this.tooLoud()}
                 trimEnd={this.state.trimEnd}
                 trimStart={this.state.trimStart}
+                zoomEnd={this.state.zoomEnd}
+                zoomStart={this.state.zoomStart}
+                previewGainDb={this.state.previewGainDb}
+                activeView={this.state.activeView}
+                envelope={this.state.envelope}
+                spectrumFrames={this.state.spectrumFrames}
+                tracks={this.state.tracks}
+                notes={this.state.notes}
+                mixerPlaying={this.state.mixerPlaying}
                 onChangeName={this.handleChangeName}
                 onContainerClick={this.handleContainerClick}
                 onCopy={this.handleCopy}
                 onCopyToNew={this.handleCopyToNew}
+                onCut={this.handleCut}
                 onDelete={this.handleDelete}
+                onDeleteInverse={this.handleDeleteInverse}
                 onEcho={this.effectFactory(effectTypes.ECHO)}
                 onFadeIn={this.effectFactory(effectTypes.FADEIN)}
                 onFadeOut={this.effectFactory(effectTypes.FADEOUT)}
                 onFaster={this.effectFactory(effectTypes.FASTER)}
+                onGainSliderChange={this.handleGainSliderChange}
+                onGainSliderCommit={this.handleGainSliderCommit}
+                onApplyGain={this.handleApplyGain}
+                onNormalize={this.handleNormalize}
+                onKeepSelection={this.handleKeepSelection}
+                onSilenceSelection={this.handleSilenceSelection}
                 onLouder={this.effectFactory(effectTypes.LOUDER)}
                 onMute={this.effectFactory(effectTypes.MUTE)}
                 onPaste={this.handlePaste}
+                onPause={this.handlePause}
                 onPlay={this.handlePlay}
+                onResume={this.handleResume}
+                onToggleLoop={this.handleToggleLoop}
                 onRedo={this.handleRedo}
                 onReverse={this.effectFactory(effectTypes.REVERSE)}
                 onRobot={this.effectFactory(effectTypes.ROBOT)}
@@ -472,6 +942,27 @@ class SoundEditor extends React.Component {
                 onSofter={this.effectFactory(effectTypes.SOFTER)}
                 onStop={this.handleStopPlaying}
                 onUndo={this.handleUndo}
+                onZoomIn={this.handleZoomIn}
+                onZoomOut={this.handleZoomOut}
+                onZoomReset={this.handleZoomReset}
+                onZoomToSelection={this.handleZoomToSelection}
+                onZoomSlider={this.handleZoomSlider}
+                onSetActiveView={this.handleSetActiveView}
+                onEnvelopeChange={this.handleEnvelopeChange}
+                onApplyEnvelope={this.handleApplyEnvelope}
+                onTrackAdd={this.handleTrackAdd}
+                onTrackRemove={this.handleRemoveTrack}
+                onTrackMove={this.handleMoveTrack}
+                onToggleMute={this.handleToggleMute}
+                onToggleSolo={this.handleToggleSolo}
+                onVolumeChange={this.handleVolumeChange}
+                onPanChange={this.handlePanChange}
+                onPlayMix={this.handleMixerPlay}
+                onStopMix={this.handleMixerStop}
+                onCommitMix={this.handleCommitMix}
+                onNotesChange={this.handleNotesChange}
+                onRenderNotes={this.handleRenderNotes}
+                onExportMidi={this.handleExportMidi}
             />
         );
     }
@@ -479,6 +970,7 @@ class SoundEditor extends React.Component {
 
 SoundEditor.propTypes = {
     isStereo: PropTypes.bool,
+    audioEditorStyle: PropTypes.string,
     duration: PropTypes.number,
     size: PropTypes.number,
     isFullScreen: PropTypes.bool,
@@ -504,6 +996,7 @@ const mapStateToProps = (state, {soundIndex}) => {
         sampleRate: audioBuffer.sampleRate,
         samples: audioBuffer.getChannelData(0),
         isFullScreen: state.scratchGui.mode.isFullScreen,
+        audioEditorStyle: state.scratchGui.audioEditorStyle,
         name: sound.name,
         vm: state.scratchGui.vm
     };

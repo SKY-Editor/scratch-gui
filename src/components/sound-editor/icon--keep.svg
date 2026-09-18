@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>keep-selection</title>
+    <g fill="#575E75">
+        <rect x="3.5" y="2.5" width="2.5" height="15" rx="1"></rect>
+        <rect x="14" y="2.5" width="2.5" height="15" rx="1"></rect>
+        <rect x="7.5" y="7" width="5" height="6" rx="0.5"></rect>
+    </g>
+</svg>

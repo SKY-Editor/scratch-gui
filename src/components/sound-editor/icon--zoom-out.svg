@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>zoom-out</title>
+    <g fill="none" stroke="#575E75" stroke-width="1.8">
+        <circle cx="8.5" cy="8.5" r="5.5"></circle>
+        <line x1="12.6" y1="12.6" x2="17" y2="17" stroke-linecap="round"></line>
+    </g>
+    <line x1="6" y1="8.5" x2="11" y2="8.5" stroke="#575E75" stroke-width="1.8" stroke-linecap="round"></line>
+</svg>

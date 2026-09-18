@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>zoom-in</title>
+    <g fill="none" stroke="#575E75" stroke-width="1.8">
+        <circle cx="8.5" cy="8.5" r="5.5"></circle>
+        <line x1="12.6" y1="12.6" x2="17" y2="17" stroke-linecap="round"></line>
+    </g>
+    <g stroke="#575E75" stroke-width="1.8" stroke-linecap="round">
+        <line x1="8.5" y1="6" x2="8.5" y2="11"></line>
+        <line x1="6" y1="8.5" x2="11" y2="8.5"></line>
+    </g>
+</svg>

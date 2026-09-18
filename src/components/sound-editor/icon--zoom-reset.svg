@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>zoom-reset</title>
+    <g fill="none" stroke="#575E75" stroke-width="1.5">
+        <rect x="2.5" y="4.5" width="15" height="11" rx="1.5"></rect>
+    </g>
+    <g fill="#575E75">
+        <rect x="5" y="8" width="2" height="4" rx="0.5"></rect>
+        <rect x="8.2" y="7" width="2" height="6" rx="0.5"></rect>
+        <rect x="11.4" y="8.5" width="2" height="3" rx="0.5"></rect>
+        <rect x="14.6" y="9" width="2" height="2" rx="0.5"></rect>
+    </g>
+</svg>

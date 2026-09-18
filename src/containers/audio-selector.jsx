@@ -8,6 +8,10 @@ import DragRecognizer from '../lib/drag-recognizer';
 const MIN_LENGTH = 0.01;
 const MIN_DURATION = 500;
 
+// Convert a local (visible viewport) percentage [0,1] into a global percentage
+// [0,1] of the whole sound, taking the current zoom window into account.
+const localToGlobal = (local, zoomStart, zoomEnd) => zoomStart + local * (zoomEnd - zoomStart);
+
 class AudioSelector extends React.Component {
     constructor (props) {
         super(props);
@@ -55,7 +59,8 @@ class AudioSelector extends React.Component {
     }
     handleNewSelectionMouseDown (e) {
         const {width, left} = this.containerElement.getBoundingClientRect();
-        this.initialTrimEnd = (getEventXY(e).x - left) / width;
+        const localX = (getEventXY(e).x - left) / width;
+        this.initialTrimEnd = localToGlobal(localX, this.props.zoomStart, this.props.zoomEnd);
         this.initialTrimStart = this.initialTrimEnd;
         this.props.onSetTrim(this.initialTrimStart, this.initialTrimEnd);
 
@@ -68,7 +73,8 @@ class AudioSelector extends React.Component {
     }
     handleTrimStartMouseMove (currentOffset, initialOffset) {
         const dx = (currentOffset.x - initialOffset.x) / this.containerSize;
-        const newTrim = Math.max(0, Math.min(1, this.initialTrimStart + dx));
+        const zoomRange = this.props.zoomEnd - this.props.zoomStart;
+        const newTrim = Math.max(0, Math.min(1, this.initialTrimStart + dx * zoomRange));
         if (newTrim > this.initialTrimEnd) {
             this.setState({
                 trimStart: this.initialTrimEnd,
@@ -83,7 +89,8 @@ class AudioSelector extends React.Component {
     }
     handleTrimEndMouseMove (currentOffset, initialOffset) {
         const dx = (currentOffset.x - initialOffset.x) / this.containerSize;
-        const newTrim = Math.min(1, Math.max(0, this.initialTrimEnd + dx));
+        const zoomRange = this.props.zoomEnd - this.props.zoomStart;
+        const newTrim = Math.min(1, Math.max(0, this.initialTrimEnd + dx * zoomRange));
         if (newTrim < this.initialTrimStart) {
             this.setState({
                 trimStart: newTrim,
@@ -138,6 +145,8 @@ class AudioSelector extends React.Component {
                 playhead={this.props.playhead}
                 trimEnd={this.state.trimEnd}
                 trimStart={this.state.trimStart}
+                zoomEnd={this.props.zoomEnd}
+                zoomStart={this.props.zoomStart}
                 onNewSelectionMouseDown={this.handleNewSelectionMouseDown}
                 onTrimEndMouseDown={this.handleTrimEndMouseDown}
                 onTrimStartMouseDown={this.handleTrimStartMouseDown}
@@ -150,7 +159,9 @@ AudioSelector.propTypes = {
     onSetTrim: PropTypes.func,
     playhead: PropTypes.number,
     trimEnd: PropTypes.number,
-    trimStart: PropTypes.number
+    trimStart: PropTypes.number,
+    zoomEnd: PropTypes.number,
+    zoomStart: PropTypes.number
 };
 
 export default AudioSelector;
