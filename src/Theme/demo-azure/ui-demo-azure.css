@@ -1,0 +1,23 @@
+/*
+ * 示例主题 demo-azure 专属样式（最小演示）
+ * ---------------------------------------------------------------------------
+ * 作用域铁律：
+ *   - 所有规则必须限定在 html.demo-azure-theme 后代选择器内，
+ *     保证其它主题（TurboWarp / SKYEditor）零影响。
+ *   - 颜色优先使用注册表 variables 注入的 --demo-* 变量（明暗自动适配），
+ *     或复用 applyGuiColors 下发的语义变量（--text-primary / --ui-primary 等）。
+ * 新增主题时：复制本文件为 ui-{theme-id}.css，把选择器换成对应 namespace，
+ * 并在 ui-theme-registry.js 顶部 import 挂载。
+ * ---------------------------------------------------------------------------
+ */
+
+/* 演示：仅在 demo-azure 主题下给菜单栏背景加一层品牌色半透明覆盖 */
+html.demo-azure-theme .menu-bar_menu-bar_1GZUT {
+    background-color: var(--demo-accent, #00a8a8);
+}
+
+/* 演示：主题专属 CSS 变量在组件中的用法（此处仅示意） */
+html.demo-azure-theme .demo-azure-sample {
+    background: var(--demo-surface, #f2fbfb);
+    color: var(--demo-accent, #00a8a8);
+}
