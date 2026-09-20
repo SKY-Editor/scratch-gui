@@ -28,6 +28,8 @@ const MSG_SYNC = 'sync'; // 定向转发到某个客户端（CRDT 数据）
 // relay / sync 消息内部的 kind（业务子类型），便于将来扩展更多同步数据类型
 const KIND_INIT_STATE = 'init-state'; // 全量初始状态（新成员加入时拉取房间现状）
 const KIND_UPDATE = 'yjs-update'; // Yjs 增量更新（日常实时同步）
+const KIND_OP = 'op'; // 操作级同步：单条业务 op（由服务端打中心 seq 后广播，含发送者）
+const KIND_OP_CATCHUP = 'op-catchup'; // 操作级同步：按 since 拉取中心序号更大的 op 历史（定向回传）
 
 // ---------------------------------------------------------------------------
 // 消息构造辅助函数
@@ -66,9 +68,13 @@ function buildRelay(roomId, from, to, kind, payload) {
 
 /**
  * 构造 server -> client 的 welcome 消息。
+ * @param {string} roomId
+ * @param {string} clientId 本端 clientId
+ * @param {Array<{clientId:string, displayName:string}>} members 房间成员列表
+ * @param {number} [opSeq] 房间当前中心 op 序号（操作级同步定序；新成员据此初始化 lastSeq）
  */
-function buildWelcome(roomId, clientId, members) {
-  return { type: MSG_WELCOME, roomId, clientId, members };
+function buildWelcome(roomId, clientId, members, opSeq) {
+  return { type: MSG_WELCOME, roomId, clientId, members, opSeq: typeof opSeq === 'number' ? opSeq : 0 };
 }
 
 /**
@@ -130,6 +136,8 @@ module.exports = {
   MSG_SYNC,
   KIND_INIT_STATE,
   KIND_UPDATE,
+  KIND_OP,
+  KIND_OP_CATCHUP,
   buildJoin,
   buildLeave,
   buildRelay,

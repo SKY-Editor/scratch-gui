@@ -20,8 +20,11 @@
 const { WebSocketServer } = require('ws');
 const protocol = require('./protocol');
 
-// 房间注册表：roomId -> Map<clientId, { ws, displayName }>
+// 房间注册表：roomId -> { members: Map<clientId, { ws, displayName }>, opSeq, opHistory }
+//   opSeq：本房间操作级同步的中心单调序号（KIND_OP 广播时逐条递增）
+//   opHistory：有限长环形缓冲（保留最近 OP_HISTORY_MAX 条 op），供断线重连/新成员 catchup 定向回传
 const rooms = new Map();
+const OP_HISTORY_MAX = 500;
 
 /**
  * 创建信令服务（可监听指定端口，或端口 0 自动分配）。
@@ -90,7 +93,7 @@ function handleJoin(ws, msg) {
   }
 
   const room = getOrCreateRoom(roomId);
-  if (room.has(clientId)) {
+  if (room.members.has(clientId)) {
     send(ws, protocol.encode({ type: 'error', message: `clientId already in room: ${clientId}` }));
     return;
   }
@@ -98,18 +101,21 @@ function handleJoin(ws, msg) {
   // 绑定连接身份
   ws._clientId = clientId;
   ws._roomId = roomId;
-  room.set(clientId, { ws, displayName: displayName || `匿名-${clientId.slice(0, 4)}` });
+  room.members.set(clientId, { ws, displayName: displayName || `匿名-${clientId.slice(0, 4)}` });
 
-  const member = { clientId, displayName: room.get(clientId).displayName };
+  const member = { clientId, displayName: room.members.get(clientId).displayName };
 
-  // 1) 回 welcome：通知新成员房间现状（成员列表）
-  send(ws, protocol.encode(protocol.buildWelcome(roomId, clientId, roomMembersJSON(room))));
+  // 1) 回 welcome：通知新成员房间现状（成员列表 + 当前中心 op 序号）。
+  //    opSeq 供首次入房方初始化 lastSeq：新成员会收到房间现存成员的全量快照
+  //    （init-state 覆盖此前所有 op 的效果），因此可直接把 lastSeq 对齐到房间当前序号，
+  //    快照到达后只补快照之后的差值 op。
+  send(ws, protocol.encode(protocol.buildWelcome(roomId, clientId, roomMembersJSON(room), room.opSeq)));
 
   // 2) 广播 member-joined：告诉房间内其他成员有新成员加入（携带新成员的初始状态）
   const state = typeof msg.state === 'string' ? msg.state : null;
   broadcast(room, clientId, protocol.encode(protocol.buildMemberJoined(roomId, member, state)));
 
-  console.log(`[server] ${clientId} 加入房间 ${roomId}，当前成员 ${room.size} 人`);
+  console.log(`[server] ${clientId} 加入房间 ${roomId}，当前成员 ${room.members.size} 人`);
 }
 
 /**
@@ -125,6 +131,15 @@ function handleLeave(ws, msg) {
  * 处理 relay：按目标转发消息。
  *   - msg.to 为空 => 广播给房间内除发送者外的所有成员
  *   - msg.to 指定 => 定向转发给目标成员
+ *
+ * 操作级同步（KIND_OP）特殊处理：
+ *   - 广播型 KIND_OP（to 为空）：由服务端打中心单调序号（seq）并写入房间 op 历史，
+ *     然后广播给**全部成员（含发送者自身）**——发送者借此获知自己 op 的中心序号
+ *     以推进 lastSeq，保证后续 catchup 定界正确；各端按 seq 去重（<=lastSeq 跳过）。
+ *   - 定向型 KIND_OP（to 指定，如 monitor-request / monitor-sync）：属于请求/应答类
+ *     内部消息，不计入中心定序，原样定向转发。
+ *   - KIND_OP_CATCHUP：请求者携带 since（已应用到的中心序号），服务端从房间 op 历史
+ *     过滤 seq > since 的条目定向回传，实现断线重连/入房后的历史 op 补偿。
  */
 function handleRelay(ws, msg) {
   const { roomId, from, to, kind, payload } = msg;
@@ -134,17 +149,51 @@ function handleRelay(ws, msg) {
   const room = rooms.get(roomId);
   if (!room) return;
 
+  // 断线重连/入房补偿：从中心 op 历史定向回传差值
+  if (kind === protocol.KIND_OP_CATCHUP) {
+    const since = (payload && typeof payload.since === 'number') ? payload.since : 0;
+    const ops = room.opHistory.filter((entry) => entry.seq > since);
+    send(ws, protocol.encode(protocol.buildSync('server', protocol.KIND_OP_CATCHUP, { ops })));
+    console.log(`[server] ${from} 请求 op 补偿 since=${since}，回传 ${ops.length} 条`);
+    return;
+  }
+
   if (to) {
     // 定向转发
-    const target = room.get(to);
+    const target = room.members.get(to);
     if (target) {
       send(target.ws, protocol.encode(protocol.buildSync(from, kind, payload)));
     }
-  } else {
-    // 广播转发
-    const frame = protocol.encode(protocol.buildSync(from, kind, payload));
-    broadcast(room, from, frame);
+    return;
   }
+
+  // 广播型操作级同步：中心定序 + 写入历史 + 广播（含发送者）。
+  // 监视器内部消息（monitor-sync 等，type 以 monitor- 开头）属于即时整体对齐、
+  // 不经 op 引擎串行队列，不计入中心定序与 op 历史，直接普通广播。
+  if (kind === protocol.KIND_OP) {
+    const isInternal = typeof payload.type === 'string' && payload.type.indexOf('monitor-') === 0;
+    if (isInternal) {
+      const frame = protocol.encode(protocol.buildSync(from, kind, payload));
+      broadcast(room, from, frame);
+      return;
+    }
+    room.opSeq += 1;
+    const seq = room.opSeq;
+    const stamped = Object.assign({}, payload, { seq });
+    room.opHistory.push({ seq, type: stamped.type, payload: stamped.payload });
+    if (room.opHistory.length > OP_HISTORY_MAX) room.opHistory.splice(0, room.opHistory.length - OP_HISTORY_MAX);
+    const frame = protocol.encode(protocol.buildSync(from, kind, stamped));
+    for (const [cid, info] of room.members) {
+      if (info.ws.readyState === info.ws.OPEN) {
+        send(info.ws, frame);
+      }
+    }
+    return;
+  }
+
+  // 普通广播转发
+  const frame = protocol.encode(protocol.buildSync(from, kind, payload));
+  broadcast(room, from, frame);
 }
 
 // ---------------------------------------------------------------------------
@@ -153,7 +202,7 @@ function handleRelay(ws, msg) {
 
 function getOrCreateRoom(roomId) {
   if (!rooms.has(roomId)) {
-    rooms.set(roomId, new Map());
+    rooms.set(roomId, { members: new Map(), opSeq: 0, opHistory: [] });
   }
   return rooms.get(roomId);
 }
@@ -162,7 +211,7 @@ function getOrCreateRoom(roomId) {
  * 向房间内除 excludeId 外的所有成员发送 frame。
  */
 function broadcast(room, excludeId, frame) {
-  for (const [cid, info] of room) {
+  for (const [cid, info] of room.members) {
     if (cid !== excludeId && info.ws.readyState === info.ws.OPEN) {
       send(info.ws, frame);
     }
@@ -186,10 +235,10 @@ function onDisconnect(ws) {
 function removeClient(ws, roomId, clientId) {
   const room = rooms.get(roomId);
   if (room) {
-    room.delete(clientId);
+    room.members.delete(clientId);
     broadcast(room, clientId, protocol.encode(protocol.buildMemberLeft(roomId, clientId)));
-    console.log(`[server] ${clientId} 离开房间 ${roomId}，当前成员 ${room.size} 人`);
-    if (room.size === 0) {
+    console.log(`[server] ${clientId} 离开房间 ${roomId}，当前成员 ${room.members.size} 人`);
+    if (room.members.size === 0) {
       rooms.delete(roomId); // 房间无人时自动销毁
       console.log(`[server] 房间 ${roomId} 已销毁`);
     }
@@ -200,7 +249,7 @@ function removeClient(ws, roomId, clientId) {
 
 function roomMembersJSON(room) {
   const members = [];
-  for (const [cid, info] of room) {
+  for (const [cid, info] of room.members) {
     members.push({ clientId: cid, displayName: info.displayName });
   }
   return members;
@@ -211,8 +260,10 @@ function roomToJSON(roomId) {
   if (!room) return null;
   return {
     roomId,
-    memberCount: room.size,
+    memberCount: room.members.size,
     members: roomMembersJSON(room).map((m) => m.clientId),
+    opSeq: room.opSeq,
+    opHistoryLength: room.opHistory.length,
   };
 }
 
