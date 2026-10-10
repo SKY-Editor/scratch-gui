@@ -9,8 +9,8 @@ import dropdownCaret from './dropdown-caret.svg';
 import {MenuItem, Submenu} from '../menu/menu.jsx';
 import {THEME_PRESETS} from '../../lib/themes/presets.js';
 import {openUiThemeMenu, uiThemeMenuOpen, closeSettingsMenu} from '../../reducers/menus.js';
-import {setUiTheme} from '../../reducers/ui-theme.js';
-import {persistUiTheme} from '../../lib/themes/uiThemePersistance.js';
+import {setUiTheme} from '../../Theme/public/ui-theme-reducer.js';
+import {applyUiThemeChrome} from '../../Theme/public/ui-theme-registry.js';
 import styles from './settings-menu.css';
 
 const getPresetById = id => THEME_PRESETS.find(preset => preset.id === id) || THEME_PRESETS[0];
@@ -112,8 +112,7 @@ const mapDispatchToProps = dispatch => ({
     onChangeTheme: themeId => {
         dispatch(setUiTheme(themeId));
         dispatch(closeSettingsMenu());
-        persistUiTheme(themeId);
-        document.documentElement.setAttribute('data-ui-theme', themeId);
+        applyUiThemeChrome(themeId);
     },
     onOpen: () => dispatch(openUiThemeMenu())
 });

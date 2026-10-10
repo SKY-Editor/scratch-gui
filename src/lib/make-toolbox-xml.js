@@ -715,7 +715,155 @@ const operators = function (isInitialSetup, isStage, targetId, colors) {
                 </shadow>
             </value>
         </block>
+        ${blockSeparator}
+        <block type="operator_min">
+            <value name="NUM1"><shadow type="math_number"><field name="NUM"/></shadow></value>
+            <value name="NUM2"><shadow type="math_number"><field name="NUM"/></shadow></value>
+        </block>
+        <block type="operator_max">
+            <value name="NUM1"><shadow type="math_number"><field name="NUM"/></shadow></value>
+            <value name="NUM2"><shadow type="math_number"><field name="NUM"/></shadow></value>
+        </block>
+        <block type="operator_clamp">
+            <value name="NUM"><shadow type="math_number"><field name="NUM">50</field></shadow></value>
+            <value name="MIN"><shadow type="math_number"><field name="NUM">0</field></shadow></value>
+            <value name="MAX"><shadow type="math_number"><field name="NUM">100</field></shadow></value>
+        </block>
         ${categorySeparator}
+        <block type="operator_pi"/>
+    </category>
+    `;
+};
+
+const strings = function (isInitialSetup, isStage, targetId, colors) {
+    const apple = translate('OPERATORS_JOIN_APPLE', 'apple');
+    const banana = translate('OPERATORS_JOIN_BANANA', 'banana');
+    const letter = translate('OPERATORS_LETTEROF_APPLE', 'a');
+    const hello_world = translate('OPERATORS_REPLACE_HELLO_WORLD', 'Hello world!');
+    const world = translate('OPERATORS_REPLACE_WORLD', 'world');
+    const fellow_scratchers = translate('OPERATORS_REPLACE_FELLOW_SCRATCHERS', 'fellow Scratchers');
+    const text = (name, value) => `
+        <value name="${name}">
+            <shadow type="text"><field name="TEXT">${value}</field></shadow>
+        </value>`;
+    const number = (name, value) => `
+        <value name="${name}">
+            <shadow type="math_whole_number"><field name="NUM">${value}</field></shadow>
+        </value>`;
+    return `
+    <category
+        name="%{BKY_CATEGORY_STRINGS}"
+        id="mwStrings"
+        colour="${colors.primary}"
+        secondaryColour="${colors.tertiary}">
+        ${isInitialSetup ? '' : `
+        <block type="operator_join">
+            ${text('STRING1', `${apple} `)}
+            ${text('STRING2', banana)}
+        </block>
+        <block type="operator_letter_of">
+            ${number('LETTER', 1)}
+            ${text('STRING', apple)}
+        </block>
+        <block type="operator_length">${text('STRING', apple)}</block>
+        <block type="operator_contains" id="operator_contains">
+            ${text('STRING1', apple)}
+            ${text('STRING2', letter)}
+        </block>
+        ${blockSeparator}
+        <block type="operator_letters_of">
+            ${number('LETTER1', 2)}
+            ${number('LETTER2', 4)}
+            ${text('STRING', hello_world)}
+        </block>
+        <block type="operator_index_of">
+            ${text('SUBSTRING', letter)}
+            ${text('STRING', apple)}
+        </block>
+        <block type="operator_replace">
+            ${text('SUBSTRING', world)}
+            ${text('STRING', hello_world)}
+            ${text('REPLACE', fellow_scratchers)}
+        </block>
+        <block type="operator_repeat">
+            ${text('STRING', `${apple} `)}
+            ${number('REPEAT', 3)}
+        </block>
+        <block type="operator_change_case">
+            ${text('STRING', 'apple')}
+            <field name="CASE">uppercase</field>
+        </block>
+        <block type="operator_trim">${text('STRING', `  ${apple}  `)}</block>
+        ${blockSeparator}
+        <block type="operator_newline"/>
+        `}
+        ${categorySeparator}
+    </category>
+    `;
+};
+
+const assets = function (isInitialSetup, isStage, targetId, assetName, colors) {
+    const asset = function (name) {
+        return `
+        <value name="ASSET">
+            <shadow type="assets_menu">
+                <field name="ASSET">${name}</field>
+            </shadow>
+        </value>
+        `;
+    };
+    const text = function (name, value) {
+        return `
+        <value name="${name}">
+            <shadow type="text">
+                <field name="TEXT">${value}</field>
+            </shadow>
+        </value>
+        `;
+    };
+    const number = function (name, value) {
+        return `
+        <value name="${name}">
+            <shadow type="math_number">
+                <field name="NUM">${value}</field>
+            </shadow>
+        </value>
+        `;
+    };
+    return `
+    <category
+        name="${translate('CATEGORY_ASSETS', '素材')}"
+        id="assets"
+        colour="${colors.primary}"
+        secondaryColour="${colors.tertiary}">
+        <block type="assets_load">
+            ${asset(assetName)}
+        </block>
+        <block type="assets_unload">
+            ${asset(assetName)}
+        </block>
+        <block type="assets_unloadall"/>
+        <block type="assets_check">
+            ${asset(assetName)}
+        </block>
+        <block type="assets_get">
+            ${asset(assetName)}
+        </block>
+        <block type="assets_byte">
+            ${number('INDEX', 1)}
+            ${asset(assetName)}
+        </block>
+        <block type="assets_set">
+            ${asset(assetName)}
+            ${text('VALUE', '')}
+        </block>
+        <block type="assets_delete">
+            ${asset(assetName)}
+        </block>
+        <block type="assets_allnames"/>
+        <block type="assets_infolder">
+            ${text('FOLDER', '')}
+        </block>
     </category>
     `;
 };
@@ -773,7 +921,7 @@ const xmlClose = '</xml>';
  * @returns {string} - a ScratchBlocks-style XML document for the contents of the toolbox.
  */
 const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categoriesXML = [],
-    costumeName = '', backdropName = '', soundName = '', colors = defaultBlockColors) {
+    costumeName = '', backdropName = '', soundName = '', colors = defaultBlockColors, assetName = '') {
     isStage = isInitialSetup || isStage;
     const gap = [categorySeparator];
 
@@ -795,10 +943,12 @@ const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categ
     const looksXML = moveCategory('looks') ||
         looks(isInitialSetup, isStage, targetId, costumeName, backdropName, colors.looks);
     const soundXML = moveCategory('sound') || sound(isInitialSetup, isStage, targetId, soundName, colors.sounds);
+    const assetsXML = moveCategory('assets') || assets(isInitialSetup, isStage, targetId, assetName, colors.assets);
     const eventsXML = moveCategory('event') || events(isInitialSetup, isStage, targetId, colors.event);
     const controlXML = moveCategory('control') || control(isInitialSetup, isStage, targetId, colors.control);
     const sensingXML = moveCategory('sensing') || sensing(isInitialSetup, isStage, targetId, colors.sensing);
     const operatorsXML = moveCategory('operators') || operators(isInitialSetup, isStage, targetId, colors.operators);
+    const stringsXML = moveCategory('strings') || strings(isInitialSetup, isStage, targetId, colors.strings || colors.operators);
     const variablesXML = moveCategory('data') || variables(isInitialSetup, isStage, targetId, colors.data);
     const myBlocksXML = moveCategory('procedures') || myBlocks(isInitialSetup, isStage, targetId, colors.more);
 
@@ -814,10 +964,12 @@ const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categ
         motionXML, gap,
         looksXML, gap,
         soundXML, gap,
+        assetsXML, gap,
         eventsXML, gap,
         controlXML, gap,
         sensingXML, gap,
         operatorsXML, gap,
+        stringsXML, gap,
         variablesXML, gap,
         myBlocksXML
     ];

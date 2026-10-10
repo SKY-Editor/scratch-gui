@@ -81,4 +81,7 @@ export default {
   "tw-disable-cloud-variables": () => import(/* webpackChunkName: "addon-entry-tw-disable-cloud-variables" */ "../addons/tw-disable-cloud-variables/_runtime_entry.js"),
   "tw-disable-compiler": () => import(/* webpackChunkName: "addon-entry-tw-disable-compiler" */ "../addons/tw-disable-compiler/_runtime_entry.js"),
   "editor-stepping": () => import(/* webpackChunkName: "addon-entry-editor-stepping" */ "../addons/editor-stepping/_runtime_entry.js"),
+  "remote-cooperation": () => import(/* webpackChunkName: "addon-entry-remote-cooperation" */ "../addons/remote-cooperation/_runtime_entry.js"),
+  "merge-operators": () => import(/* webpackChunkName: "addon-entry-merge-operators" */ "../addons/merge-operators/_runtime_entry.js"),
+  "bilup-sample": () => import(/* webpackChunkName: "addon-entry-bilup-sample" */ "../addons/bilup-sample/_runtime_entry.js"),
 };

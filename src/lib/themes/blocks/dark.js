@@ -13,6 +13,12 @@ const blockColors = {
         tertiary: '#9966FF',
         quaternary: '#9966FF'
     },
+    assets: {
+        primary: '#1A1D21',
+        secondary: '#4C4C4C',
+        tertiary: '#6E7A8A',
+        quaternary: '#6E7A8A'
+    },
     sounds: {
         primary: '#291329',
         secondary: '#4C4C4C',
@@ -48,6 +54,12 @@ const blockColors = {
         secondary: '#4C4C4C',
         tertiary: '#59C059',
         quaternary: '#59C059'
+    },
+    strings: {
+        primary: '#0F2B2B',
+        secondary: '#4C4C4C',
+        tertiary: '#00A6A6',
+        quaternary: '#00A6A6'
     },
     data: {
         primary: '#331C05',

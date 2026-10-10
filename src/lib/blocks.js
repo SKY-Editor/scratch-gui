@@ -144,6 +144,26 @@ export default function (vm) {
         return [[myself, '_myself_']].concat(spriteMenu());
     };
 
+    // BilupBlocks: assets 素材积木颜色与动态菜单
+    if (!ScratchBlocks.Colours.assets) {
+        ScratchBlocks.Colours.assets = {
+            primary: '#6E7A8A',
+            secondary: '#5E6977',
+            tertiary: '#4F5866',
+            quaternary: '#4F5866'
+        };
+    }
+    if (!ScratchBlocks.Categories.assets) {
+        ScratchBlocks.Categories.assets = 'assets';
+    }
+    const assetsMenu = function () {
+        if (vm.runtime.assetManager && vm.runtime.assetManager.assets.length > 0) {
+            return vm.runtime.assetManager.assets.map(asset => [asset.name, asset.name]);
+        }
+        return [['', '']];
+    };
+    const assetsColors = ScratchBlocks.Colours.assets;
+
     const soundColors = ScratchBlocks.Colours.sounds;
 
     const looksColors = ScratchBlocks.Colours.looks;
@@ -159,6 +179,407 @@ export default function (vm) {
     ScratchBlocks.Blocks.sound_sounds_menu.init = function () {
         const json = jsonForMenuBlock('SOUND_MENU', soundsMenu, soundColors, []);
         this.jsonInit(json);
+    };
+
+    // BilupBlocks: 注册 assets 素材积木（SKY scratch-blocks 构建产物中无定义，需动态注册）
+    ScratchBlocks.Blocks.assets_menu = {
+        init: function () {
+            const json = jsonForMenuBlock('ASSET', assetsMenu, assetsColors, []);
+            this.jsonInit(json);
+        }
+    };
+    ScratchBlocks.Blocks.assets_load = {
+        init: function () {
+            this.jsonInit({
+                message0: '加载素材 %1 为 %2',
+                args0: [
+                    {type: 'input_value', name: 'ASSET'},
+                    {
+                        type: 'field_dropdown',
+                        name: 'KIND',
+                        options: [
+                            ['造型', 'costume'],
+                            ['声音', 'sound']
+                        ]
+                    }
+                ],
+                category: ScratchBlocks.Categories.assets,
+                colour: assetsColors.primary,
+                colourSecondary: assetsColors.secondary,
+                colourTertiary: assetsColors.tertiary,
+                colourQuaternary: assetsColors.quaternary,
+                extensions: ['shape_statement']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.assets_unload = {
+        init: function () {
+            this.jsonInit({
+                message0: '卸载素材 %1',
+                args0: [{type: 'input_value', name: 'ASSET'}],
+                category: ScratchBlocks.Categories.assets,
+                colour: assetsColors.primary,
+                colourSecondary: assetsColors.secondary,
+                colourTertiary: assetsColors.tertiary,
+                colourQuaternary: assetsColors.quaternary,
+                extensions: ['shape_statement']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.assets_unloadall = {
+        init: function () {
+            this.jsonInit({
+                message0: '卸载所有素材',
+                category: ScratchBlocks.Categories.assets,
+                colour: assetsColors.primary,
+                colourSecondary: assetsColors.secondary,
+                colourTertiary: assetsColors.tertiary,
+                colourQuaternary: assetsColors.quaternary,
+                extensions: ['shape_statement']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.assets_get = {
+        init: function () {
+            this.jsonInit({
+                message0: '素材 %2 的 %1',
+                args0: [
+                    {
+                        type: 'field_dropdown',
+                        name: 'PROPERTY',
+                        options: [
+                            ['文本', 'text'],
+                            ['数据URI', 'data uri'],
+                            ['Base64', 'base64'],
+                            ['链接', 'url'],
+                            ['大小', 'size'],
+                            ['格式', 'format'],
+                            ['文件夹', 'folder']
+                        ]
+                    },
+                    {type: 'input_value', name: 'ASSET'}
+                ],
+                category: ScratchBlocks.Categories.assets,
+                colour: assetsColors.primary,
+                colourSecondary: assetsColors.secondary,
+                colourTertiary: assetsColors.tertiary,
+                colourQuaternary: assetsColors.quaternary,
+                extensions: ['output_string']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.assets_byte = {
+        init: function () {
+            this.jsonInit({
+                message0: '素材 %2 的第 %1 字节',
+                args0: [
+                    {type: 'input_value', name: 'INDEX'},
+                    {type: 'input_value', name: 'ASSET'}
+                ],
+                category: ScratchBlocks.Categories.assets,
+                colour: assetsColors.primary,
+                colourSecondary: assetsColors.secondary,
+                colourTertiary: assetsColors.tertiary,
+                colourQuaternary: assetsColors.quaternary,
+                extensions: ['output_number']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.assets_check = {
+        init: function () {
+            this.jsonInit({
+                message0: '素材 %1 %2?',
+                args0: [
+                    {type: 'input_value', name: 'ASSET'},
+                    {
+                        type: 'field_dropdown',
+                        name: 'STATE',
+                        options: [
+                            ['存在', 'exists'],
+                            ['已加载', 'is loaded']
+                        ]
+                    }
+                ],
+                category: ScratchBlocks.Categories.assets,
+                colour: assetsColors.primary,
+                colourSecondary: assetsColors.secondary,
+                colourTertiary: assetsColors.tertiary,
+                colourQuaternary: assetsColors.quaternary,
+                extensions: ['output_boolean']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.assets_set = {
+        init: function () {
+            this.jsonInit({
+                message0: '将素材 %1 设为 %2 作为 %3',
+                args0: [
+                    {type: 'input_value', name: 'ASSET'},
+                    {type: 'input_value', name: 'VALUE'},
+                    {
+                        type: 'field_dropdown',
+                        name: 'FORMAT',
+                        options: [
+                            ['文本', 'text'],
+                            ['Base64', 'base64'],
+                            ['链接', 'url']
+                        ]
+                    }
+                ],
+                category: ScratchBlocks.Categories.assets,
+                colour: assetsColors.primary,
+                colourSecondary: assetsColors.secondary,
+                colourTertiary: assetsColors.tertiary,
+                colourQuaternary: assetsColors.quaternary,
+                extensions: ['shape_statement']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.assets_delete = {
+        init: function () {
+            this.jsonInit({
+                message0: '删除素材 %1',
+                args0: [{type: 'input_value', name: 'ASSET'}],
+                category: ScratchBlocks.Categories.assets,
+                colour: assetsColors.primary,
+                colourSecondary: assetsColors.secondary,
+                colourTertiary: assetsColors.tertiary,
+                colourQuaternary: assetsColors.quaternary,
+                extensions: ['shape_statement']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.assets_allnames = {
+        init: function () {
+            this.jsonInit({
+                message0: '所有素材名称',
+                category: ScratchBlocks.Categories.assets,
+                colour: assetsColors.primary,
+                colourSecondary: assetsColors.secondary,
+                colourTertiary: assetsColors.tertiary,
+                colourQuaternary: assetsColors.quaternary,
+                extensions: ['output_string']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.assets_infolder = {
+        init: function () {
+            this.jsonInit({
+                message0: '文件夹 %1 中的素材',
+                args0: [{type: 'input_value', name: 'FOLDER'}],
+                category: ScratchBlocks.Categories.assets,
+                colour: assetsColors.primary,
+                colourSecondary: assetsColors.secondary,
+                colourTertiary: assetsColors.tertiary,
+                colourQuaternary: assetsColors.quaternary,
+                extensions: ['output_string']
+            });
+        }
+    };
+
+    // BilupBlocks: 字符串积木颜色与动态菜单（colours_strings 兜底）
+    if (!ScratchBlocks.Colours.strings) {
+        ScratchBlocks.Colours.strings = {
+            primary: '#00A6A6',
+            secondary: '#00A68A',
+            tertiary: '#00817B',
+            quaternary: '#00817B'
+        };
+    }
+    if (!ScratchBlocks.Categories.strings) {
+        ScratchBlocks.Categories.strings = 'strings';
+    }
+    const stringsColors = ScratchBlocks.Colours.strings;
+    const operatorsColors = ScratchBlocks.Colours.operators;
+
+    // BilupBlocks: 注册字符串积木（operator_letters_of / index_of / replace / repeat / change_case / trim / newline）
+    ScratchBlocks.Blocks.operator_letters_of = {
+        init: function () {
+            this.jsonInit({
+                message0: '%3 的第 %1 到 %2 个字符',
+                args0: [
+                    {type: 'input_value', name: 'LETTER1', check: 'Number'},
+                    {type: 'input_value', name: 'LETTER2', check: 'Number'},
+                    {type: 'input_value', name: 'STRING', check: 'String'}
+                ],
+                category: ScratchBlocks.Categories.strings,
+                colour: stringsColors.primary,
+                colourSecondary: stringsColors.secondary,
+                colourTertiary: stringsColors.tertiary,
+                colourQuaternary: stringsColors.quaternary,
+                extensions: ['output_string']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.operator_index_of = {
+        init: function () {
+            this.jsonInit({
+                message0: '%1 在 %2 中的索引',
+                args0: [
+                    {type: 'input_value', name: 'SUBSTRING', check: 'String'},
+                    {type: 'input_value', name: 'STRING', check: 'String'}
+                ],
+                category: ScratchBlocks.Categories.strings,
+                colour: stringsColors.primary,
+                colourSecondary: stringsColors.secondary,
+                colourTertiary: stringsColors.tertiary,
+                colourQuaternary: stringsColors.quaternary,
+                extensions: ['output_number']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.operator_replace = {
+        init: function () {
+            this.jsonInit({
+                message0: '将 %2 中的 %1 替换为 %3',
+                args0: [
+                    {type: 'input_value', name: 'SUBSTRING', check: 'String'},
+                    {type: 'input_value', name: 'STRING', check: 'String'},
+                    {type: 'input_value', name: 'REPLACE', check: 'String'}
+                ],
+                category: ScratchBlocks.Categories.strings,
+                colour: stringsColors.primary,
+                colourSecondary: stringsColors.secondary,
+                colourTertiary: stringsColors.tertiary,
+                colourQuaternary: stringsColors.quaternary,
+                extensions: ['output_string']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.operator_repeat = {
+        init: function () {
+            this.jsonInit({
+                message0: '重复 %1 %2 次',
+                args0: [
+                    {type: 'input_value', name: 'STRING', check: 'String'},
+                    {type: 'input_value', name: 'REPEAT', check: 'Number'}
+                ],
+                category: ScratchBlocks.Categories.strings,
+                colour: stringsColors.primary,
+                colourSecondary: stringsColors.secondary,
+                colourTertiary: stringsColors.tertiary,
+                colourQuaternary: stringsColors.quaternary,
+                extensions: ['output_string']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.operator_change_case = {
+        init: function () {
+            this.jsonInit({
+                message0: '将 %1 转换为 %2',
+                args0: [
+                    {type: 'input_value', name: 'STRING', check: 'String'},
+                    {
+                        type: 'field_dropdown',
+                        name: 'CASE',
+                        options: [
+                            ['大写', 'uppercase'],
+                            ['小写', 'lowercase']
+                        ]
+                    }
+                ],
+                category: ScratchBlocks.Categories.strings,
+                colour: stringsColors.primary,
+                colourSecondary: stringsColors.secondary,
+                colourTertiary: stringsColors.tertiary,
+                colourQuaternary: stringsColors.quaternary,
+                extensions: ['output_string']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.operator_trim = {
+        init: function () {
+            this.jsonInit({
+                message0: '去除首尾空格 %1',
+                args0: [{type: 'input_value', name: 'STRING', check: 'String'}],
+                category: ScratchBlocks.Categories.strings,
+                colour: stringsColors.primary,
+                colourSecondary: stringsColors.secondary,
+                colourTertiary: stringsColors.tertiary,
+                colourQuaternary: stringsColors.quaternary,
+                extensions: ['output_string']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.operator_newline = {
+        init: function () {
+            this.jsonInit({
+                message0: '换行',
+                category: ScratchBlocks.Categories.strings,
+                colour: stringsColors.primary,
+                colourSecondary: stringsColors.secondary,
+                colourTertiary: stringsColors.tertiary,
+                colourQuaternary: stringsColors.quaternary,
+                extensions: ['output_string']
+            });
+        }
+    };
+
+    // BilupBlocks: 注册数学扩展积木（operator_clamp / pi / min / max，SKY 构建产物无定义需动态注册）
+    ScratchBlocks.Blocks.operator_clamp = {
+        init: function () {
+            this.jsonInit({
+                message0: '将 %1 限制在 %2 到 %3 之间',
+                args0: [
+                    {type: 'input_value', name: 'NUM', check: 'Number'},
+                    {type: 'input_value', name: 'MIN', check: 'Number'},
+                    {type: 'input_value', name: 'MAX', check: 'Number'}
+                ],
+                category: ScratchBlocks.Categories.operators,
+                colour: operatorsColors.primary,
+                colourSecondary: operatorsColors.secondary,
+                colourTertiary: operatorsColors.tertiary,
+                colourQuaternary: operatorsColors.quaternary,
+                extensions: ['output_number']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.operator_pi = {
+        init: function () {
+            this.jsonInit({
+                message0: 'π',
+                category: ScratchBlocks.Categories.operators,
+                colour: operatorsColors.primary,
+                colourSecondary: operatorsColors.secondary,
+                colourTertiary: operatorsColors.tertiary,
+                colourQuaternary: operatorsColors.quaternary,
+                extensions: ['output_number']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.operator_min = {
+        init: function () {
+            this.jsonInit({
+                message0: '最小值 %1 %2',
+                args0: [
+                    {type: 'input_value', name: 'NUM1', check: 'Number'},
+                    {type: 'input_value', name: 'NUM2', check: 'Number'}
+                ],
+                category: ScratchBlocks.Categories.operators,
+                colour: operatorsColors.primary,
+                colourSecondary: operatorsColors.secondary,
+                colourTertiary: operatorsColors.tertiary,
+                colourQuaternary: operatorsColors.quaternary,
+                extensions: ['output_number']
+            });
+        }
+    };
+    ScratchBlocks.Blocks.operator_max = {
+        init: function () {
+            this.jsonInit({
+                message0: '最大值 %1 %2',
+                args0: [
+                    {type: 'input_value', name: 'NUM1', check: 'Number'},
+                    {type: 'input_value', name: 'NUM2', check: 'Number'}
+                ],
+                category: ScratchBlocks.Categories.operators,
+                colour: operatorsColors.primary,
+                colourSecondary: operatorsColors.secondary,
+                colourTertiary: operatorsColors.tertiary,
+                colourQuaternary: operatorsColors.quaternary,
+                extensions: ['output_number']
+            });
+        }
     };
 
     ScratchBlocks.Blocks.looks_costume.init = function () {
