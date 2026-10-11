@@ -22,10 +22,11 @@ import restoreDeletionReducer, {restoreDeletionInitialState} from './restore-del
 import stageSizeReducer, {stageSizeInitialState} from './stage-size';
 import targetReducer, {targetsInitialState} from './targets';
 import themeReducer, {themeInitialState} from './theme';
-import uiThemeReducer, {uiThemeInitialState} from './ui-theme';
+import uiThemeReducer, {uiThemeInitialState} from '../Theme/public/ui-theme-reducer.js';
 import menuBarPositionReducer, {menuBarPositionInitialState} from './menu-bar-position';
 import tabLayoutReducer, {tabLayoutInitialState} from './tab-layout';
 import contextMenuStyleReducer, {contextMenuStyleInitialState} from './context-menu-style';
+import audioEditorStyleReducer, {audioEditorStyleInitialState} from './audio-editor-style';
 import musicPlayerReducer, {musicPlayerInitialState} from './music-player';
 import timeoutReducer, {timeoutInitialState} from './timeout';
 import timeTravelReducer, {timeTravelInitialState} from './time-travel';
@@ -34,7 +35,15 @@ import twReducer, {twInitialState} from './tw';
 import customStageSizeReducer, {customStageSizeInitialState} from './custom-stage-size';
 import vmReducer, {vmInitialState} from './vm';
 import vmStatusReducer, {vmStatusInitialState} from './vm-status';
+import bilupReducer from '../Theme/bilup/bilup-reducer.js';
 import workspaceMetricsReducer, {workspaceMetricsInitialState} from './workspace-metrics';
+// --- bilup-ui 官方布局专属 slices（bilup 主题切换后由官方组件读取；非 bilup 主题零影响）---
+import collaborationReducer, {collaborationInitialState} from '../bilup-ui/reducers/collaboration.js';
+import mwProjectThemeReducer, {mwProjectThemeInitialState} from '../bilup-ui/reducers/mw-project-theme.js';
+import roturReducer, {roturInitialState} from '../bilup-ui/reducers/rotur.js';
+import shortcutsReducer, {shortcutsInitialState} from '../bilup-ui/reducers/shortcuts.js';
+import toastReducer, {toastInitialState} from '../bilup-ui/reducers/toast.js';
+import bilupThemeReducer, {themeInitialState as bilupThemeInitialState} from '../bilup-ui/reducers/theme.js';
 import throttle from 'redux-throttle';
 
 import decks from '../lib/libraries/decks/index.jsx';
@@ -70,6 +79,7 @@ const guiInitialState = {
     menuBarPosition: menuBarPositionInitialState,
     tabLayout: tabLayoutInitialState,
     contextMenuStyle: contextMenuStyleInitialState,
+    audioEditorStyle: audioEditorStyleInitialState,
     musicPlayer: musicPlayerInitialState,
     timeout: timeoutInitialState,
     timeTravel: timeTravelInitialState,
@@ -77,7 +87,13 @@ const guiInitialState = {
     tw: twInitialState,
     vm: vmInitialState,
     vmStatus: vmStatusInitialState,
-    workspaceMetrics: workspaceMetricsInitialState
+    workspaceMetrics: workspaceMetricsInitialState,
+    collaboration: collaborationInitialState,
+    mwProjectTheme: mwProjectThemeInitialState,
+    rotur: roturInitialState,
+    shortcuts: shortcutsInitialState,
+    toast: toastInitialState,
+    bilupTheme: bilupThemeInitialState
 };
 
 const initPlayer = function (currentState) {
@@ -181,6 +197,7 @@ const guiReducer = combineReducers({
     menuBarPosition: menuBarPositionReducer,
     tabLayout: tabLayoutReducer,
     contextMenuStyle: contextMenuStyleReducer,
+    audioEditorStyle: audioEditorStyleReducer,
     musicPlayer: musicPlayerReducer,
     timeout: timeoutReducer,
     timeTravel: timeTravelReducer,
@@ -188,7 +205,14 @@ const guiReducer = combineReducers({
     tw: twReducer,
     vm: vmReducer,
     vmStatus: vmStatusReducer,
-    workspaceMetrics: workspaceMetricsReducer
+    bilup: bilupReducer,
+    workspaceMetrics: workspaceMetricsReducer,
+    collaboration: collaborationReducer,
+    mwProjectTheme: mwProjectThemeReducer,
+    rotur: roturReducer,
+    shortcuts: shortcutsReducer,
+    toast: toastReducer,
+    bilupTheme: bilupThemeReducer
 });
 
 export {

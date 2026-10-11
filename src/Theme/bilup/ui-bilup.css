@@ -1,0 +1,74 @@
+/*
+ * bilup 主题专属样式（SKYEditor 主题体系内新增主题，与其他主题隔离）
+ * ---------------------------------------------------------------------------
+ * 来源：Bilup（https://github.com/Bilup/scratch-gui，GPL-3.0，
+ *       仅作功能参考自行实现，非逐字复制）；视觉参数参考 com.bilup.org/editor。
+ *
+ * 作用域铁律（与 SKYEditor-多主题隔离与扩展指南.md 一致）：
+ *   - 所有规则必须限定在 html.bilup-theme 或 html[data-ui-theme='bilup'] 后代内，
+ *     保证其它主题（TurboWarp / SKYEditor / demo-azure）零影响、零回归。
+ *   - 颜色优先使用注册表 variables 注入的 --bilup-* 变量（明暗自动适配）；
+ *     accent='bilup' 已由 guiHelpers.applyGuiColors 自动下发青绿主色
+ *     （menu-bar-background / ui-modal-header-background / motion-primary 均变青绿）。
+ *
+ * 视觉参数（对照 Bilup 克隆源 lib/themes 逐值校准）：
+ *   light：菜单栏 #75C1C4 | 页底 #E5F0FF | 精灵区 #E9F1FC | 抽屉 #F9F9F9 | 文字 #575E75
+ *   dark ：菜单栏 #333333 | 页底 #111111 | 面板 #1E1E1E/#2E2E2E | 抽屉 #111111
+ * ---------------------------------------------------------------------------
+ */
+
+/* ---- 主题专属变量兜底（注册表 applyUiThemeChrome 已注入，此处保证样式自洽） ---- */
+html.bilup-theme {
+    --bilup-accent: #75c1c4;
+    --bilup-accent-strong: #5e9a9d;
+    --bilup-accent-soft: rgba(117, 193, 196, 0.25);
+    --bilup-surface-page: #e5f0ff;
+    --bilup-surface-sprite: #e9f1fc;
+    --bilup-surface-panel: #ffffff;
+    --bilup-surface-flyout: #f9f9f9;
+    --bilup-text: #575e75;
+}
+
+/* ---- 深色模式变量覆盖（applyUiThemeChrome 已注入 data-ui-dark='true'） ---- */
+html.bilup-theme[data-ui-dark='true'] {
+    --bilup-surface-page: #111111;
+    --bilup-surface-sprite: #2e2e2e;
+    --bilup-surface-panel: #1e1e1e;
+    --bilup-surface-flyout: #111111;
+    --bilup-text: #ffffff;
+}
+
+/* ---- 菜单栏：light 青绿 #75C1C4 / dark #333333（对照官方 gui/dark.js menu-bar） ---- */
+html.bilup-theme[data-ui-dark='false'] .menu-bar_menu-bar_1GZUT {
+    background-color: #75c1c4;
+    color: #ffffff;
+}
+
+html.bilup-theme[data-ui-dark='true'] .menu-bar_menu-bar_1GZUT {
+    background-color: #333333;
+    color: #ffffff;
+}
+
+/* ---- 积木抽屉（flyout）：light #F9F9F9 / dark #111111（对照官方 blocks/three.js） ---- */
+html.bilup-theme .blocklyFlyout,
+html.bilup-theme .blocklyFlyoutBackground {
+    fill: #f9f9f9;
+    background-color: #f9f9f9;
+}
+
+html.bilup-theme[data-ui-dark='true'] .blocklyFlyout,
+html.bilup-theme[data-ui-dark='true'] .blocklyFlyoutBackground {
+    fill: #111111;
+    background-color: #111111;
+}
+
+/* ---- 页面主体底：light #E5F0FF / dark #111111（仅影响本主题，其它主题零影响） ---- */
+html.bilup-theme[data-ui-dark='false'] {
+    --ui-primary: #e5f0ff !important;
+    --ui-secondary: #e9f1fc !important;
+}
+
+html.bilup-theme[data-ui-dark='true'] {
+    --ui-primary: #111111 !important;
+    --ui-secondary: #2e2e2e !important;
+}
