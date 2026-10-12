@@ -2,8 +2,8 @@ import {defineMessages, FormattedMessage, intlShape, injectIntl} from 'react-int
 import PropTypes from 'prop-types';
 import React from 'react';
 import {APP_NAME} from '../../lib/brand.js';
-import Modal from '../../containers/modal.jsx';
-import Win11Window from '../tw-win11-window/win11-window.jsx';
+import ThemedButton from '../tw-themed-button/themed-button.jsx';
+import ThemedWindow from '../tw-themed-window/themed-window.jsx';
 import styles from './unknown-platform-modal.css';
 
 const messages = defineMessages({
@@ -56,7 +56,7 @@ const renderBody = (props, containerClass) => (
             />
         </p>
 
-        <button
+        <ThemedButton
             className={styles.button}
             onClick={props.onClose}
             disabled={!props.canClose}
@@ -67,34 +67,21 @@ const renderBody = (props, containerClass) => (
                 description="Button in modal that appears when loading a project made for another mod. Allows ignoring the warning."
                 id="tw.unknownPlatform.continue"
             />
-        </button>
+        </ThemedButton>
     </div>
 );
 
-const UnknownPlatformModal = props => {
-    if (props.uiTheme === 'sky-editor') {
-        return (
-            <Win11Window
-                title={props.intl.formatMessage(messages.title)}
-                onClose={props.onClose}
-                defaultWidth={440}
-                defaultHeight={300}
-            >
-                {renderBody(props, styles.winBody)}
-            </Win11Window>
-        );
-    }
-    return (
-        <Modal
-            className={styles.modalContent}
-            onRequestClose={props.onClose}
-            contentLabel={props.intl.formatMessage(messages.title)}
-            id="unknownPlatformModal"
-        >
-            {renderBody(props, styles.body)}
-        </Modal>
-    );
-};
+const UnknownPlatformModal = props => (
+    <ThemedWindow
+        title={props.intl.formatMessage(messages.title)}
+        onClose={props.onClose}
+        id="unknownPlatformModal"
+        width={440}
+        height={300}
+    >
+        {renderBody(props, styles.winBody)}
+    </ThemedWindow>
+);
 
 UnknownPlatformModal.propTypes = {
     intl: intlShape,
@@ -103,8 +90,7 @@ UnknownPlatformModal.propTypes = {
     platform: PropTypes.shape({
         name: PropTypes.string,
         url: PropTypes.string
-    }),
-    uiTheme: PropTypes.string
+    })
 };
 
 export default injectIntl(UnknownPlatformModal);
