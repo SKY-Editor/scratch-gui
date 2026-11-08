@@ -297,6 +297,14 @@ export default async function ({ addon, console, msg }) {
 
     doOneTimeSetup();
     autoLock();
+    // SKY Editor 修复（"积木栏无法折叠"）：
+    // category（点击分类切换）模式下 toggle 初始恒为 false，而 Blockly 首屏渲染时
+    // 积木列表本身是展开的。两者不同步，导致用户第一次点分类只是把 toggle 从
+    // false 翻成 true（视觉上毫无变化），必须点第二次才会收起，表现为"折不动"。
+    // 这里让 toggle 跟随积木列表的真实可见状态初始化，首次点击即可正常折叠。
+    if (getToggleSetting() === "category") {
+      toggle = !flyOut.classList.contains("sa-flyoutClose");
+    }
     Blockly.svgResize(Blockly.getMainWorkspace());
   }
 }
