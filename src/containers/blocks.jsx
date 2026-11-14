@@ -229,6 +229,8 @@ class Blocks extends React.Component {
         }
 
         gentlyRequestPersistentStorage();
+
+        this.attachFlyoutOutline();
     }
     shouldComponentUpdate (nextProps, nextState) {
         return (
@@ -285,6 +287,7 @@ class Blocks extends React.Component {
         }
     }
     componentWillUnmount () {
+        this.detachFlyoutOutline();
         this.detachVM();
         this.unmounted = true;
         this.workspace.dispose();
@@ -350,6 +353,90 @@ class Blocks extends React.Component {
         }
     }
 
+    // ── 菜单（flyout）的底板 + 描边：画在菜单自己的 <svg> 里 ────────────────
+    // 菜单本体是 <svg>，里面的 <path class="blocklyFlyoutBackground"> 只是填色，
+    // 无法使用 border / border-radius。旧做法是在 .injectionDiv 上用 ::before
+    // 画一层独立浮层，那层有 opacity 过渡，折叠/展开时会淡入淡出，和菜单不是
+    // 一体 —— 已删除。现在改成往 flyout 的 <svg> 里插一个 <rect>：
+    //   · 与菜单同一坐标系、同一个元素树，随菜单一起平移/被裁切；
+    //   · 没有独立的图层，也没有任何透明度动画；
+    //   · x 取 -分类栏宽度，让卡片左缘与分类栏左缘对齐（x = 0），
+    //     左段被分类栏遮住，只露出 60…250+60 这一段。
+    // 颜色写在 blocks.css 的 .skyFlyoutOutline 里，这里只管几何。
+    attachFlyoutOutline () {
+        if (this._flyoutOutlineTimer) return;
+        this._outlineDisposed = false;
+        this.syncFlyoutOutline = this.syncFlyoutOutline.bind(this);
+        // Blockly 在 inject、切换分类、窗口缩放时都会重建 flyout 的 <svg> 或改写其
+        // width/height，任何缓存的节点引用都可能变成游离节点（setAttribute 写在没有
+        // 参与渲染的旧元素上，看上去就像"代码跑了但没描边"）。所以这里不留缓存，
+        // 由 syncFlyoutOutline 每次现场查 DOM 并对齐，值未变则不写，开销可忽略。
+        [0, 60, 200, 600, 1500, 3000].forEach(delay => {
+            setTimeout(this.syncFlyoutOutline, delay);
+        });
+        this._flyoutOutlineTimer = setInterval(this.syncFlyoutOutline, 400);
+        window.addEventListener('resize', this.syncFlyoutOutline);
+        this.syncFlyoutOutline();
+    }
+    syncFlyoutOutline () {
+        if (this._outlineDisposed) return;
+        const flyout = this.workspace &&
+            typeof this.workspace.getFlyout === 'function' && this.workspace.getFlyout();
+        let host = flyout && flyout.svgGroup_;
+        // 注意：scratch-blocks 里 flyout.svgGroup_ 本身就是那棵 <svg>（不是 <g>），
+        // ownerSVGElement 为 null。早前按「group 找 ownerSVGElement」取值会一路取到
+        // 外层 div，width/height 自然拿不到，函数在几何校验处直接 return，表现就是
+        // 「rect 注入了却永远是 0 尺寸、看不见描边」。
+        if (host && host.tagName && host.tagName.toLowerCase() !== 'svg') {
+            host = host.ownerSVGElement || host.parentNode;
+        }
+        const svg = host;
+        if (!svg || !svg.tagName || svg.tagName.toLowerCase() !== 'svg' || !svg.isConnected) return;
+
+        const width = parseFloat(svg.getAttribute('width'));
+        const height = parseFloat(svg.getAttribute('height'));
+        if (!(width > 0) || !(height > 0)) return;
+
+        let rect = svg.querySelector('rect.skyFlyoutOutline');
+        if (!rect) {
+            const SVG_NS = 'http://www.w3.org/2000/svg';
+            rect = document.createElementNS(SVG_NS, 'rect');
+            rect.setAttribute('class', 'skyFlyoutOutline');
+            // 描边中心线半径 11.5 + 半个描边宽度 0.5 = 外弧 12，与 --sky-radius 一致
+            rect.setAttribute('rx', '11.5');
+            rect.setAttribute('ry', '11.5');
+            // 插到最前面 = 画在最底层，积木永远压在底板之上
+            svg.insertBefore(rect, svg.firstChild);
+        }
+
+        // 底板几何（2026-11 用户指令确立，勿擅改）：
+        // 菜单原位置、原大小不变，只把左侧边延长到分类栏左侧边并与之外缘对齐
+        // —— 即底板 x 从 -分类栏宽（60px）起画，宽度补上 60px；
+        // 分类栏是白色不透明卡片且 z-index(40) 高于 flyout(20)，天然叠在底板上方，
+        // 把左延段盖住，两者各自保持完整圆角矩形（分类栏左上/左下圆角、底板在
+        // 分类栏右缘之外的两角圆角都真实可见）。
+        // 严禁再用纯色遮罩/裁剪去"修饰"这块区域：那会切断面板的折叠展开动画、
+        // 并让菜单看起来没有延长到分类栏底部。
+        const categoryWidth = 60;
+        const geometry = {
+            x: -categoryWidth,
+            y: 0.5,
+            width: width + categoryWidth,
+            height: height - 1
+        };
+        Object.keys(geometry).forEach(name => {
+            const value = String(geometry[name]);
+            if (rect.getAttribute(name) !== value) rect.setAttribute(name, value);
+        });
+    }
+    detachFlyoutOutline () {
+        this._outlineDisposed = true;
+        if (this._flyoutOutlineTimer) {
+            clearInterval(this._flyoutOutlineTimer);
+            this._flyoutOutlineTimer = null;
+        }
+        window.removeEventListener('resize', this.syncFlyoutOutline);
+    }
     attachVM () {
         this.workspace.addChangeListener(this.props.vm.blockListener);
         this.flyoutWorkspace = this.workspace
