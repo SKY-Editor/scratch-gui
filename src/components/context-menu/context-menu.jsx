@@ -3,6 +3,8 @@ import {ContextMenu, MenuItem} from 'react-contextmenu';
 import classNames from 'classnames';
 
 import styles from './context-menu.css';
+// SKYEditor 全局右键菜单统一样式（仅 sky-editor 主题 + 选择「SKYEditor样式」时命中，其余情况零影响）
+import './sky-context-menu.css';
 
 const StyledContextMenu = props => (
     <ContextMenu

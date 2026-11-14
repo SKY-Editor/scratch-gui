@@ -1,0 +1,289 @@
+/*
+ * SKYEditor 全局右键菜单统一样式
+ * ---------------------------------------------------------------------------
+ * 目的：在 SKYEditor（sky-editor）主题下，把"当前使用 SKYEditor 样式右键菜单"的场景
+ *      扩展到*全部*右键菜单，统一为「窗口标题栏系统菜单」那套 SKYEditor 观感。
+ *
+ * 观感来源（单一真源，不另造第二套）：
+ *   - src/addons/libraries/common/sky-win11-window.js  （引擎版标题栏系统菜单）
+ *   - src/components/tw-win11-window/win11-window.jsx （React 版标题栏系统菜单）
+ *   - 颜色/尺寸全部取自 CSS 变量 --sky-ctx-menu-*，与 .win11-context-menu 系列同源。
+ *
+ * 生效条件（双条件，缺一不可）：
+ *   1) html[data-ui-theme="sky-editor"]  —— 当前 UI 主题为 SKYEditor
+ *      （由 themeReducer 初始化 / uiThemePersistance.detectUiTheme 写入，主题切换时同步）
+ *   2) html[data-sky-ctx-menu="se"]      —— 用户在
+ *      「设置 → SKYEditor 外观 → 右键菜单样式」选择了「SKYEditor样式」
+ *      （由 lib/contextMenuStylePersistance.js 的 applyContextMenuStyle 写入）
+ *
+ * 零影响保证：
+ *   - 非 sky-editor 主题：条件 1 不满足 → 本文件所有规则均不命中。
+ *   - 选择「TurboWarp样式」：条件 2 不满足 → 本文件所有规则均不命中，各菜单回退原有浅色样式。
+ *   - 本文件仅"加样式"，不注入类名、不改 DOM、不改行为。
+ *   - 菜单容器（nav.react-contextmenu / .blocklyContextMenu）上刻意不声明
+ *     pointer-events / opacity / display / visibility：react-contextmenu 依赖库自身的
+ *     `.react-contextmenu--visible` 规则把 pointer-events 由 none 切为 auto 完成显隐，
+ *     若在容器规则里声明这些属性，会以更高优先级覆盖库的显隐机制（本文件选择器
+ *     优先级高于库规则），故一律不声明。
+ *   - 不声明任何作用于 .blocklyWorkspace / .blocklySvg / .injectionDiv / .blocklyWidgetDiv
+ *     的规则（经全文件选择器审计确认：0 条命中），不参与 Blockly 工作区的事件命中测试。
+ * ---------------------------------------------------------------------------
+ */
+
+/* ---------------------------------------------------------------------------
+ * 补充说明 A：高度配平（修复「SE 样式右键菜单出现滚动条」）
+ * ---------------------------------------------------------------------------
+ * 根因（Blockly 积木区菜单）：
+ *   scratch-blocks/core/css.js 里 `.blocklyContextMenu { max-height: 100% }`，其百分比基准是
+ *   .blocklyWidgetDiv 的【内联 height】；而 Blockly.WidgetDiv.positionWithAnchor
+ *   （core/widgetdiv.js）在「菜单垂直方向放不下」时会把该 height 写小为 `菜单高度 + y`（y 为负），
+ *   同时 `.blocklyWidgetDiv .goog-menu` 带 `overflow-y: auto` —— 于是菜单内容一旦高于这个被
+ *   压缩后的容器高度，就立刻出现滚动条。本皮肤把菜单项内边距由 goog 原生
+ *   `4px 7em 4px 28px` 改为 `6px 12px`（上下各 +2px），菜单整体更高，会更早触发该分支。
+ * 次因（两类菜单共同的「高度不匹配」观感）：
+ *   goog 原生 hover 态 `.goog-menuitem-highlight { border-width: 1px 0; padding-top/bottom: 3px }`
+ *   会让菜单项在 hover 时改变高度（常态 6px → hover 3px + 1px 边框），菜单总高随鼠标移动抖动。
+ * 修复：
+ *   ① 在本皮肤作用域内把 `.blocklyContextMenu` 的高度上限基准由「被压缩的容器高度」改为
+ *      「视口高度」——短菜单永不滚动、超长菜单仍可滚动（overflow-y: auto 原样保留）且不截断内容；
+ *   ② 统一菜单项与 hover 态的盒模型（box-sizing: border-box、hover 不改变内边距/边框宽度），
+ *      使菜单高度恒定。修复全部限定在双属性作用域内，其它主题/样式零影响。
+ *
+ * ---------------------------------------------------------------------------
+ * 补充说明 B：浅色模式
+ * ---------------------------------------------------------------------------
+ * 本仓库目前没有「明暗」的 DOM 标记（html 上只有 data-ui-theme / data-sky-ctx-menu 两个属性，
+ * 没有 data-ui-mode 之类）：明暗的唯一真源是 lib/themes/guiHelpers.js 的 applyGuiColors(theme)
+ * 按 theme.isDark() 注入到 :root 的一组「明暗语义变量」（--popover-background / --text-primary /
+ * --ui-black-transparent / --shadow / --color-scheme，取值见 themes/gui/dark.js 与 light.js）。
+ * CSS 无法读取变量值做条件分支，因此浅色模式不另写一套选择器，而是让颜色统一由这组语义变量表达
+ * （见 lib/contextMenuStylePersistance.js 的 SE_VARS 与下方各处 var() 的内层兜底），
+ * 双属性限定与变量下发机制保持不变：浅色 GUI 主题下自动得到
+ * 浅色底 + 深灰文字 + 淡边框/淡分隔线 + 柔和阴影 + 淡灰悬停，深色主题下保持 SE 深色观感。
+ *
+ * ---------------------------------------------------------------------------
+ * 补充说明 C：与「窗口右键菜单」逐项对齐（浅色模式配色统修）
+ * ---------------------------------------------------------------------------
+ * 参照真源（窗口标题栏右键系统菜单）：
+ *   ① src/addons/addons/debugger/style.css             .win11-context-menu（引擎版系统菜单样式）
+ *   ② src/components/tw-win11-window/win11-window.css  .win11-context-menu（React 版窗口菜单）
+ *   ③ src/components/tw-settings-modal/settings-modal.css  .win11-context-menu（设置窗口菜单）
+ * 问题根因：非窗口菜单此前每一项的内层兜底都是「SE 深色」常量（#2b2b2b /
+ *   rgba(255,255,255,·) / #9A9EB0），而窗口菜单每一项的兜底都是浅色
+ *   （#fff / inherit / rgba(0,0,0,0.15) / rgba(0,0,0,0.08)）。只要变量链任何一层未命中
+ *   （变量未注入、语义变量缺失等），两者就朝相反方向回退：窗口菜单仍是浅色底 + 深字，
+ *   非窗口菜单却落到深色底 + 亮字 —— 即「浅色模式下其它右键菜单配色整体不对」。
+ *   叠加 disabled 采用「独立灰 #9A9EB0 × 0.45 透明」双重变淡，不一致被进一步放大。
+ * 修复：本文件所有颜色项改为与窗口菜单「逐项同变量 + 同兜底取值」，并用同一批
+ *   --sky-ctx-menu-* 变量（变量内容由 contextMenuStylePersistance.js 的 SE_VARS 统一
+ *   以明暗语义变量表达，浅色下即浅色底 + 深灰文字 + 淡边框/分隔线）；disabled 不再自造
+ *   独立灰值，透明度对齐窗口菜单兜底 0.5，hover 文字色与常态文字色同源。
+ * ---------------------------------------------------------------------------
+ */
+
+/* 菜单出现动画：与积木区右键菜单既有滑入观感对齐，两类菜单统一 */
+@keyframes skyCtxMenuIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================================================================
+ * 一、react-contextmenu 系
+ *   覆盖：角色(精灵)列表项 / 造型与声音标签页项 / 背包 / 变量与列表监视器
+ *         / 各 addon 通过 addContextMenu 注入的菜单项
+ *   依赖 react-contextmenu 库自带全局类：nav.react-contextmenu、
+ *   .react-contextmenu-item、--divider、--disabled、--visible
+ * ========================================================================= */
+
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] nav.react-contextmenu) {
+    box-sizing: border-box;
+    min-width: var(--sky-ctx-menu-min-width, 200px);
+    padding: var(--sky-ctx-menu-padding, 4px);
+    margin: var(--sky-ctx-menu-margin, 0);
+    font-size: var(--sky-ctx-menu-font-size, 12px);
+    text-align: left;
+    color: var(--sky-ctx-menu-fg, inherit);
+    background-color: var(--sky-ctx-menu-bg, #fff);
+    border: 1px solid var(--sky-ctx-menu-border, rgba(0, 0, 0, 0.15));
+    border-radius: var(--sky-ctx-menu-radius, 8px);
+    box-shadow: var(--sky-ctx-menu-shadow, 0 0 5px 1px rgba(0, 0, 0, 0.25));
+    z-index: var(--sky-ctx-menu-z-index, 1000);
+}
+
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] nav.react-contextmenu.react-contextmenu--visible) {
+    animation: skyCtxMenuIn 0.12s ease-out;
+}
+
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] nav.react-contextmenu .react-contextmenu-item) {
+    box-sizing: border-box;
+    padding: var(--sky-ctx-menu-item-padding, 6px 12px);
+    border-radius: var(--sky-ctx-menu-item-radius, 4px);
+    color: var(--sky-ctx-menu-fg, inherit);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: var(--sky-ctx-menu-item-transition, none);
+}
+
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] nav.react-contextmenu .react-contextmenu-item:hover) {
+    background-color: var(--sky-ctx-menu-hover-bg, rgba(0, 0, 0, 0.08));
+    color: var(--sky-ctx-menu-hover-fg, inherit);
+}
+
+/* 分隔线（Scratch 的 BorderedMenuItem = .react-contextmenu-item--divider） */
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] nav.react-contextmenu .react-contextmenu-item--divider) {
+    height: 0;
+    padding: 0;
+    margin: 4px 0;
+    border-radius: 0;
+    border-top: 1px solid var(--sky-ctx-menu-divider, rgba(0, 0, 0, 0.15));
+}
+
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] nav.react-contextmenu .react-contextmenu-item--divider:hover) {
+    background-color: transparent;
+}
+
+/* 禁用项：灰显 + hover 无高亮（与 win11-menu-item-disabled 一致） */
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] nav.react-contextmenu .react-contextmenu-item--disabled) {
+    opacity: var(--sky-ctx-menu-disabled-opacity, 0.5);
+    color: var(--sky-ctx-menu-fg, inherit);
+    cursor: default;
+}
+
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] nav.react-contextmenu .react-contextmenu-item--disabled:hover) {
+    background-color: var(--sky-ctx-menu-disabled-hover-bg, transparent);
+    color: var(--sky-ctx-menu-disabled-hover-fg, var(--sky-ctx-menu-fg, inherit));
+}
+
+/* 危险项（删除等）：保留红色警示 hover，仅统一字号与圆角 */
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] nav.react-contextmenu [class*='menu-item-danger']:hover) {
+    background-color: #e81123;
+    color: #fff;
+}
+
+/*
+ * Scratch 的 BorderedMenuItem（监视器的“change slider range”/“hide”、角色与造型菜单中的
+ * 分割项、DangerousMenuItem 等）走的是 CSS Modules 生成的 .menu-item-bordered
+ * （context-menu.css: border-top: 1px solid $ui-black-transparent），
+ * 而非 react-contextmenu 库的 .react-contextmenu-item--divider，
+ * 因此单独按类名前缀补一条覆盖：把浅黑分隔线换成 SE 的白色半透明线，
+ * 否则在 #2b2b2b 深色菜单底上该分隔线几乎不可见。
+ */
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] nav.react-contextmenu [class*='menu-item-bordered']) {
+    margin-top: 4px;
+    border-top-color: var(--sky-ctx-menu-divider, rgba(0, 0, 0, 0.15));
+}
+
+/* =========================================================================
+ * 二、Blockly 积木区右键菜单（scratch-blocks 内置 WidgetDiv 菜单）
+ *   接入方式：纯 CSS 皮肤化，不改 Blockly 源码、不改写其 DOM。
+ *   依赖 goog.ui 菜单既有类：.blocklyContextMenu、.goog-menuitem、
+ *   .goog-menuitem-content、.goog-menuitem-highlight、.goog-menuitem-disabled
+ * ========================================================================= */
+
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu) {
+    box-sizing: border-box;
+    /*
+     * 高度上限改「视口基准」，覆盖 scratch-blocks 原生的 `max-height: 100%`：
+     * 后者的百分比基准是 .blocklyWidgetDiv 的【内联 height】，而该 height 会被
+     * Blockly.WidgetDiv.positionWithAnchor 在「菜单垂直放不下」时压缩为 `菜单高度 + y`（y<0），
+     * 于是菜单内容一旦高于这个压缩值就被 `.blocklyWidgetDiv .goog-menu { overflow-y: auto }`
+     * 逼出滚动条 —— 这就是「菜单项与容器高度不匹配、出现滚动条」的根因。
+     * 改为视口基准后：内容少于视口的菜单（长短菜单均属此列）永不出现滚动条、也不截断；
+     * 仅当菜单真的高于视口时才滚动（此时 overflow-y: auto 原样保留，仍可完整访问内容）。
+     * 只改高度上限的基准，不声明 overflow / position / z-index / pointer-events。
+     */
+    max-height: calc(100vh - 8px);
+    min-width: var(--sky-ctx-menu-min-width, 200px);
+    padding: var(--sky-ctx-menu-padding, 4px);
+    font-size: var(--sky-ctx-menu-font-size, 12px);
+    color: var(--sky-ctx-menu-fg, inherit);
+    background-color: var(--sky-ctx-menu-bg, #fff);
+    border: 1px solid var(--sky-ctx-menu-border, rgba(0, 0, 0, 0.15));
+    border-radius: var(--sky-ctx-menu-radius, 8px);
+    box-shadow: var(--sky-ctx-menu-shadow, 0 0 5px 1px rgba(0, 0, 0, 0.25));
+    /*
+     * 刻意不声明 animation / transform / position / z-index / pointer-events：
+     * 入场动画由 blocks.css 既有 `.blocklyContextMenu { animation: contextMenuSlideDown }`
+     * 提供（观感一致，本项目长期验证无害）；本文件对 Blockly 菜单的作用面收窄为
+     * 纯视觉属性（背景 / 边框 / 圆角 / 阴影 / 内边距 / 字号 / 文字色），
+     * 从机制上排除"新增样式干扰 Blockly 工作区右键唤起"的可能。
+     */
+}
+
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu .goog-menuitem) {
+    box-sizing: border-box;
+    padding: var(--sky-ctx-menu-item-padding, 6px 12px);
+    border-radius: var(--sky-ctx-menu-item-radius, 4px);
+    color: var(--sky-ctx-menu-fg, inherit);
+    transition: var(--sky-ctx-menu-item-transition, none);
+}
+
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu .goog-menuitem .goog-menuitem-content) {
+    color: inherit;
+}
+
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu .goog-menuitem-highlight) {
+    /*
+     * 覆盖 goog 原生 hover 态：`border-width: 1px 0; padding-top/bottom: 3px` 会让菜单项
+     * 在 hover 时比常态矮 4px（常态上下 6px 内边距 → hover 上下 3px 内边距 + 1px 点线边框），
+     * 鼠标划过时菜单总高抖动，观感即「菜单项与菜单高度不匹配」。
+     * 这里把 hover 的内边距、边框宽度拉回与常态完全一致，并且只靠背景色表达悬停，
+     * 使菜单高度在 hover 前后恒定；圆角沿用菜单项圆角，避免悬停高亮块变直角。
+     */
+    box-sizing: border-box;
+    border-width: 0;
+    padding: var(--sky-ctx-menu-item-padding, 6px 12px);
+    border-radius: var(--sky-ctx-menu-item-radius, 4px);
+    background-color: var(--sky-ctx-menu-hover-bg, rgba(0, 0, 0, 0.08));
+    border-color: transparent;
+    color: var(--sky-ctx-menu-hover-fg, inherit);
+}
+
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu .goog-menuitem-highlight .goog-menuitem-content) {
+    color: var(--sky-ctx-menu-hover-fg, inherit);
+}
+
+/* Blockly 用内联 border-top 画分隔线 */
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu .goog-menuitem[style*='border-top']) {
+    box-sizing: border-box;
+    margin: 4px 0;
+    border-top-color: var(--sky-ctx-menu-divider, rgba(0, 0, 0, 0.15));
+}
+
+/*
+ * 禁用项（item 层）：与窗口菜单 .win11-menu-item-disabled 完全同源同值 ——
+ * 文字色沿用 --sky-ctx-menu-fg（= 菜单常态文字色，同一批变量），只在此层加一次 opacity。
+ */
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu .goog-menuitem-disabled) {
+    color: var(--sky-ctx-menu-fg, inherit);
+    opacity: var(--sky-ctx-menu-disabled-opacity, 0.5);
+}
+
+/*
+ * 禁用项（文字层）—— 必须用 !important 反压 scratch-blocks 原生规则，这是「改了没反应」的根因：
+ *   node_modules/scratch-blocks/core/css.js（L1142-1146）注入
+ *     `.blocklyWidgetDiv .goog-menuitem-disabled .goog-menuitem-content { color: \$colour_contextMenuDisabledForeground !important }`
+ *   浅色主题下该值为 #ccc（实测 computed rgb(204,204,204)），深色下为 #666（rgb(102,102,102)）。
+ *   它带 !important，会压过任何未标注 !important 的颜色声明 —— 所以此前无论把
+ *   --sky-ctx-menu-fg 指向什么颜色，Blockly 菜单里的不可用项文字始终是 #ccc/#666，实机毫无变化。
+ *   本选择器特异性（2 个属性 + 4 个类）高于原生规则（3 个类），同处 !important 级别时按特异性取胜。
+ * 同时此处【不再声明 opacity】：item 层已声明 0.5，若文字层再叠 0.5 会形成 0.5 × 0.5 = 0.25 的
+ *   双重淡化，比窗口菜单（单层 0.5）明显更淡 —— 这正是「浅灰观感仍不一致」的原因。
+ *   accel（快捷键提示）在原生规则里同样被 !important 染成 #ccc/#666，一并反压。
+ */
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu .goog-menuitem-disabled .goog-menuitem-content),
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu .goog-menuitem-disabled .goog-menuitem-accel) {
+    color: var(--sky-ctx-menu-fg, inherit) !important;
+    opacity: 1;
+}
+
+/* 禁用项悬停：与 .win11-menu-item-disabled:hover 一致（不高亮、文字不变色） */
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu .goog-menuitem-disabled.goog-menuitem-highlight) {
+    background-color: var(--sky-ctx-menu-disabled-hover-bg, transparent);
+}
