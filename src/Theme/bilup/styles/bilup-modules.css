@@ -1,0 +1,371 @@
+/*
+ * bilup 独立功能模块 — 统一样式
+ * ---------------------------------------------------------------------------
+ * 来源：Bilup（https://github.com/Bilup/scratch-gui，GPL-3.0，
+ *       仅作功能参考自行实现，非逐字复制）。
+ *
+ * 作用域铁律：
+ *   - 全部规则限定在 html.bilup-theme 后代内，非 bilup 主题零影响、零回归。
+ *   - 类名统一 blp- 前缀（全局唯一，不与任何现有类名冲突）。
+ *   - 颜色优先使用 --bilup-* 变量（注册表注入，明暗自动适配）。
+ * ---------------------------------------------------------------------------
+ */
+
+/* ================= 浮动窗口外壳 ================= */
+html.bilup-theme .blp-window {
+    position: fixed;
+    z-index: 9000;
+    display: flex;
+    flex-direction: column;
+    min-width: 360px;
+    min-height: 240px;
+    background: var(--bilup-surface-panel, #ffffff);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+    font-size: 12px;
+    color: var(--bilup-text, #575e75);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    overflow: hidden;
+}
+
+html.bilup-theme .blp-window-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: var(--bilup-accent, #75c1c4);
+    color: #ffffff;
+    cursor: move;
+    user-select: none;
+    flex: 0 0 auto;
+}
+
+html.bilup-theme .blp-window-title {
+    font-weight: bold;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+html.bilup-theme .blp-window-controls {
+    display: flex;
+    gap: 4px;
+}
+
+html.bilup-theme .blp-window-btn {
+    width: 18px;
+    height: 18px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+    font-size: 11px;
+    line-height: 18px;
+    text-align: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+html.bilup-theme .blp-window-btn:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+html.bilup-theme .blp-window-btn-close:hover {
+    background: #e05f5f;
+}
+
+html.bilup-theme .blp-window-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 10px;
+    overflow: auto;
+    background: var(--bilup-surface-panel, #ffffff);
+}
+
+/* ================= 菜单（工具 / 书签） ================= */
+html.bilup-theme .blp-menubar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+html.bilup-theme .blp-menu-label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 10px;
+    height: 100%;
+    cursor: pointer;
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+html.bilup-theme .blp-menu-label:hover,
+html.bilup-theme .blp-menu-label-open {
+    background: rgba(0, 0, 0, 0.18);
+}
+
+html.bilup-theme .blp-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 200px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+    padding: 4px 0;
+    z-index: 9100;
+}
+
+html.bilup-theme .blp-dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 7px 14px;
+    border: none;
+    background: transparent;
+    text-align: left;
+    font-size: 12px;
+    color: var(--bilup-text, #575e75);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+html.bilup-theme .blp-dropdown-item:hover {
+    background: rgba(117, 193, 196, 0.22);
+    color: #25343b;
+}
+
+html.bilup-theme .blp-dropdown-sep {
+    height: 1px;
+    margin: 4px 8px;
+    background: rgba(0, 0, 0, 0.12);
+}
+
+html.bilup-theme .blp-dropdown-title {
+    padding: 6px 14px 2px;
+    font-size: 11px;
+    color: #8a97a5;
+}
+
+/* ================= 通用控件 ================= */
+html.bilup-theme .blp-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+html.bilup-theme .blp-tab {
+    padding: 5px 12px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: var(--bilup-surface-flyout, #f9f9f9);
+    color: var(--bilup-text, #575e75);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+html.bilup-theme .blp-tab-active {
+    background: var(--bilup-accent-soft, rgba(117, 193, 196, 0.25));
+    border-color: var(--bilup-accent, #75c1c4);
+    color: #25343b;
+    font-weight: bold;
+}
+
+html.bilup-theme .blp-btn {
+    padding: 5px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--bilup-text, #575e75);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+html.bilup-theme .blp-btn:hover {
+    background: var(--bilup-surface-flyout, #f9f9f9);
+}
+
+html.bilup-theme .blp-btn-primary {
+    border-color: var(--bilup-accent, #75c1c4);
+    background: var(--bilup-accent, #75c1c4);
+    color: #ffffff;
+}
+
+html.bilup-theme .blp-btn-primary:hover {
+    background: var(--bilup-accent-strong, #5e9a9d);
+}
+
+html.bilup-theme .blp-btn-danger {
+    border-color: #e05f5f;
+    background: #fff;
+    color: #e05f5f;
+}
+
+html.bilup-theme .blp-btn-danger:hover {
+    background: #e05f5f;
+    color: #fff;
+}
+
+html.bilup-theme .blp-input,
+html.bilup-theme .blp-select {
+    padding: 5px 8px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--bilup-text, #575e75);
+    font-size: 12px;
+}
+
+html.bilup-theme .blp-input:focus,
+html.bilup-theme .blp-select:focus {
+    outline: none;
+    border-color: var(--bilup-accent, #75c1c4);
+}
+
+html.bilup-theme .blp-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+html.bilup-theme .blp-label {
+    font-size: 11px;
+    color: #8a97a5;
+}
+
+html.bilup-theme .blp-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+html.bilup-theme .blp-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+html.bilup-theme .blp-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--bilup-surface-flyout, #f9f9f9);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+html.bilup-theme .blp-list-item:hover {
+    background: var(--bilup-accent-soft, rgba(117, 193, 196, 0.25));
+}
+
+html.bilup-theme .blp-empty {
+    padding: 16px;
+    text-align: center;
+    color: #8a97a5;
+    font-size: 12px;
+}
+
+html.bilup-theme .blp-note {
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: rgba(117, 193, 196, 0.12);
+    border: 1px solid rgba(117, 193, 196, 0.35);
+    color: var(--bilup-text, #575e75);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+html.bilup-theme .blp-terminal {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    background: #10232b;
+    color: #c8f0f1;
+    border-radius: 6px;
+    padding: 8px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+html.bilup-theme .blp-terminal-input {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #8fe3e6;
+}
+
+html.bilup-theme .blp-terminal-input input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #c8f0f1;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+}
+
+html.bilup-theme .blp-log-line {
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+html.bilup-theme .blp-log-info {
+    color: #3b6ea5;
+}
+
+html.bilup-theme .blp-log-warn {
+    color: #b8860b;
+}
+
+html.bilup-theme .blp-log-error {
+    color: #d13438;
+}
+
+html.bilup-theme .blp-badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--bilup-accent-soft, rgba(117, 193, 196, 0.25));
+    color: #25343b;
+    font-size: 11px;
+}
+
+html.bilup-theme .blp-check {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--bilup-accent, #75c1c4);
+    cursor: pointer;
+}
+
+html.bilup-theme .blp-kv {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 6px 10px;
+    font-size: 12px;
+}
+
+html.bilup-theme .blp-kv-key {
+    color: #8a97a5;
+}
+
+html.bilup-theme .blp-kv-value {
+    font-weight: bold;
+    word-break: break-all;
+}

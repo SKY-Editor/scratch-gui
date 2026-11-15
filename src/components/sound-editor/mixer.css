@@ -1,0 +1,171 @@
+@import "../../css/colors.css";
+@import "../../css/units.css";
+
+.mixer-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: calc(1 * $space);
+    padding: calc(1 * $space);
+    background: rgba(145, 145, 255, 0.12);
+    border: 1px solid $ui-black-transparent;
+    border-radius: var(--sky-radius);
+}
+
+.mixer-header {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: $text-primary;
+}
+
+.mixer-empty {
+    font-size: 0.8rem;
+    color: $text-primary;
+    opacity: 0.7;
+    padding: calc(1 * $space);
+}
+
+.mixer-track {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: calc(1 * $space);
+    padding: calc(1 * $space);
+    background: $ui-white;
+    border: 1px solid $ui-black-transparent;
+    border-radius: var(--sky-radius);
+}
+
+.mixer-track-name {
+    min-width: 4rem;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: $text-primary;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mute-button,
+.solo-button,
+.mute-button-active,
+.solo-button-active {
+    width: 2rem;
+    height: 1.75rem;
+    font-size: 0.8rem;
+    font-weight: bold;
+    border-radius: var(--sky-radius-sm);
+    cursor: pointer;
+    border: 1px solid $ui-black-transparent;
+    outline: none;
+    background: $ui-white;
+    color: $text-primary;
+}
+
+.mute-button-active {
+    background: #ffab19;
+    border-color: #ffab19;
+    color: $ui-white;
+}
+
+.solo-button-active {
+    background: $looks-secondary;
+    border-color: $looks-secondary;
+    color: $ui-white;
+}
+
+.mixer-slider-label {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: calc(0.5 * $space);
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: $text-primary;
+}
+
+.mixer-slider {
+    width: 6rem;
+    margin: 0;
+}
+
+.mixer-slider-value {
+    min-width: 2.5rem;
+    font-size: 0.7rem;
+    color: $text-primary;
+}
+
+.mixer-track-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+    margin-left: auto;
+}
+
+.small-button {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 0.7rem;
+    border-radius: var(--sky-radius-sm);
+    cursor: pointer;
+    border: 1px solid $ui-black-transparent;
+    background: $ui-white;
+    color: $text-primary;
+    outline: none;
+}
+
+.small-button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.mixer-footer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: calc(1 * $space);
+    padding-top: calc(1 * $space);
+    border-top: 1px solid $ui-black-transparent;
+}
+
+.footer-button {
+    height: 2rem;
+    padding: 0 0.75rem;
+    font-size: 0.8rem;
+    font-weight: bold;
+    border-radius: var(--sky-radius-sm);
+    cursor: pointer;
+    border: 1px solid $ui-black-transparent;
+    background: $ui-white;
+    color: $text-primary;
+    outline: none;
+}
+
+.footer-button:hover {
+    background: rgba(145, 145, 255, 0.15);
+}
+
+.commit-button {
+    height: 2rem;
+    padding: 0 0.75rem;
+    font-size: 0.8rem;
+    font-weight: bold;
+    border-radius: var(--sky-radius-sm);
+    cursor: pointer;
+    border: none;
+    background: $looks-secondary;
+    color: $ui-white;
+    outline: none;
+}
+
+.commit-button:hover {
+    filter: brightness(1.1);
+}
+
+.commit-hint {
+    font-size: 0.7rem;
+    color: $text-primary;
+    opacity: 0.75;
+}

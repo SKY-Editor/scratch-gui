@@ -6,40 +6,27 @@ import greenFlagIcon from './icon--green-flag.svg';
 import styles from './green-flag.css';
 
 const GreenFlagComponent = function (props) {
-    const {
-        active,
-        className,
-        onClick,
-        title,
-        ...componentProps
-    } = props;
+    const { active, className, onClick, title, ...componentProps } = props;
     return (
-        <img
-            className={classNames(
-                className,
-                styles.greenFlag,
-                {
-                    [styles.isActive]: active
-                }
-            )}
+        <div
+            className={classNames(className, styles.greenFlag, { [styles.isActive]: active })}
+            role="button"
+            tabIndex={0}
             draggable={false}
-            src={greenFlagIcon}
             title={title}
             onClick={onClick}
-            // tw: also fire click when opening context menu (right click on all systems and alt+click on chromebooks)
             onContextMenu={onClick}
             {...componentProps}
-        />
+        >
+            <img
+                className={styles.greenFlagIcon}
+                draggable={false}
+                src={greenFlagIcon}
+                alt=""
+            />
+        </div>
     );
 };
-GreenFlagComponent.propTypes = {
-    active: PropTypes.bool,
-    className: PropTypes.string,
-    onClick: PropTypes.func.isRequired,
-    title: PropTypes.string
-};
-GreenFlagComponent.defaultProps = {
-    active: false,
-    title: 'Go'
-};
+GreenFlagComponent.propTypes = { active: PropTypes.bool, className: PropTypes.string, onClick: PropTypes.func.isRequired, title: PropTypes.string };
+GreenFlagComponent.defaultProps = { active: false, title: 'Go' };
 export default GreenFlagComponent;

@@ -1,5 +1,18 @@
 /* overridden by src/lib/themes/guiHelpers.js */
 
+/* 双圆角口径（全局）
+
+   --sky-radius（12px）：容器级大圆角——窗口、面板、菜单底板、积木区、
+   输入框、列表项等。
+   --sky-radius-sm（6px）：控件级小圆角——顶栏菜单项/状态按钮等紧凑控件的
+   点击与 hover 高亮，贴近原生 Scratch 的利落感。
+   只有正圆（50% / 100%）例外。
+*/
+:global(html.sky-editor-theme) {
+    --sky-radius: 12px;
+    --sky-radius-sm: 6px;
+}
+
 $ui-primary: var(--ui-primary);
 $ui-secondary: var(--ui-secondary);
 $ui-tertiary: var(--ui-tertiary);

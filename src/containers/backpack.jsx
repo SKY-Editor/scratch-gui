@@ -86,12 +86,29 @@ class Backpack extends React.Component {
     handleToggle () {
         const newState = !this.state.expanded;
         this.setState({expanded: newState, contents: []}, () => {
-            // Emit resize on window to get blocks to resize
-            window.dispatchEvent(new Event('resize'));
+            this.resizeBlocksDuringTransition();
         });
         if (newState) {
             this.getContents();
         }
+    }
+    resizeBlocksDuringTransition () {
+        // 书包列表的收起/展开走 0.3s CSS 高度过渡，积木区高度在这段时间里
+        // 每帧都在变。原实现只在 setState 回调里 dispatch 一次 resize，
+        // 此时过渡还没开始，Blockly 量到的是旧尺寸，动画过程中和结束后
+        // canvas 与容器高度对不上，表现为积木区出现空洞、布局不刷新。
+        // 这里在过渡时长内逐帧派发 window resize（inject.js 里绑定的
+        // workspaceResizeHandler 会执行 Blockly.svgResize 重新测量画布），
+        // 过渡结束后再补最后一帧，保证终点尺寸精确。
+        const duration = 380; // 略长于 CSS 的 0.3s，覆盖缓动尾巴
+        const start = Date.now();
+        const tick = () => {
+            window.dispatchEvent(new Event('resize'));
+            if (Date.now() - start < duration) {
+                window.requestAnimationFrame(tick);
+            }
+        };
+        window.requestAnimationFrame(tick);
     }
     handleError (error) {
         this.setState({

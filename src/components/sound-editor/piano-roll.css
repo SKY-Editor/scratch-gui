@@ -1,0 +1,80 @@
+@import "../../css/colors.css";
+@import "../../css/units.css";
+
+.piano-roll-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border: 1px solid $ui-black-transparent;
+    border-radius: var(--sky-radius);
+    overflow: hidden;
+    background: $ui-white;
+}
+
+.piano-roll-toolbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: calc(1 * $space);
+    padding: calc(1 * $space);
+    background: rgba(145, 145, 255, 0.12);
+    border-bottom: 1px solid $ui-black-transparent;
+}
+
+.piano-roll-label {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: $text-primary;
+    margin-right: calc(1 * $space);
+}
+
+.note-length-group {
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+}
+
+.length-button,
+.length-button-active {
+    height: 1.75rem;
+    min-width: 2.25rem;
+    padding: 0 0.5rem;
+    font-size: 0.75rem;
+    border-radius: var(--sky-radius-sm);
+    cursor: pointer;
+    border: 1px solid $ui-black-transparent;
+    background: $ui-white;
+    color: $text-primary;
+    outline: none;
+}
+
+.length-button-active {
+    background: $looks-secondary;
+    border-color: $looks-secondary;
+    color: $ui-white;
+    font-weight: bold;
+}
+
+.action-button {
+    height: 1.75rem;
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+    font-weight: bold;
+    border-radius: var(--sky-radius-sm);
+    cursor: pointer;
+    border: 1px solid $ui-black-transparent;
+    background: $looks-secondary;
+    color: $ui-white;
+    outline: none;
+}
+
+.action-button:hover {
+    filter: brightness(1.1);
+}
+
+.piano-roll-canvas {
+    display: block;
+    outline: none;
+    touch-action: none;
+}

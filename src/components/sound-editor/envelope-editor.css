@@ -1,0 +1,10 @@
+@import "../../css/colors.css";
+
+.envelope-canvas {
+    display: block;
+    border-radius: var(--sky-radius);
+    background: #fafcff;
+    border: 1px solid $ui-black-transparent;
+    cursor: crosshair;
+    touch-action: none;
+}

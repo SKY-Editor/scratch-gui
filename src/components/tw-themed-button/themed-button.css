@@ -1,0 +1,71 @@
+/**
+ * ThemedButton 样式
+ * ---------------------------------------------------------------------------
+ * 取色策略（统一按钮模板的核心）：
+ *   - 优先使用主题变量（--sky-accent 等）：SKYEditor 主题下由
+ *     theme-registry 注入 SE 主色板，按钮自动变成 SE 蓝色系；
+ *   - 变量缺失时回退到中性色（var(..., fallback)）：非 SE 主题
+ *     下保持中性灰蓝，不入侵其它主题的既有按钮样式。
+ * ---------------------------------------------------------------------------
+ */
+.themedButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--sky-radius-sm);
+    border: 1px solid transparent;
+    font: 500 13px/1.4 'Helvetica Neue', Arial, 'PingFang SC', sans-serif;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.themedButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.icon {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    flex: 0 0 auto;
+}
+
+/* primary：主操作（SE 蓝底白字；其它主题中性蓝兜底） */
+.primary {
+    background: var(--sky-accent, #4d97ff);
+    color: var(--sky-text-on-accent, #ffffff);
+}
+
+.primary:hover:not(:disabled) {
+    background: var(--sky-accent-strong, #3a7bd6);
+}
+
+/* secondary：次要操作（SE 浅蓝底；其它主题浅灰兜底） */
+.secondary {
+    background: var(--sky-theme-surface, #e8ecf2);
+    color: #575e75;
+    border-color: var(--sky-theme-border, #d9dee6);
+}
+
+.secondary:hover:not(:disabled) {
+    background: var(--sky-accent-soft, #dfeaff);
+    color: var(--sky-accent, #1c86ff);
+}
+
+/* danger：危险操作（红，两主题一致） */
+.danger {
+    background: #e81123;
+    color: #ffffff;
+}
+
+.danger:hover:not(:disabled) {
+    background: #c50f1f;
+}

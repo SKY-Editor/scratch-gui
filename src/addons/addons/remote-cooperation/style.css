@@ -1,0 +1,482 @@
+/* ============================================================
+   remote-cooperation addon —— SKYEditor 风格远程协作面板
+   设计语言对齐：SKYEditor-设计语言与铁律.md
+   - 扁平化、无阴影或极浅阴影
+   - 大圆角（卡片 12px / 按钮 8px / 输入框 6px）
+   - 强调色 #3b82f6（SKYEditor 品牌蓝），危险操作 #ef4444
+   - 全程使用 scratch-gui CSS 变量，深色主题自动适配
+   ============================================================ */
+
+.sa-remote-coop {
+  --rc-primary: #3b82f6;
+  --rc-primary-hover: #2f6fe0;
+  --rc-danger: #ef4444;
+  --rc-danger-hover: #d83a3a;
+  --rc-bg: var(--ui-modal-background, #ffffff);
+  --rc-fg: var(--text-primary, #0b0e14);
+  --rc-border: var(--ui-black-transparent, rgba(0, 0, 0, 0.15));
+  --rc-subtle: rgba(128, 128, 128, 0.12);
+
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--rc-bg);
+  color: var(--rc-fg);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sa-remote-coop * {
+  box-sizing: border-box;
+}
+
+/* 顶部内阴影（模拟窗口面板的悬浮层次，避免依赖 box-shadow） */
+.sa-remote-coop-shadow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(180deg, var(--rc-border), transparent);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ---------------- 标题栏 ---------------- */
+.rc-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0 10px;
+  border-bottom: 1px solid var(--rc-border);
+  user-select: none;
+}
+
+.rc-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rc-title-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 30% 30%, var(--rc-primary) 0 3px, transparent 4px),
+    radial-gradient(circle at 70% 70%, var(--rc-primary) 0 3px, transparent 4px),
+    linear-gradient(135deg, var(--rc-primary), rgba(59, 130, 246, 0.35));
+}
+
+.rc-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.rc-status-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--rc-subtle);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.rc-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.rc-status-idle { background: #9ca3af; }
+.rc-status-connecting { background: #f59e0b; }
+.rc-status-connected { background: #22c55e; }
+.rc-status-error { background: var(--rc-danger); }
+
+.rc-close-btn {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--rc-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--rc-fg);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.rc-close-btn:hover {
+  background: var(--rc-danger);
+  border-color: var(--rc-danger);
+  color: #fff;
+}
+
+/* ---------------- 卡片 ---------------- */
+.rc-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--rc-border);
+  border-radius: 12px;
+  background: var(--rc-subtle);
+}
+
+.rc-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rc-count {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--rc-primary);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+}
+
+/* ---------------- 行 / 标签 / 输入 ---------------- */
+.rc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rc-label {
+  flex: 0 0 auto;
+  width: 64px;
+  font-size: 12px;
+  color: var(--rc-fg);
+  opacity: 0.75;
+}
+
+.rc-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--rc-border);
+  border-radius: 6px;
+  background: var(--rc-bg);
+  color: var(--rc-fg);
+  font-size: 13px;
+  outline: none;
+}
+
+.rc-input:focus {
+  border-color: var(--rc-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+}
+
+.rc-input::placeholder {
+  opacity: 0.45;
+}
+
+.rc-room-id {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px dashed rgba(59, 130, 246, 0.45);
+  color: var(--rc-primary);
+  font-weight: 600;
+  font-size: 13px;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+/* ---------------- 按钮 ---------------- */
+.rc-btn {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.rc-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rc-btn-primary {
+  background: var(--rc-primary);
+  color: #fff;
+}
+
+.rc-btn-primary:hover:not(:disabled) {
+  background: var(--rc-primary-hover);
+}
+
+.rc-btn-secondary {
+  background: transparent;
+  border-color: var(--rc-border);
+  color: var(--rc-fg);
+}
+
+.rc-btn-secondary:hover:not(:disabled) {
+  border-color: var(--rc-primary);
+  color: var(--rc-primary);
+}
+
+.rc-btn-danger {
+  background: transparent;
+  border-color: var(--rc-danger);
+  color: var(--rc-danger);
+}
+
+.rc-btn-danger:hover:not(:disabled) {
+  background: var(--rc-danger);
+  color: #fff;
+}
+
+.rc-btn-sm {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.rc-btn-leave {
+  align-self: flex-start;
+}
+
+/* ---------------- 成员列表 ---------------- */
+.rc-members {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.rc-members-empty {
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--rc-subtle);
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.rc-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--rc-bg);
+  border: 1px solid var(--rc-border);
+}
+
+.rc-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--rc-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+
+.rc-member-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.rc-presence {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font-size: 11px;
+  opacity: 0.65;
+}
+.rc-sprite-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.35);
+  z-index: 5;
+  pointer-events: none;
+}
+.rc-cursor-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  overflow: hidden;
+}
+.rc-cursor {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 3px solid;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: left 0.25s ease, top 0.25s ease;
+}
+.rc-cursor-name {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.rc-tag {
+  flex: 0 0 auto;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--rc-primary);
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+}
+
+/* ---------------- 同步状态 ---------------- */
+.rc-sync-detail {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.rc-activity {
+  min-height: 18px;
+  font-size: 12px;
+  color: var(--rc-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------------- 开关（SKYEditor 风格 toggle） ---------------- */
+.rc-card-toggle {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rc-toggle-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rc-toggle-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rc-toggle-desc {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.rc-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+
+.rc-switch-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.rc-switch-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.35);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.rc-switch-slider::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+}
+
+.rc-switch-input:checked + .rc-switch-slider {
+  background: var(--rc-primary);
+}
+
+.rc-switch-input:checked + .rc-switch-slider::before {
+  transform: translateX(18px);
+}
+
+/* ---------------- 远端项目快照 ---------------- */
+.rc-remote-snaps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.rc-remote-snap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--rc-bg);
+  border: 1px solid var(--rc-border);
+}
+
+.rc-remote-snap-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

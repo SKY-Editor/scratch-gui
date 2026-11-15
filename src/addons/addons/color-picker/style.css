@@ -13,8 +13,8 @@
 
 .sa-color-picker > .sa-color-picker-color {
   border: none;
-  border-top-left-radius: 1rem;
-  border-bottom-left-radius: 1rem;
+  border-top-left-radius: var(--sky-radius);
+  border-bottom-left-radius: var(--sky-radius);
   padding: 0;
   padding-left: 0.6rem;
   padding-right: 0.4rem;
@@ -35,15 +35,15 @@
 [dir="rtl"] .sa-color-picker > .sa-color-picker-color {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
-  border-top-right-radius: 1rem;
-  border-bottom-right-radius: 1rem;
+  border-top-right-radius: var(--sky-radius);
+  border-bottom-right-radius: var(--sky-radius);
   margin-left: 0;
   margin-right: 0.5rem;
 }
 
 [dir="rtl"] .sa-color-picker > .sa-color-picker-text {
-  border-top-left-radius: 1rem;
-  border-bottom-left-radius: 1rem;
+  border-top-left-radius: var(--sky-radius);
+  border-bottom-left-radius: var(--sky-radius);
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
