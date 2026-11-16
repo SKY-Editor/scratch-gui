@@ -1,0 +1,255 @@
+@import "../../css/colors.css";
+
+/*
+ * 统一导出窗口样式
+ * 颜色一律走 CSS 变量并带兜底：SKYEditor 主题取 --sky-accent 系列，
+ * 其它主题回退到与 TurboWarp 深色弹窗协调的中性色，保证两套主题都不割裂。
+ */
+
+.body {
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    padding: 1.1rem 1.4rem 1rem;
+    font-family: "Helvetica Neue", Helvetica, Arial, "Microsoft YaHei", sans-serif;
+    color: $text-primary;
+    overflow: auto;
+}
+
+.modal-content {
+    width: 820px;
+}
+
+.section-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    opacity: 0.72;
+    margin-bottom: 0.7rem;
+}
+
+.card-row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.format-card {
+    flex: 1 1 0;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.85rem 0.9rem 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.045);
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease,
+        transform 0.15s ease;
+}
+
+.format-card:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+.format-card:focus-visible {
+    border-color: var(--sky-accent, #3a9bff);
+}
+
+.format-card-selected {
+    border-color: var(--sky-accent, #3a9bff);
+    background: rgba(58, 155, 255, 0.14);
+    box-shadow: 0 0 0 1px var(--sky-accent, #3a9bff) inset, 0 6px 18px rgba(0, 0, 0, 0.26);
+}
+
+.format-card-selected:hover {
+    background: rgba(58, 155, 255, 0.18);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.6rem;
+}
+
+.format-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 26px;
+    min-width: 36px;
+    padding: 0 0.5rem;
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--sky-accent, #3a9bff), rgba(28, 134, 255, 0.5));
+    color: var(--sky-text-on-accent, #fff);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.recommend-tag {
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    background: var(--sky-accent-soft, rgba(58, 155, 255, 0.22));
+    color: var(--sky-accent, #3a9bff);
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.radio-dot,
+.radio-dot-selected {
+    margin-left: auto;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.42);
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.radio-dot-selected {
+    border-color: var(--sky-accent, #3a9bff);
+    background: var(--sky-accent, #3a9bff);
+    box-shadow: 0 0 0 3px rgba(58, 155, 255, 0.22);
+}
+
+.format-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.format-description {
+    font-size: 0.76rem;
+    line-height: 1.5;
+    opacity: 0.66;
+}
+
+.tip-bar {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.9rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 9px;
+    border-left: 3px solid var(--sky-accent, #3a9bff);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tip-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 17px;
+    height: 17px;
+    margin-top: 0.1rem;
+    border-radius: 50%;
+    background: var(--sky-accent, #3a9bff);
+    color: var(--sky-text-on-accent, #fff);
+    font-size: 0.68rem;
+    font-weight: 700;
+    font-style: italic;
+}
+
+.tip-text {
+    font-size: 0.78rem;
+    line-height: 1.6;
+    opacity: 0.86;
+}
+
+.tip-text strong {
+    color: var(--sky-accent, #3a9bff);
+    font-weight: 700;
+}
+
+.filename-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 1rem;
+}
+
+.filename-label {
+    flex: 0 0 auto;
+    font-size: 0.82rem;
+    font-weight: 600;
+    opacity: 0.72;
+}
+
+.filename-field {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.22);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.filename-field:focus-within {
+    border-color: var(--sky-accent, #3a9bff);
+    box-shadow: 0 0 0 3px rgba(58, 155, 255, 0.16);
+}
+
+.filename-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 34px;
+    padding: 0 0 0 0.7rem;
+    border: none;
+    background: transparent;
+    color: $text-primary;
+    font-family: inherit;
+    font-size: 0.82rem;
+    outline: none;
+}
+
+.filename-extension {
+    flex: 0 0 auto;
+    padding: 0 0.7rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--sky-accent, #3a9bff);
+    opacity: 0.9;
+}
+
+.error-bar {
+    margin-top: 0.7rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 8px;
+    background: rgba(232, 17, 35, 0.14);
+    color: #ff8f8f;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.footer {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-top: auto;
+    padding-top: 0.95rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.footer-hint {
+    flex: 1 1 auto;
+    font-size: 0.74rem;
+    opacity: 0.5;
+}
+
+.footer-buttons {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 0.6rem;
+}

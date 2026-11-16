@@ -1,0 +1,356 @@
+/*
+ * SKYEditor：项目资源虚拟文件系统（测试版）样式
+ * 说明：全部通过 CSS Modules 局部作用域（类名会被哈希），不会影响现有任何区域。
+ *       配色优先取 SKY 主题令牌（--sky-*），并给出中性回退值，保证其他主题下仍可读。
+ */
+
+/* ---------- Portal 图层 ----------
+ * 窗口通过 Portal 挂到 body，本层只做定位与层级提升：
+ * z-index 520 高于编辑器菜单栏（491），保证标题栏与窗口按钮始终可点击。
+ * pointer-events: none 避免全屏容器吞掉编辑器事件，窗口自身恢复响应。
+ */
+.portalLayer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 520;
+    pointer-events: none;
+}
+
+.portalLayer > * {
+    pointer-events: auto;
+}
+
+/* ---------- 屏幕中央悬浮测试按钮 ---------- */
+.testButton {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 480;
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 10px 18px;
+    border: 1px solid var(--sky-theme-border, rgba(0, 0, 0, 0.12));
+    border-radius: 999px;
+
+    background: var(--sky-theme-surface, #ffffff);
+    color: var(--text-primary, #575e75);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.12);
+
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    cursor: pointer;
+    opacity: 0.86;
+    transition: opacity 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.testButton:hover {
+    opacity: 1;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24), 0 3px 8px rgba(0, 0, 0, 0.14);
+    transform: translate(-50%, -50%) scale(1.02);
+}
+
+.testButton:active {
+    transform: translate(-50%, -50%) scale(0.98);
+}
+
+.testButton:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--sky-accent-soft, rgba(76, 151, 255, 0.35));
+}
+
+.testButtonIcon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    border-radius: 3px;
+    background: var(--sky-accent, #4c97ff);
+}
+
+/* ---------- 窗口内容 ---------- */
+.windowBody {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: var(--sky-theme-surface, #ffffff);
+    color: var(--text-primary, #575e75);
+    font-size: 13px;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--sky-theme-border, rgba(0, 0, 0, 0.08));
+    background: var(--sky-theme-surface, #ffffff);
+    flex-shrink: 0;
+}
+
+.toolbarHint {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text-secondary, #7c818a);
+}
+
+.toolbarButton {
+    flex-shrink: 0;
+    padding: 4px 12px;
+    border: 1px solid var(--sky-theme-border, rgba(0, 0, 0, 0.12));
+    border-radius: 6px;
+
+    background: transparent;
+    color: var(--text-primary, #575e75);
+
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.toolbarButton:hover {
+    background: var(--sky-accent-soft, rgba(76, 151, 255, 0.12));
+}
+
+.treeScroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 8px 6px 16px;
+}
+
+/* ---------- 树 ---------- */
+.tree {
+    user-select: none;
+}
+
+.nodeGroup {
+    display: block;
+}
+
+.nodeRow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    height: 26px;
+    padding-right: 10px;
+    border-radius: 5px;
+    white-space: nowrap;
+}
+
+.nodeRowFolder {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.nodeRowFile {
+    cursor: default;
+    font-weight: 400;
+}
+
+.nodeRow:hover {
+    background: var(--sky-accent-soft, rgba(76, 151, 255, 0.12));
+}
+
+.caret {
+    width: 12px;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 9px;
+    line-height: 1;
+    color: var(--text-secondary, #7c818a);
+    transition: transform 0.14s ease;
+    display: inline-block;
+}
+
+.caretOpen {
+    transform: rotate(90deg);
+}
+
+/* 节点图标位：固定 18px 方框，保证有无缩略图时行内文字基线一致、不跳动 */
+.nodeIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+/* 造型/背景缩略图：圆角、等比方框、浅底，图形整体内接不裁切 */
+.nodeThumb {
+    display: block;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: var(--sky-accent-soft, rgba(0, 0, 0, 0.06));
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+/* lucide 图标：颜色走 currentColor */
+.glyphFolder {
+    color: var(--sky-accent, #4c97ff);
+    flex-shrink: 0;
+}
+
+.glyphMuted {
+    color: var(--text-secondary, #8a909b);
+    flex-shrink: 0;
+}
+
+.nodeName {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 名称与「N 个文件」计数之间保留 8px 间距，计数使用次级灰、紧随名称。
+   节点行本身有 flex gap: 6px，故此处仅补 2px，合计 8px。 */
+.nodeMeta {
+    margin-left: 2px;
+    padding-left: 0;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-secondary, #8a909b);
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.children {
+    display: block;
+}
+
+/* ---------- 大小列 ----------
+ * 固定贴行尾、右对齐；数字用等宽字体 + tabular-nums，
+ * 保证 B/KB/MB 混排时小数点与位数对齐、滚动与展开时列位不抖动。
+ */
+.nodeSize {
+    margin-left: auto;
+    flex-shrink: 0;
+    min-width: 62px;
+    padding-left: 12px;
+
+    font-family: 'Cascadia Mono', Consolas, 'SF Mono', Menlo, 'DejaVu Sans Mono', monospace;
+    font-size: 11px;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+    letter-spacing: 0.2px;
+    text-align: right;
+    color: var(--text-secondary, #8a909b);
+    white-space: nowrap;
+}
+
+/* ---------- 右键上下文菜单 ----------
+ * 视觉令牌与 SKY 主题上下文菜单（sky-context-menu.css）保持一致：
+ * 白底、1px rgba(0,0,0,.15) 描边、--sky-radius 圆角、轻阴影、
+ * 12px 字号、6px 12px 内边距、hover 为 rgba(0,0,0,.08) 叠加。
+ * 菜单 Portal 到 body，故不会被窗口容器裁切。
+ */
+.menuLayer {
+    position: fixed;
+    z-index: 1000;
+    pointer-events: auto;
+}
+
+.contextMenu {
+    box-sizing: border-box;
+    min-width: 200px;
+    max-width: 280px;
+    padding: 4px;
+    margin: 0;
+
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: var(--sky-radius, 8px);
+    background: #ffffff;
+    box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.25);
+
+    font-size: 12px;
+    text-align: left;
+    color: var(--text-primary, #575e75);
+    user-select: none;
+    animation: projectFsMenuIn 0.12s ease-out;
+}
+
+@keyframes projectFsMenuIn {
+    from {
+        opacity: 0;
+        transform: translateY(-2px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.menuItem {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 6px 12px;
+    border-radius: var(--sky-radius, 6px);
+    white-space: nowrap;
+    color: inherit;
+    cursor: pointer;
+    transition: none;
+}
+
+.menuItem:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: inherit;
+}
+
+.menuItemDisabled {
+    opacity: 0.5;
+    color: inherit;
+    cursor: default;
+}
+
+.menuItemDisabled:hover {
+    background: transparent;
+    color: inherit;
+}
+
+.menuIcon {
+    flex-shrink: 0;
+    color: currentColor;
+}
+
+.menuLabel {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.menuSeparator {
+    height: 0;
+    padding: 0;
+    margin: 4px 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.emptyHint {
+    padding: 7px 0;
+    font-size: 11px;
+    color: var(--text-secondary, #9aa0ab);
+    font-style: italic;
+}

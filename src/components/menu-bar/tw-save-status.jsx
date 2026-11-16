@@ -12,7 +12,8 @@ const TWSaveStatus = ({
     alertsList,
     fileHandle,
     projectChanged,
-    showSaveFilePicker
+    showSaveFilePicker,
+    onRequestExport
 }) => (
     filterInlineAlerts(alertsList).length > 0 ? (
         <InlineMessages />
@@ -21,8 +22,10 @@ const TWSaveStatus = ({
             showSaveFilePicker={showSaveFilePicker}
         >
             {(_className, _downloadProjectCallback, {smartSave}) => (
+                // 已经绑定过本地文件时，点它就是覆盖保存那个文件；
+                // 还没有文件时等同「导出到电脑」，统一交给导出窗口选格式。
                 <div
-                    onClick={smartSave}
+                    onClick={fileHandle ? smartSave : onRequestExport}
                     className={styles.saveNow}
                 >
                     {fileHandle ? (
@@ -52,7 +55,8 @@ TWSaveStatus.propTypes = {
         name: PropTypes.string
     }),
     projectChanged: PropTypes.bool,
-    showSaveFilePicker: PropTypes.func
+    showSaveFilePicker: PropTypes.func,
+    onRequestExport: PropTypes.func
 };
 
 const mapStateToProps = state => ({

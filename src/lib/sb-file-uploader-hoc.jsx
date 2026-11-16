@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import {intlShape, injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import log from '../lib/log';
+import {loadAnyProject} from './project-formats';
 import sharedMessages from './shared-messages';
 import {setFileHandle, setProjectError} from '../reducers/tw';
 
@@ -89,7 +90,7 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                                         // what MIME type they are saved with, so we have to use the most broad MIME
                                         // type here. Otherwise some users just won't be able to load files for no
                                         // fault of their own.
-                                        '*/*': ['.sb', '.sb2', '.sb3']
+                                        '*/*': ['.sb', '.sb2', '.sb3', '.rj', '.star']
                                     }
                                 }
                             ]
@@ -112,7 +113,7 @@ const SBFileUploaderHOC = function (WrappedComponent) {
             } else {
                 // create <input> element and add it to DOM
                 this.inputElement = document.createElement('input');
-                this.inputElement.accept = '.sb,.sb2,.sb3';
+                this.inputElement.accept = '.sb,.sb2,.sb3,.rj,.star';
                 this.inputElement.style = 'display: none;';
                 this.inputElement.type = 'file';
                 this.inputElement.onchange = this.handleChange; // connects to step 3
@@ -184,9 +185,9 @@ const SBFileUploaderHOC = function (WrappedComponent) {
         // used in step 6 below
         getProjectTitleFromFilename (fileInputFilename) {
             if (!fileInputFilename) return '';
-            // only parse title with valid scratch project extensions
-            // (.sb, .sb2, and .sb3)
-            const matches = fileInputFilename.match(/^(.*)\.sb[23]?$/);
+            // only parse title with valid Project extensions
+            // (.sb, .sb2, .sb3, and the third-party formats .star / .rj)
+            const matches = fileInputFilename.match(/^(.*)\.(?:sb[23]?|star|rj)$/i);
             if (!matches) return '';
             return matches[1].substring(0, 100); // truncate project title to max 100 chars
         }
@@ -199,7 +200,9 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                 let loadingSuccess = false;
                 // tw: stop when loading new project
                 this.props.vm.quit();
-                this.props.vm.loadProject(this.fileReader.result)
+                // 统一加载入口：标准 sb3/sb2/sb 走原生链路，.star / .rj 由适配层
+                // 还原成标准 sb3 语义后再交给 vm.loadProject
+                loadAnyProject(this.props.vm, this.fileReader.result, {filename: filename})
                     .then(() => {
                         if (filename) {
                             const uploadedProjectTitle = this.getProjectTitleFromFilename(filename);
