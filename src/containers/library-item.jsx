@@ -20,6 +20,7 @@ class LibraryItem extends React.PureComponent {
         bindAll(this, [
             'handleBlur',
             'handleClick',
+            'handleEnable',
             'handleFavorite',
             'handleFocus',
             'handleKeyPress',
@@ -66,6 +67,37 @@ class LibraryItem extends React.PureComponent {
             }
         }
         e.preventDefault();
+    }
+    handleEnable (e) {
+        // SKY Editor：卡片底部「安装/删除」按钮——windowed 下这是唯一的安装/卸载入口
+        // （卡片整体点击不再安装）。stopPropagation 防止冒泡到卡片触发 handleClick；
+        // 关闭窗口与否由 library 的 handleSelect 统一决定（任何主题安装扩展都不关闭窗口）。
+        e.stopPropagation();
+        if (this.props.disabled) return;
+        // 已安装 → 再次点击执行删除（卸载扩展）
+        if (this.props.installed) {
+            // eslint-disable-next-line no-alert
+            if (!confirm('确定要删除这个扩展吗？已使用该扩展积木的项目将不再支持这些积木。')) {
+                return;
+            }
+            if (this.props.onUninstall) {
+                this.props.onUninstall(this.props.id);
+            }
+            return;
+        }
+        if (
+            !this.props.favorite &&
+            this.props.incompatibleWithScratch &&
+            // eslint-disable-next-line no-alert
+            !confirm(this.props.intl.formatMessage(messages.incompatible))
+        ) {
+            return;
+        }
+        if (this.props.href) {
+            window.open(this.props.href);
+        } else {
+            this.props.onSelect(this.props.id);
+        }
     }
     handleFavorite (e) {
         e.stopPropagation();
@@ -162,6 +194,8 @@ class LibraryItem extends React.PureComponent {
                 docsURI={this.props.docsURI}
                 samples={this.props.samples}
                 favorite={this.props.favorite}
+                installed={this.props.installed}
+                onEnable={this.handleEnable}
                 onFavorite={this.handleFavorite}
                 showPlayButton={this.props.showPlayButton}
                 onBlur={this.handleBlur}
@@ -172,6 +206,9 @@ class LibraryItem extends React.PureComponent {
                 onMouseLeave={this.handleMouseLeave}
                 onPlay={this.handlePlay}
                 onStop={this.handleStop}
+                sourceTag={this.props.sourceTag}
+                sourceColor={this.props.sourceColor}
+                windowed={this.props.windowed}
             />
         );
     }
@@ -217,11 +254,17 @@ LibraryItem.propTypes = {
         text: PropTypes.string
     })),
     favorite: PropTypes.bool,
+    // SKY Editor：是否已安装（卡片按钮显示「删除」并触发卸载）
+    installed: PropTypes.bool,
+    onUninstall: PropTypes.func,
     onFavorite: PropTypes.func,
     onMouseEnter: PropTypes.func.isRequired,
     onMouseLeave: PropTypes.func.isRequired,
     onSelect: PropTypes.func.isRequired,
-    showPlayButton: PropTypes.bool
+    showPlayButton: PropTypes.bool,
+    sourceTag: PropTypes.string,
+    sourceColor: PropTypes.string,
+    windowed: PropTypes.bool
 };
 
 export default injectIntl(LibraryItem);

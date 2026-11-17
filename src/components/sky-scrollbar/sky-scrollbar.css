@@ -1,0 +1,87 @@
+/*
+ * SKYEditor 统一滚动条 —— React 组件样式
+ * 与 sky-scrollbar-global.css 共用同一组 CSS 变量，保证原生皮肤与组件皮肤完全一致。
+ * 规范文档：docs/SKY-SCROLLBAR-SPEC.md
+ */
+
+/* 承载层：给滚动容器提供一个定位父级，滚动条绝对定位在它右侧 */
+.sky-scroll-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* 滚动区：自动填满承载层并开启滚动（原生滚动条由 data-sky-scrollbar="none" 隐藏）
+ * box-sizing 必须是 border-box：contentGap 通过 padding-right 实现，
+ * 否则 padding 会把滚动区撑宽，内容反而更靠近滚动条。 */
+.sky-scroll-view {
+    flex: 1 1 auto;
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+}
+
+.sky-scrollbar {
+    position: absolute;
+    top: var(--sky-scrollbar-inset-y, 0px);
+    bottom: var(--sky-scrollbar-inset-y, 0px);
+    right: var(--sky-scrollbar-inset-x, 6px);
+    width: var(--sky-scrollbar-track-width, 10px);
+    z-index: 3;
+    touch-action: none;
+    transition: opacity 160ms ease;
+}
+
+.sky-scrollbar-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sky-scrollbar-thumb {
+    position: absolute;
+    left: 50%;
+    width: var(--sky-scrollbar-thumb-width, 4px);
+    transform: translateX(-50%);
+    border-radius: var(--sky-scrollbar-radius, 999px);
+    background-color: var(--sky-scrollbar-thumb-color, rgba(127, 127, 127, 0.38));
+    transition: var(--sky-scrollbar-transition, width 180ms ease, background-color 180ms ease);
+    will-change: width;
+}
+
+/* 细线态命中区左右外扩 3px：视觉不变，但更容易按中 */
+.sky-scrollbar-thumb::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -3px;
+    right: -3px;
+}
+
+/* 鼠标碰到滚动条：仅加深颜色（与全局原生皮肤行为一致），按下态由下方规则接管 */
+.sky-scrollbar:hover .sky-scrollbar-thumb:not(.sky-scrollbar-thumb-active) {
+    background-color: var(--sky-scrollbar-thumb-color-hover, rgba(127, 127, 127, 0.58));
+}
+
+/* 按下 / 拖动：变粗 + 更深，松开后按 transition 复原 */
+.sky-scrollbar-thumb-active {
+    width: var(--sky-scrollbar-thumb-width-active, 8px);
+    background-color: var(--sky-scrollbar-thumb-color-active, rgba(127, 127, 127, 0.74));
+}
+
+/* 浅色容器：由组件 light 属性切换 */
+.sky-scrollbar-thumb-light {
+    background-color: var(--sky-scrollbar-thumb-color-light, rgba(0, 0, 0, 0.18));
+}
+
+.sky-scrollbar:hover .sky-scrollbar-thumb-light:not(.sky-scrollbar-thumb-active) {
+    background-color: var(--sky-scrollbar-thumb-color-light-hover, rgba(0, 0, 0, 0.32));
+}
+
+.sky-scrollbar-thumb-light.sky-scrollbar-thumb-active {
+    background-color: var(--sky-scrollbar-thumb-color-light-active, rgba(0, 0, 0, 0.42));
+}

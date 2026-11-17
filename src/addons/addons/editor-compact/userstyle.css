@@ -2,26 +2,6 @@
 [class*="gui_body-wrapper"] {
   height: calc(100% - 2rem);
 }
-.sa-body-editor,
-.sa-body-editor * {
-  scrollbar-width: thin;
-}
-.sa-body-editor::-webkit-scrollbar,
-.sa-body-editor ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-.sa-body-editor::-webkit-scrollbar {
-  background-color: var(--editorDarkMode-page, #e5f0ff);
-}
-.sa-body-editor::-webkit-scrollbar-thumb,
-.sa-body-editor ::-webkit-scrollbar-thumb {
-  background-color: var(--editorDarkMode-page-compactScrollbar, #bec7d4);
-  background-clip: padding-box;
-  border-radius: 4px;
-  border: 1px solid transparent;
-}
-
 /* Menu bar */
 [class*="menu-bar_file-group_"] [class*="menu-bar_hoverable_"] > img,
 [class*="menu-bar_divider"],
@@ -150,9 +130,6 @@
 [class*="sprite-selector_scroll-wrapper"] {
   height: calc(100% - 4.75rem);
 }
-[class*="sprite-selector_scroll-wrapper"]::-webkit-scrollbar-thumb {
-  background-color: var(--editorDarkMode-selector-compactScrollbar, #c1c8d1);
-}
 [class*="sprite-selector_items-wrapper"] {
   padding: 0.125rem;
 }
@@ -206,8 +183,8 @@ img[class*="sprite-selector-item_sprite-image"] {
   bottom: 2rem;
   padding-bottom: calc(2rem / 2);
   margin: 0 0 calc(2rem / -2) 0;
-  border-top-left-radius: 2rem;
-  border-top-right-radius: 2rem;
+  border-top-left-radius: var(--sky-radius);
+  border-top-right-radius: var(--sky-radius);
 }
 button[class*="action-menu_more-button"] {
   width: 2rem;
@@ -243,10 +220,6 @@ button[class*="action-menu_more-button"] {
 }
 .sa-stage-hidden [class*="stage-header_stage-size-row"] {
   height: 2rem;
-}
-
-.sa-body-editor [class*="monitor_list-body_"] > div::-webkit-scrollbar-thumb {
-  background-color: #bec7d4;
 }
 
 /* Toggle buttons */
@@ -309,9 +282,6 @@ body:not(.sa-columns-enabled) [class*="gui_tab-panel"] [class*="gui_extension-bu
 }
 [class*="selector_list-area"] {
   overflow-y: auto;
-}
-[class*="selector_list-area"]::-webkit-scrollbar-thumb {
-  background-color: var(--editorDarkMode-selector2-compactScrollbar, #b4bcc9);
 }
 [class*="selector_list-area"] > div:first-child {
   margin-top: 0.25rem;
@@ -471,9 +441,6 @@ body:not(.sa-columns-enabled) [class*="gui_tab-panel"] [class*="gui_extension-bu
 }
 [class*="library_library-scroll-grid"][class*="library_withFilterBar"] {
   height: calc(100% - 4rem);
-}
-[class*="library_library-scroll-grid"]::-webkit-scrollbar-thumb {
-  background-color: var(--editorDarkMode-selector-compactScrollbar, #c1c8d1);
 }
 
 [class*="prompt_body"],

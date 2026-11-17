@@ -40,6 +40,8 @@ import GUIComponent from '../components/gui/gui.jsx';
 import {setIsScratchDesktop} from '../lib/isScratchDesktop.js';
 import TWFullScreenResizerHOC from '../lib/tw-fullscreen-resizer-hoc.jsx';
 import TWThemeManagerHOC from './tw-theme-manager-hoc.jsx';
+import {initSkyDocScrollbar} from '../components/sky-scrollbar/sky-scrollbar-doc.js';
+import {initAdaptiveIcons} from '../lib/iconContrast.js';
 
 const {RequestMetadata, setMetadata, unsetMetadata} = storage.scratchFetch;
 
@@ -59,6 +61,15 @@ class GUI extends React.Component {
         this.props.onStorageInit(storage);
         this.props.onVmInit(this.props.vm);
         setProjectIdMetadata(this.props.projectId);
+        // 全局旁挂式自绘滚动条已停用：窗口内滚动条改由 win11-window 内联渲染
+        // （同帧跟随、层级随窗口），全局挂载器是拖尾与图层错乱的根因。
+        this.skyDisposeDocScrollbar = initSkyDocScrollbar();
+        // 单色图标明暗自适应：深底转白、浅底转黑（详见 lib/iconContrast.js）
+        this.skyDisposeIconContrast = initAdaptiveIcons();
+    }
+    componentWillUnmount () {
+        if (this.skyDisposeDocScrollbar) this.skyDisposeDocScrollbar();
+        if (this.skyDisposeIconContrast) this.skyDisposeIconContrast();
     }
     componentDidUpdate (prevProps) {
         if (this.props.projectId !== prevProps.projectId) {
