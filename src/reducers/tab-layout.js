@@ -1,4 +1,4 @@
-import {detectTabLayout} from '../lib/tabLayoutPersistance';
+import {detectTabLayout} from '../lib/sky-settings-store';
 
 const SET_TAB_LAYOUT = 'scratch-gui/tab-layout/SET_TAB_LAYOUT';
 

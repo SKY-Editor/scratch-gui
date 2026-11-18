@@ -1,4 +1,4 @@
-import {detectContextMenuStyle} from '../lib/contextMenuStylePersistance';
+import {detectContextMenuStyle} from '../lib/sky-settings-store';
 
 const SET_CONTEXT_MENU_STYLE = 'scratch-gui/context-menu-style/SET_CONTEXT_MENU_STYLE';
 

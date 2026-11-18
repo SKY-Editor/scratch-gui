@@ -1,16 +1,17 @@
 import downloadBlob from "../../libraries/common/cs/download-blob.js";
 import LogView from "./log-view.js";
+import { translateKey, registerLanguageRefresh } from "./module.js";
 
-export default async function createLogsTab({ debug, addon, console, msg }) {
+export default async function createLogsTab({ debug, addon, console }) {
   const vm = addon.tab.traps.vm;
 
     const tab = debug.createHeaderTab({
-    text: msg("tab-logs"),
+    text: translateKey("debugger/tab-logs"),
     icon: addon.self.getResource("/icons/logs.svg") /* rewritten by pull.js */,
   });
 
     const logView = new LogView();
-  logView.placeholderElement.textContent = msg("no-logs");
+  logView.placeholderElement.textContent = translateKey("debugger/no-logs");
 
   const getInputOfBlock = (targetId, blockId) => {
     const target = vm.runtime.getTargetById(targetId);
@@ -35,7 +36,7 @@ export default async function createLogsTab({ debug, addon, console, msg }) {
     const icon = document.createElement("div");
     icon.className = "sa-debugger-log-icon";
     if (row.type === "warn" || row.type === "error") {
-      icon.title = msg("icon-" + row.type);
+      icon.title = translateKey("debugger/icon-" + row.type);
     }
     root.appendChild(icon);
 
@@ -59,7 +60,7 @@ export default async function createLogsTab({ debug, addon, console, msg }) {
     text.className = "sa-debugger-log-text";
     if (row.text.length === 0) {
       text.classList.add("sa-debugger-log-text-empty");
-      text.textContent = msg("empty-string");
+      text.textContent = translateKey("debugger/empty-string");
     } else {
       text.textContent = row.text;
       text.title = row.text;
@@ -90,7 +91,7 @@ export default async function createLogsTab({ debug, addon, console, msg }) {
   const exportLogs = async (e) => {
     const defaultFormat = "{sprite}: {content} ({type})";
     const exportFormat = e.shiftKey
-      ? await addon.tab.prompt(msg("export"), msg("enter-format"), defaultFormat, { useEditorClasses: true })
+      ? await addon.tab.prompt(translateKey("debugger/export"), translateKey("debugger/enter-format"), defaultFormat, { useEditorClasses: true })
       : defaultFormat;
     if (!exportFormat) return;
     const file = logView.rows
@@ -100,7 +101,7 @@ export default async function createLogsTab({ debug, addon, console, msg }) {
             /\{(sprite|type|content)\}/g,
             (_, match) =>
               ({
-                sprite: targetInfo ? targetInfo.name : msg("unknown-sprite"),
+                sprite: targetInfo ? targetInfo.name : translateKey("debugger/unknown-sprite"),
                 type,
                 content: text,
               })[match]
@@ -117,11 +118,11 @@ export default async function createLogsTab({ debug, addon, console, msg }) {
 
   // 将"导出"与"清除"两个按钮合并为单个"更多"下拉菜单，避免标题栏按钮过多挤压布局。
     const moreButton = debug.createHeaderDropdown({
-    text: "更多",
+    text: translateKey("debugger/more"),
     icon: addon.self.getResource("/icons/more.svg") /* rewritten by pull.js */,
     items: [
-      { text: msg("export"), onClick: (e) => exportLogs(e) },
-      { text: msg("clear"), onClick: () => clearLogs() },
+      { text: translateKey("debugger/export"), onClick: (e) => exportLogs(e) },
+      { text: translateKey("debugger/clear"), onClick: () => clearLogs() },
     ],
   });
 
@@ -175,6 +176,23 @@ export default async function createLogsTab({ debug, addon, console, msg }) {
   const hide = () => {
     logView.hide();
   };
+
+  // 语言热同步：页签名 / 空状态占位 / "更多"下拉按钮与菜单项随编辑器语言重绘。
+  // 注意：此处的 tab 是 createHeaderTab 的返回值（{ element, image, text }），
+  // 文本节点是 tab.text —— 之前误写成 tab.tab.text，运行期抛 TypeError 被刷新器
+  // 捕获后中断，导致其后所有行（占位/更多菜单）都不再更新，表现为中文态仍英文。
+  registerLanguageRefresh(() => {
+    tab.text.textContent = translateKey("debugger/tab-logs");
+    logView.placeholderElement.textContent = translateKey("debugger/no-logs");
+    moreButton.text.textContent = translateKey("debugger/more");
+    if (moreButton.menuItemTexts && moreButton.menuItemTexts.length === 2) {
+      moreButton.menuItemTexts[0].textContent = translateKey("debugger/export");
+      moreButton.menuItemTexts[1].textContent = translateKey("debugger/clear");
+    }
+    // 已渲染日志行同步重绘（图标悬停提示 debugger/icon-*、空文本占位）；
+    // 日志正文是记录历史的字符串，保持原文不变。
+    logView.rerenderAll();
+  });
 
   return {
     tab,

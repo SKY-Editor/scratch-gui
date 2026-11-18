@@ -5,7 +5,7 @@ import {defineMessages, intlShape, injectIntl} from 'react-intl';
 import VM from 'scratch-vm';
 
 import AssetPanel from '../components/asset-panel/asset-panel.jsx';
-import ConfirmDialog from '../components/confirm-dialog/confirm-dialog.jsx';
+import ConfirmDialog from '../Theme/sky-editor/components/confirm-dialog/confirm-dialog.jsx';
 import soundIcon from '../components/asset-panel/icon--sound.svg';
 import soundIconRtl from '../components/asset-panel/icon--sound-rtl.svg';
 import addSoundFromLibraryIcon from '../components/asset-panel/icon--add-sound-lib.svg';

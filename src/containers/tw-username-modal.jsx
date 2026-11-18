@@ -4,7 +4,7 @@ import bindAll from 'lodash.bindall';
 import {connect} from 'react-redux';
 import {setUsername, setUsernameInvalid} from '../reducers/tw';
 import UsernameModalComponent from '../components/tw-username-modal/username-modal.jsx';
-import UsernameWindow from '../components/tw-username-modal/username-window.jsx';
+import UsernameWindow from '../Theme/sky-editor/components/username-window/username-window.jsx';
 import {closeUsernameModal} from '../reducers/modals';
 import {generateRandomUsername} from '../lib/tw-username';
 import isScratchDesktop from '../lib/isScratchDesktop';

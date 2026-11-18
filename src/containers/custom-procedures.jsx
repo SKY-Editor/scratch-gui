@@ -2,7 +2,7 @@ import bindAll from 'lodash.bindall';
 import defaultsDeep from 'lodash.defaultsdeep';
 import PropTypes from 'prop-types';
 import React from 'react';
-import CustomProceduresComponent from '../components/custom-procedures/custom-procedures.jsx';
+import CustomProceduresComponent from '../Theme/sky-editor/components/custom-procedures/custom-procedures.jsx';
 import LazyScratchBlocks from '../lib/tw-lazy-scratch-blocks';
 import {connect} from 'react-redux';
 

@@ -12,7 +12,7 @@ import {activateTab, COSTUMES_TAB_INDEX, BLOCKS_TAB_INDEX} from '../reducers/edi
 import {setReceivedBlocks} from '../reducers/hovered-target';
 import {showStandardAlert, closeAlertWithId} from '../reducers/alerts';
 import {setRestore} from '../reducers/restore-deletion';
-import ConfirmDialog from '../components/confirm-dialog/confirm-dialog.jsx';
+import ConfirmDialog from '../Theme/sky-editor/components/confirm-dialog/confirm-dialog.jsx';
 import DragConstants from '../lib/drag-constants';
 import TargetPaneComponent from '../components/target-pane/target-pane.jsx';
 import {getSpriteLibrary} from '../lib/libraries/tw-async-libraries';

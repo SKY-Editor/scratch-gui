@@ -1,0 +1,567 @@
+@import "../../css/colors.css";
+
+/* ── 顶部菜单里的录制按钮（保持在菜单栏内的原样式） ─────────────────────── */
+.menu-button {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    gap: 0.4rem;
+    height: 100%;
+    padding: 0 0.5rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+}
+
+.menu-button:focus-visible {
+    outline: none;
+}
+
+.menu-button-active {
+    background: color-mix(in srgb, $error-primary 20%, transparent);
+}
+
+/* ── 录制窗口内容（Win11Window 承载） ─────────────────────────────────────
+   设计口径：现代简约卡片式布局，浅/深色自动适配，统一 12px 圆角与
+   8px 间距节奏；所有交互元素带 160~220ms 过渡，内容进场依次淡入上移。
+   ─────────────────────────────────────────────────────────────────── */
+
+.page {
+    /* 局部设计令牌：只作用于本窗口，深浅色由 html[data-ui-dark] 切换 */
+    --mr-bg: #ffffff;
+    --mr-surface: #f7f8fa;
+    --mr-surface-strong: #eef1f6;
+    --mr-border: rgba(15, 23, 42, 0.08);
+    --mr-border-strong: rgba(15, 23, 42, 0.14);
+    --mr-text: #0f172a;
+    --mr-muted: #64748b;
+    --mr-accent: #4c97ff;
+    --mr-accent-soft: rgba(76, 151, 255, 0.12);
+    --mr-danger: #e5484d;
+    --mr-danger-soft: rgba(229, 72, 77, 0.1);
+    --mr-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    padding: 18px 20px 20px;
+    background: var(--mr-bg);
+    color: var(--mr-text);
+    font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+:global(html[data-ui-dark='true']) .page {
+    --mr-bg: #1b1d23;
+    --mr-surface: #23262e;
+    --mr-surface-strong: #2b2f39;
+    --mr-border: rgba(255, 255, 255, 0.09);
+    --mr-border-strong: rgba(255, 255, 255, 0.16);
+    --mr-text: #e8eaef;
+    --mr-muted: #9aa4b2;
+    --mr-accent: #6aa9ff;
+    --mr-accent-soft: rgba(106, 169, 255, 0.16);
+    --mr-danger: #ff6b6f;
+    --mr-danger-soft: rgba(255, 107, 111, 0.14);
+    --mr-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* 隐藏滚动条槽位带来的左右抖动，滚动条细化为 6px 圆角 */
+.page::-webkit-scrollbar {
+    width: 6px;
+}
+
+.page::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: var(--mr-border-strong);
+}
+
+.page::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* 进场动效：直接子级依次淡入上移 */
+.page > * {
+    animation: mr-fade-up 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.page > *:nth-child(2) {
+    animation-delay: 40ms;
+}
+
+.page > *:nth-child(3) {
+    animation-delay: 80ms;
+}
+
+.page > *:nth-child(4) {
+    animation-delay: 120ms;
+}
+
+.page > *:nth-child(5) {
+    animation-delay: 160ms;
+}
+
+/* ── 头部介绍卡 ─────────────────────────────────────────────────────── */
+.intro {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
+    border: 1px solid var(--mr-border);
+    border-radius: 12px;
+    background:
+        radial-gradient(120% 140% at 0% 0%, var(--mr-accent-soft) 0%, transparent 62%),
+        var(--mr-surface);
+}
+
+.intro > svg {
+    flex: 0 0 auto;
+    box-sizing: content-box;
+    width: 20px;
+    height: 20px;
+    padding: 8px;
+    border-radius: 10px;
+    background: var(--mr-accent-soft);
+    color: var(--mr-accent);
+}
+
+.intro > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.intro strong {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.intro span {
+    color: var(--mr-muted);
+    font-size: 12px;
+}
+
+/* ── 分组卡片 ───────────────────────────────────────────────────────── */
+.section {
+    padding: 14px;
+    margin-bottom: 12px;
+    border: 1px solid var(--mr-border);
+    border-radius: 12px;
+    background: var(--mr-surface);
+}
+
+.section h3 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 12px;
+    color: var(--mr-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.section h3 svg {
+    width: 14px;
+    height: 14px;
+    color: var(--mr-accent);
+}
+
+/* ── 数值输入 ───────────────────────────────────────────────────────── */
+.field-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.field-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.field-grid label > span {
+    color: var(--mr-muted);
+    font-size: 12px;
+}
+
+.input-with-unit {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-with-unit input {
+    box-sizing: border-box;
+    width: 100%;
+    height: 38px;
+    padding: 0 34px 0 12px;
+    border: 1px solid var(--mr-border-strong);
+    border-radius: 10px;
+    background: var(--mr-bg);
+    color: var(--mr-text);
+    font-family: inherit;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.input-with-unit input:hover {
+    border-color: var(--mr-accent);
+}
+
+.input-with-unit input:focus {
+    outline: none;
+    border-color: var(--mr-accent);
+    box-shadow: 0 0 0 3px var(--mr-accent-soft);
+}
+
+.input-with-unit > span {
+    position: absolute;
+    right: 12px;
+    color: var(--mr-muted);
+    font-size: 12px;
+    pointer-events: none;
+}
+
+/* ── 开关行 ─────────────────────────────────────────────────────────── */
+.toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    margin: 0 -4px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 160ms ease;
+}
+
+.toggle-row + .toggle-row {
+    margin-top: 2px;
+}
+
+.toggle-row:hover {
+    background: var(--mr-surface-strong);
+}
+
+.toggle-row svg {
+    flex: 0 0 auto;
+    width: 15px;
+    height: 15px;
+    color: var(--mr-accent);
+}
+
+.toggle-row span {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+}
+
+.toggle-row input[type='checkbox'] {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--mr-accent);
+    cursor: pointer;
+}
+
+.toggle-row.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.toggle-row.disabled:hover {
+    background: transparent;
+}
+
+/* ── 提示条 ─────────────────────────────────────────────────────────── */
+.notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    border: 1px solid color-mix(in srgb, var(--mr-danger) 28%, transparent);
+    border-radius: 10px;
+    background: var(--mr-danger-soft);
+    color: var(--mr-danger);
+    font-size: 12px;
+}
+
+.notice svg {
+    flex: 0 0 auto;
+    width: 15px;
+    height: 15px;
+    margin-top: 1px;
+}
+
+/* ── 底部操作区（吸底 + 毛玻璃） ─────────────────────────────────────── */
+.actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+    position: sticky;
+    bottom: -20px;
+    margin: 4px -20px -20px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--mr-border);
+    background: color-mix(in srgb, var(--mr-bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+}
+
+.actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 16px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 140ms ease, box-shadow 180ms ease, background-color 160ms ease,
+        border-color 160ms ease, opacity 160ms ease;
+}
+
+.actions button svg {
+    width: 16px;
+    height: 16px;
+}
+
+.actions button:active {
+    transform: translateY(1px) scale(0.995);
+}
+
+.secondary-button {
+    border-color: var(--mr-border-strong) !important;
+    background: transparent;
+    color: var(--mr-text);
+}
+
+.secondary-button:hover {
+    background: var(--mr-surface-strong);
+    border-color: var(--mr-border-strong);
+}
+
+.primary-button {
+    min-width: 116px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--mr-accent) 92%, #ffffff) 0%, var(--mr-accent) 100%);
+    color: #ffffff;
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--mr-accent) 40%, transparent);
+}
+
+.primary-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px color-mix(in srgb, var(--mr-accent) 46%, transparent);
+}
+
+.primary-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* ── 录制中状态页 ───────────────────────────────────────────────────── */
+.status-page {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 4px 0;
+    text-align: center;
+}
+
+.status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: content-box;
+    width: 44px;
+    height: 44px;
+    margin-bottom: 10px;
+    border-radius: 50%;
+    background: var(--mr-surface-strong);
+    color: var(--mr-muted);
+    transition: background-color 200ms ease, color 200ms ease;
+}
+
+.status-icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+/* 正在录制：红点脉冲 + 呼吸光圈 */
+.status-icon.recording {
+    position: relative;
+    background: var(--mr-danger-soft);
+    color: var(--mr-danger);
+    animation: mr-breath 2s ease-in-out infinite;
+}
+
+.status-icon.recording::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid var(--mr-danger);
+    animation: mr-ripple 1.8s ease-out infinite;
+}
+
+.status-page h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.status-page p {
+    max-width: 320px;
+    margin: 0;
+    color: var(--mr-muted);
+    font-size: 12px;
+}
+
+.progress {
+    position: relative;
+    width: 100%;
+    height: 6px;
+    margin: 16px 0 14px;
+    border-radius: 999px;
+    background: var(--mr-surface-strong);
+    overflow: hidden;
+}
+
+.progress > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(
+        90deg,
+        var(--mr-accent) 0%,
+        color-mix(in srgb, var(--mr-accent) 60%, #ffffff) 50%,
+        var(--mr-accent) 100%
+    );
+    background-size: 200% 100%;
+    transition: width 220ms ease;
+    animation: mr-sheen 1.8s linear infinite;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 14px;
+}
+
+.stats > div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--mr-border);
+    border-radius: 10px;
+    background: var(--mr-surface);
+    text-align: left;
+}
+
+.stats > div > svg {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    color: var(--mr-accent);
+}
+
+.stats > div > span {
+    color: var(--mr-muted);
+    font-size: 11px;
+}
+
+.stats > div > strong {
+    margin-left: auto;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+/* statusPage 内的提示条与操作区需要撑满宽度 */
+.status-page .notice {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+    text-align: left;
+}
+
+/* ── 动效关键帧 ─────────────────────────────────────────────────────── */
+@keyframes mr-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes mr-breath {
+    0%, 100% {
+        box-shadow: 0 0 0 0 var(--mr-danger-soft);
+    }
+    50% {
+        box-shadow: 0 0 0 6px transparent;
+    }
+}
+
+@keyframes mr-ripple {
+    0% {
+        opacity: 0.55;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.45);
+    }
+}
+
+@keyframes mr-sheen {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -40% 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page > *,
+    .status-icon.recording,
+    .status-icon.recording::after,
+    .progress > span {
+        animation: none;
+    }
+
+    .actions button,
+    .primary-button:hover:not(:disabled) {
+        transition: none;
+        transform: none;
+    }
+}

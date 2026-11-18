@@ -597,7 +597,7 @@ const Addon = ({
                 </div>
                 {extended && (
                     <div className={styles.addonId}>
-                        {`(${id})`}
+                        {id}
                     </div>
                 )}
             </label>

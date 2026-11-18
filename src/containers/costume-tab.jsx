@@ -6,7 +6,7 @@ import VM from 'scratch-vm';
 
 import AssetPanel from '../components/asset-panel/asset-panel.jsx';
 import PaintEditorWrapper from './paint-editor-wrapper.jsx';
-import ConfirmDialog from '../components/confirm-dialog/confirm-dialog.jsx';
+import ConfirmDialog from '../Theme/sky-editor/components/confirm-dialog/confirm-dialog.jsx';
 import {connect} from 'react-redux';
 import {handleFileUpload, costumeUpload} from '../lib/file-uploader.js';
 import errorBoundaryHOC from '../lib/error-boundary-hoc.jsx';

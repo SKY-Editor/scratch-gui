@@ -1,4 +1,4 @@
-import {detectMenuBarPosition} from '../lib/menuBarPositionPersistance';
+import {detectMenuBarPosition} from '../lib/sky-settings-store';
 
 const SET_MENU_BAR_POSITION = 'scratch-gui/menu-bar-position/SET_MENU_BAR_POSITION';
 

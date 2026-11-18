@@ -57,7 +57,11 @@ const Backpack = ({
     onMouseLeave,
     onMore
 }) => (
-    <div className={styles.backpackContainer}>
+    <div
+        className={classNames(styles.backpackContainer, {
+            [styles.backpackContainerExpanded]: expanded
+        })}
+    >
         <div
             className={styles.backpackHeader}
             onClick={onToggle}
@@ -81,12 +85,13 @@ const Backpack = ({
                 </ComingSoonTooltip>
             )}
         </div>
-        {expanded ? (
-            <div
-                className={classNames(styles.backpackList, {
-                    [styles.dragOver]: dragOver || blockDragOver
-                })}
-                ref={containerRef}
+        <div
+            className={classNames(styles.backpackList, {
+                [styles.dragOver]: dragOver || blockDragOver,
+                [styles.backpackListCollapsed]: !expanded
+            })}
+            aria-hidden={!expanded}
+            ref={containerRef}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
             >
@@ -153,8 +158,7 @@ const Backpack = ({
                         )
                     )
                 )}
-            </div>
-        ) : null}
+        </div>
     </div>
 );
 

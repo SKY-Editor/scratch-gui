@@ -2,6 +2,8 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import render from '../app-target';
 import styles from './credits.css';
+import '../../components/sky-scrollbar/sky-scrollbar-global.css';
+import {initSkyDocScrollbar} from '../../components/sky-scrollbar/sky-scrollbar-doc.js';
 
 import {APP_NAME} from '../../lib/brand';
 import {applyGuiColors} from '../../lib/themes/guiHelpers';
@@ -10,6 +12,7 @@ import UserData from './users';
 
 /* eslint-disable react/jsx-no-literals */
 
+initSkyDocScrollbar();
 applyGuiColors(detectTheme());
 document.documentElement.lang = 'en';
 

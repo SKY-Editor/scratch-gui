@@ -36,7 +36,9 @@ class LogView {
   constructor() {
     this.rows = [];
     this.canAutoScrollToEnd = true;
-    this.rowHeight = 20;
+    // 与 style.css 中 .sa-debugger-log 的 height（SKYEditor 主题 24px）保持一致，
+    // 虚拟化按此常量计算行位置，两者不同步会导致日志行错位/重叠。
+    this.rowHeight = 24;
 
     this.outerElement = document.createElement("div");
     this.outerElement.className = "sa-debugger-log-outer";
@@ -82,6 +84,20 @@ class LogView {
     this.scrollTop = 0;
     this.isScrolledToEnd = true;
     this.queueUpdateContent();
+  }
+
+  // 语言切换后需要让全部行按新语言重建文本时调用：丢弃已渲染元素与行缓存，
+  // 使下一次 updateContent（可见时立即执行，或用 show() 触发）重新 generateRow。
+  // 不可见时只清缓存不重建，避免在零高度下做无意义的渲染。
+  rerenderAll() {
+    for (const metadata of this.rowToMetadata.values()) {
+      metadata.elements.root.remove();
+    }
+    this.rowToMetadata.clear();
+    this.oldLength = -1;
+    if (this.visible) {
+      this.updateContent();
+    }
   }
 
   show() {

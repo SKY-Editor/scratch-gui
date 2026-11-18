@@ -1,0 +1,28 @@
+@import "../../../../css/colors.css";
+
+/* 窗口内滚动条：绝对定位于 .win11-window 内部，
+   随窗口一起被平移/裁剪，层叠上下文与窗口一致（不再全局置顶）。 */
+
+.window-scroll-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    /* 窗口内层级：高于正文内容层（.win11-body z-index:0）与八向缩放手柄（z-index:30），
+       否则最右侧 10px 的 thumb 会被缩放手柄热区吞掉、无法拖动。
+       注意这是「窗口内部」的相对层级，不参与窗口之间的比较。 */
+    z-index: 40;
+}
+
+/* ── 滚动条定位槽（每个可滚动框一个）───────────────────────────
+   槽只负责「框住滚动元素的位置与尺寸」，滚动条本体交给 SkyScrollbar，
+   与设置窗口左侧栏同一组件、同一套样式，因此不允许在这里再写 thumb 外观。 */
+.window-scroll-slot,
+.windowScrollSlot {
+    position: absolute;
+    pointer-events: none;
+}
+
+.window-scroll-slot > *,
+.windowScrollSlot > * {
+    pointer-events: auto;
+}
