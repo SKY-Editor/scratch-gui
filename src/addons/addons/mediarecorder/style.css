@@ -1,54 +1,376 @@
-.mediaRecorderPopup {
+/* ===========================================================================
+ * 项目录制（mediarecorder）
+ * 窗口外壳不再由本插件实现：sky-editor 主题下内容 DOM 交给统一宿主
+ * （components/gui/sky-addon-window-bridge.js → sky-addon-window-host.jsx →
+ * Win11Window），与设置窗口 / Packager / 调试器完全同一套窗口实现；其它主题
+ * 保持插件原版 createModal 弹窗。本文件只负责「顶栏录制按钮」与「内容区」，
+ * 不含任何窗口骨架（标题栏、缩放、阴影、关闭动效）样式。
+ * =========================================================================== */
+
+/* --------------------------- 顶栏录制按钮 --------------------------- */
+.sa-record {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sa-record-label {
+  line-height: 1.1;
+}
+
+.sa-record-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.sa-record-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+/* 空闲：圆点录制图标；录制中：方块停止图标 + 红色高亮 */
+.sa-record-icon .sa-record-icon-active {
+  display: none;
+}
+
+.sa-record.is-recording .sa-record-icon-idle {
+  display: none;
+}
+
+.sa-record.is-recording .sa-record-icon-active {
+  display: inline;
+}
+
+.sa-record.is-recording .sa-record-icon {
+  color: #ff4d4f;
+}
+
+/* ------------------------------ 内容区 ------------------------------ */
+.sa-recorder-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   box-sizing: border-box;
-  width: 700px;
-  max-height: min(800px, 80vh);
-  max-width: 85%;
-  margin-top: 12vh;
+  background: #ffffff;
+  color: #1f2430;
+  font-family: inherit;
+}
+
+/* 非 sky 主题（原版 createModal）下内容贴边，避免双份内边距 */
+.sa-recorder-modal-content {
+  padding: 0 !important;
+}
+
+.sa-recorder-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 18px;
   overflow-y: auto;
-  margin-left: auto;
-  margin-right: auto;
+  box-sizing: border-box;
 }
 
-.mediaRecorderPopupContent {
-  padding: 1.5rem 2.25rem;
+/* 滚动条不再自带外观：原先这里是 8px 宽 + rgba(0,0,0,.18) 的纯黑半透明滑块，
+   深色皮肤下几乎不可见，与全局 4px 细线也不一致。
+   按 SKY-SCROLLBAR-SPEC 交回 sky-scrollbar-global.css 统一渲染。 */
+
+.sa-recorder-desc {
+  margin: 0;
+  color: #6b7280;
+  font-size: 12.5px;
+  line-height: 1.6;
 }
 
-.mediaRecorderPopup p {
-  font-size: 1rem;
-  margin: 0.5rem auto;
+/* ------------------------------ 卡片分组 ------------------------------ */
+.sa-recorder-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  background: #f7f8fa;
+  animation: sa-recorder-rise 0.24s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
-.mediaRecorderPopup p :last-child {
-  margin-left: 1rem;
+.sa-recorder-card:nth-of-type(2) {
+  animation-delay: 0.04s;
 }
 
-.mediaRecorderPopup[dir="rtl"] p :last-child {
-  margin-left: 0;
-  margin-right: 1rem;
+@keyframes sa-recorder-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
 }
 
-p.mediaRecorderPopupOption {
+/* 数值行 */
+.sa-recorder-field {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 0;
+  cursor: text;
 }
 
-.mediaRecorderPopupOption input[type="checkbox"] {
-  height: 1.5rem;
+.sa-recorder-field + .sa-recorder-field {
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-#recordOptionSecondsInput,
-#recordOptionDelayInput {
-  width: 6rem;
+.sa-recorder-field-label {
+  color: #1f2430;
+  font-size: 13px;
 }
 
-.mediaRecorderPopupButtons {
-  margin-top: 1.5rem;
+.sa-recorder-number {
+  width: 96px;
+  height: 32px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 9px;
+  background: #ffffff;
+  color: #1f2430;
+  font-family: inherit;
+  font-size: 13px;
+  text-align: right;
+  outline: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 
-.mediaRecorderPopupButtons button {
-  margin-left: 0.5rem;
+.sa-recorder-number:hover {
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
-.mediaRecorderPopupButtons button:nth-of-type(1) {
-  color: black;
+.sa-recorder-number:focus {
+  border-color: var(--looks-primary, #3269c9);
+  box-shadow: 0 0 0 3px rgba(50, 105, 201, 0.16);
+}
+
+/* 开关行 */
+.sa-recorder-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  cursor: pointer;
+  transition: opacity 0.16s ease;
+}
+
+.sa-recorder-toggle + .sa-recorder-toggle {
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.sa-recorder-toggle.is-disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sa-recorder-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sa-recorder-toggle-title {
+  color: #1f2430;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.sa-recorder-toggle-desc {
+  color: #8b93a3;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.sa-recorder-toggle-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sa-recorder-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: #d3d8e2;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.sa-recorder-switch-dot {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  transition: transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.sa-recorder-toggle-input:checked ~ .sa-recorder-switch {
+  background: var(--looks-primary, #3269c9);
+}
+
+.sa-recorder-toggle-input:checked ~ .sa-recorder-switch .sa-recorder-switch-dot {
+  transform: translateX(18px);
+}
+
+.sa-recorder-toggle-input:focus-visible ~ .sa-recorder-switch {
+  box-shadow: 0 0 0 3px rgba(50, 105, 201, 0.24);
+}
+
+.sa-recorder-toggle-input:disabled ~ .sa-recorder-switch {
+  background: #e3e6ed;
+}
+
+/* ------------------------------ 底部操作 ------------------------------ */
+.sa-recorder-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 14px 18px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: #ffffff;
+}
+
+.sa-recorder-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.12s ease, color 0.16s ease;
+}
+
+.sa-recorder-btn:active {
+  transform: scale(0.97);
+}
+
+.sa-recorder-btn-secondary {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1f2430;
+}
+
+.sa-recorder-btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.09);
+}
+
+.sa-recorder-btn-primary {
+  background: var(--looks-primary, #3269c9);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(50, 105, 201, 0.28);
+}
+
+.sa-recorder-btn-primary:hover {
+  box-shadow: 0 4px 14px rgba(50, 105, 201, 0.34);
+  filter: brightness(1.04);
+}
+
+.sa-recorder-btn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.55);
+  animation: sa-recorder-pulse 1.8s ease-out infinite;
+}
+
+@keyframes sa-recorder-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.5); }
+  70%  { box-shadow: 0 0 0 6px rgba(255, 77, 79, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0); }
+}
+
+/* ------------------------------- 深色模式 ------------------------------- */
+html[data-ui-dark='true'] .sa-recorder-body {
+  background: #24262e;
+  color: #e8eaef;
+}
+
+html[data-ui-dark='true'] .sa-recorder-body .sa-recorder-footer {
+  background: #24262e;
+  border-top-color: rgba(255, 255, 255, 0.07);
+}
+
+html[data-ui-dark='true'] .sa-recorder-body .sa-recorder-card {
+  border-color: rgba(255, 255, 255, 0.07);
+  background: #2c2f39;
+}
+
+html[data-ui-dark='true'] .sa-recorder-body .sa-recorder-desc,
+html[data-ui-dark='true'] .sa-recorder-body .sa-recorder-toggle-desc {
+  color: #9aa1b1;
+}
+
+html[data-ui-dark='true'] .sa-recorder-body .sa-recorder-field-label,
+html[data-ui-dark='true'] .sa-recorder-body .sa-recorder-toggle-title {
+  color: #e8eaef;
+}
+
+html[data-ui-dark='true'] .sa-recorder-body .sa-recorder-field + .sa-recorder-field,
+html[data-ui-dark='true'] .sa-recorder-body .sa-recorder-toggle + .sa-recorder-toggle {
+  border-top-color: rgba(255, 255, 255, 0.07);
+}
+
+html[data-ui-dark='true'] .sa-recorder-body .sa-recorder-number {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: #1e2028;
+  color: #e8eaef;
+}
+
+html[data-ui-dark='true'] .sa-recorder-body .sa-recorder-switch {
+  background: #3d4250;
+}
+
+html[data-ui-dark='true'] .sa-recorder-body .sa-recorder-toggle-input:disabled ~ .sa-recorder-switch {
+  background: #343845;
+}
+
+html[data-ui-dark='true'] .sa-recorder-body .sa-recorder-btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e8eaef;
+}
+
+html[data-ui-dark='true'] .sa-recorder-body .sa-recorder-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sa-recorder-card,
+  .sa-recorder-btn-dot {
+    animation: none !important;
+  }
+
+  .sa-recorder-switch,
+  .sa-recorder-switch-dot,
+  .sa-recorder-btn {
+    transition: none !important;
+  }
 }

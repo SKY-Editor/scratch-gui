@@ -75,17 +75,37 @@ const detectTheme = () => {
 };
 
 /**
+ * 是否已存在用户显式选择的明暗（storage 中有 gui 记录）。
+ * 用于区分「用户选过明暗」与「从未选过、走主题默认值」两种状态；
+ * 旧版本仅在明暗与系统偏好不同时才写入 gui，导致深色选择无法被识别。
+ * @returns {boolean} 是否有显式明暗偏好
+ */
+const hasStoredGuiPreference = () => {
+    try {
+        const local = localStorage.getItem(STORAGE_KEY);
+        if (local === 'dark' || local === 'light') {
+            return true;
+        }
+        const parsed = JSON.parse(local);
+        return !!(parsed && typeof parsed.gui === 'string');
+    } catch (e) {
+        return false;
+    }
+};
+
+/**
  * @param {Theme} theme the theme
  */
 const persistTheme = theme => {
     const systemPreferences = systemPreferencesTheme();
-    const nonDefaultSettings = {};
+    const nonDefaultSettings = {
+        // 明暗是用户的显式选择，始终写入：若只在「与系统偏好不同」时写入，
+        // 深色（等于默认回退值）就永远不会落盘，刷新后会被主题默认明暗覆盖
+        gui: theme.gui
+    };
 
     if (theme.accent !== systemPreferences.accent) {
         nonDefaultSettings.accent = theme.accent;
-    }
-    if (theme.gui !== systemPreferences.gui) {
-        nonDefaultSettings.gui = theme.gui;
     }
     // custom blocks are managed by addon at runtime, don't save here
     if (theme.blocks !== systemPreferences.blocks && theme.blocks !== BLOCKS_CUSTOM) {
@@ -110,5 +130,6 @@ const persistTheme = theme => {
 export {
     onSystemPreferenceChange,
     detectTheme,
-    persistTheme
+    persistTheme,
+    hasStoredGuiPreference
 };

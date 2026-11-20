@@ -1,0 +1,159 @@
+@import "../../css/colors.css";
+
+/* SKY 浮层基座（Portal 弹层）样式
+   ---------------------------------------------------------------------------
+   浮层统一 Portal 到 body 下的 #sky-popover-root，由 JS 计算 fixed 坐标。
+   这里只负责：定位上下文、动画、以及"不参与任何滚动容器布局"的兜底。 */
+
+#sky-popover-root,
+:global(#sky-popover-root) {
+    /* 容器本身不占位、不产生滚动，只是 Portal 的挂载点 */
+    position: static;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    pointer-events: none;
+}
+
+/* 容器不吃事件，浮层自身恢复正常交互。
+   注意必须用 :global() 包住 id：CSS Modules 会连 id 选择器一起本地化，
+   写成裸 `#sky-popover-root > *` 会在编译后被哈希改名而永不命中，
+   导致浮层继承容器的 pointer-events:none 而点不动。 */
+:global(#sky-popover-root) > * {
+    pointer-events: auto;
+}
+
+
+.sky-popover {
+    position: fixed;
+    box-sizing: border-box;
+    /* 浮层自己滚动，绝不撑大宿主窗口 */
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    /* 浮层必须在窗口/顶栏之上，具体数值由 JS 注入 */
+    z-index: 2147482500;
+}
+
+/* 不滚动的浮层（如顶栏菜单，内含右侧展开的子菜单）放开溢出 */
+[data-sky-popover][data-sky-popover-scrollable='false'] {
+    overflow: visible;
+}
+
+/* ── 入场 / 退场动画 ───────────────────────────────────────────────
+   展开：自上而下轻微下移 + 淡入；
+   收起：反向播放。
+   动画只改变 transform/opacity，不触发重排，窗口拖动时依然跟手。 */
+.sky-popover,
+[data-sky-popover] {
+    transform-origin: top center;
+}
+
+[data-sky-popover][data-sky-popover-entrance='dropdown'] {
+    animation: skyPopoverDropdownIn 160ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+[data-sky-popover][data-sky-popover-entrance='menu'] {
+    animation: skyPopoverMenuIn 140ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+[data-sky-popover][data-sky-popover-entrance='fade'] {
+    animation: skyPopoverFadeIn 120ms ease both;
+}
+
+[data-sky-popover][data-sky-popover-leaving='true'] {
+    animation: skyPopoverOut 140ms ease both;
+    pointer-events: none;
+}
+
+@keyframes skyPopoverDropdownIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scaleY(0.94);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scaleY(1);
+    }
+}
+
+@keyframes skyPopoverMenuIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes skyPopoverFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes skyPopoverOut {
+    from {
+        opacity: 1;
+        transform: translateY(0) scaleY(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-4px) scaleY(0.96);
+    }
+}
+
+/* 尊重系统"减少动态效果"设置 */
+@media (prefers-reduced-motion: reduce) {
+    [data-sky-popover] {
+        animation: none !important;
+    }
+}
+
+
+/* ── 面板皮肤（variant='panel'） ────────────────────────────────────
+   下拉/菜单的底板外观属于「浮层通用能力」，不能再指望调用方把旧的
+   .xxx-dropdown-menu（position:absolute + left/right:8px）搬过来用 ——
+   那套类名一旦不传，浮层就只剩选项、底板透明（历史回归）。
+   顶栏菜单自带 .menu-popover 皮肤，用 variant='bare' 关掉这一层。 */
+[data-sky-popover][data-sky-popover-variant='panel'] {
+    background-color: $ui-primary;
+    color: $ui-modal-foreground;
+    border: 1px solid $ui-black-transparent;
+    border-radius: var(--sky-radius, 12px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    padding: 0;
+}
+
+
+/* ── 关闭「主题色窗口标签栏」后的跟随 ─────────────────────────────
+   浮层背景默认取使用方的主题色（浅蓝），白模式下随顶栏一起转白，
+   否则关掉主题色后下拉面板仍是蓝底。 */
+/* 顶栏自己的开关（data-sky-menubar-theme）关闭主题色且为浅色界面时，
+   顶栏弹出层同样跟随白底深字；暗色界面排除在外，交给暗色规则。
+   标签栏开关（data-sky-tab-bar-theme=white）同理必须排除暗色界面：
+   它原本没带 :not([data-ui-dark='true'])，在深色模式下会强行把下拉项改成
+   深色字，叠在深色面板上等于不可读（截图里的「02Engine/Bilup/…」看不清）。 */
+:global(html[data-sky-tab-bar-theme='white']:not([data-ui-dark='true'])) [data-sky-popover],
+:global(html[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) [data-sky-popover] {
+    background-color: $ui-white;
+    color: #1F2430;
+}
+:global(html[data-sky-tab-bar-theme='white']:not([data-ui-dark='true'])) [data-sky-popover] [class*='window-option'],
+:global(html[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) [data-sky-popover] [class*='window-option'] {
+    color: #1F2430;
+}
+:global(html[data-sky-tab-bar-theme='white']:not([data-ui-dark='true'])) [data-sky-popover] [class*='window-option']:hover,
+:global(html[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) [data-sky-popover] [class*='window-option']:hover {
+    background-color: $ui-black-transparent;
+}
+:global(html[data-sky-tab-bar-theme='white']:not([data-ui-dark='true'])) [data-sky-popover] [class*='window-option']:has([class*='selected']),
+:global(html[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) [data-sky-popover] [class*='window-option']:has([class*='selected']) {
+    background-color: rgba(87, 94, 117, 0.12);
+}
