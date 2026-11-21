@@ -8,6 +8,31 @@
     align-items: center;
 }
 
+/* 上游官方原值：TurboWarp 主题下整行直角色块高亮 */
 .save-now:hover {
     background-color: $ui-black-transparent;
+}
+
+/* ===== SKYEditor 皮肤专属（仅 html.sky-editor-theme 下生效） =====
+   小圆角方案：hover 底色搬到居中内缩 34px 的伪元素，与顶栏菜单项一致。 */
+:global(html.sky-editor-theme) .save-now {
+    /* 供 ::before 胶囊高亮定位 */
+    position: relative;
+}
+
+:global(html.sky-editor-theme) .save-now:hover {
+    background-color: transparent;
+}
+
+:global(html.sky-editor-theme) .save-now:hover::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 34px;
+    transform: translateY(-50%);
+    border-radius: var(--sky-radius-sm);
+    background-color: $ui-black-transparent;
+    pointer-events: none;
 }

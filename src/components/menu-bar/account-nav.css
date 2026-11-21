@@ -51,3 +51,7 @@
     line-height: .9375rem;
     font-weight: bold;
 }
+/* SKYEditor 皮肤：顶栏可能为白底，用户名跟随顶栏前景色 */
+:global(html.sky-editor-theme) .user-info {
+    color: inherit;
+}

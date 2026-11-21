@@ -39,3 +39,12 @@
     background-color: #24cd11;
     color: black;
 }
+/* SKYEditor 皮肤：按钮统一控件级圆角，绿底按钮文字用中性深灰 */
+:global(html.sky-editor-theme) .deny-button,
+:global(html.sky-editor-theme) .allow-button {
+    border-radius: var(--sky-radius-sm);
+}
+
+:global(html.sky-editor-theme) .allow-button {
+    color: #33363F;
+}

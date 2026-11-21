@@ -69,3 +69,20 @@
 .reset-link {
     cursor: pointer;
 }
+
+/* ======================================================================
+ * SKYEditor 作用域覆盖（TurboWarp 主题下完全不生效）
+ * 上面为上游官方原样：输入框 5px、按钮 0.25rem、取消按钮黑字。
+ * SKY 皮肤沿用其圆角体系与深灰字色，仅在 sky-editor 作用域下覆盖。
+ * ====================================================================== */
+:global([data-ui-theme='sky-editor']) .text-input {
+    border-radius: var(--sky-radius, 10px);
+}
+
+:global([data-ui-theme='sky-editor']) .button-row button {
+    border-radius: var(--sky-radius-sm, 6px);
+}
+
+:global([data-ui-theme='sky-editor']) .button-row button.cancel-button {
+    color: #33363F;
+}

@@ -3,6 +3,7 @@
 .menu {
     position: absolute;
     border: 1px solid $ui-black-transparent;
+    /* TurboWarp 官方原值；SKYEditor 皮肤的 12px 圆角见文件末尾作用域覆盖 */
     border-radius: 0 0 8px 8px;
     background-color: $menu-bar-background;
     padding: 0;
@@ -52,7 +53,6 @@
     min-width: 186px;
     height: max-content;
     overflow: hidden;
-    border-radius: 8px;
 }
 
 .submenu.right {
@@ -67,8 +67,6 @@
     position: relative;
     overflow-y: auto;
     overflow-x: hidden;
-    scrollbar-color: $menu-bar-foreground $menu-bar-background;
-    border-radius: 8px;
 }
 
 .menu-item.expanded > .submenu {
@@ -79,18 +77,23 @@
     display: block;
 }
 
-/* Fallback styling for webkit browsers that don't support scrollbar-color */
-
-.submenu > .menu::-webkit-scrollbar {
-    width: 12px;
+/* 禁用菜单项（携带 menu-bar 的 disabled 类，如“恢复”“云变量不可用”）：
+   保持置灰的同时 hover 不再高亮，与 SKYEditor 样式右键菜单行为一致。 */
+.menu-item:hover[class*="disabled"] {
+    background-color: transparent;
+    cursor: default;
 }
 
-.submenu > .menu::-webkit-scrollbar-track {
-    background: $menu-bar-background;
+/* ===== SKYEditor 皮肤专属圆角（仅 html.sky-editor-theme 下生效） =====
+   TurboWarp 主题保持上游官方 .menu / .submenu 原值，不被 SKY 圆角体系污染。 */
+:global(html.sky-editor-theme) .menu {
+    border-radius: var(--sky-radius, 12px);
 }
 
-.submenu > .menu::-webkit-scrollbar-thumb {
-    background-color: $menu-bar-foreground;
-    border-radius: 12px;
-    border: 3px solid $menu-bar-background;
+:global(html.sky-editor-theme) .submenu {
+    border-radius: var(--sky-radius);
+}
+
+:global(html.sky-editor-theme) .submenu > .menu {
+    border-radius: var(--sky-radius);
 }

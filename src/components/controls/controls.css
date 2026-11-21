@@ -1,3 +1,16 @@
 .controls-container {
     display: flex;
 }
+
+/* SKYEditor 皮肤：控制条垂直居中 */
+:global(html.sky-editor-theme) .controls-container {
+    align-items: center;
+}
+
+/* sky-editor 主题：绿旗 / 暂停 / 停止 三个交通灯圆点等距排布 */
+:global(html.sky-editor-theme) .controls-container {
+    gap: 8px;
+}
+
+/* 暂停按钮（pause 插件注入）的圆点与图标样式由
+   src/addons/addons/pause/style.css 的 sky-editor 段统一负责，此处不再覆盖。 */

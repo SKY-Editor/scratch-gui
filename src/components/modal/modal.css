@@ -168,3 +168,12 @@ $sides: 20rem;
 [dir="rtl"] .help-button {
     padding-left: 0;
 }
+
+/* ======================================================================
+ * SKYEditor 作用域覆盖（TurboWarp 主题下完全不生效）
+ * 官方口径为 4px 圆角（$space）；SKY 皮肤需要大圆角，故仅在
+ * html[data-ui-theme="sky-editor"] 下覆盖。
+ * ====================================================================== */
+:global([data-ui-theme='sky-editor']) .modal-content {
+    border-radius: var(--sky-radius, 10px);
+}

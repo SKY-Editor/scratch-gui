@@ -35,6 +35,10 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+/* SKYEditor 皮肤：插件设置页改为跟随编辑器主题的底色与字体 */
+:global(html.sky-editor-theme) .container {
     background-color: $page-background;
     color: $page-foreground;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -486,12 +490,12 @@
     transition-property: color, background, border;
 }
 .select-option:first-child {
-    border-top-left-radius: 4px;
-    border-bottom-left-radius: 4px;
+    border-top-left-radius: var(--sky-radius);
+    border-bottom-left-radius: var(--sky-radius);
 }
 .select-option:last-child {
-    border-top-right-radius: 4px;
-    border-bottom-right-radius: 4px;
+    border-top-right-radius: var(--sky-radius);
+    border-bottom-right-radius: var(--sky-radius);
     border-right-width: 1px;
 }
 .select-option.selected {
@@ -582,5 +586,842 @@
     }
     to {
         transform: translateY(0);
+    }
+}
+
+
+/* ============================================================================
+   SKY Editor · 插件窗口内部视觉层（现代化 / 简约）
+   ----------------------------------------------------------------------------
+   设计口径：
+   · 8pt 间距栅格；容器级圆角 12px（--ad-radius）、控件级圆角 10px（--ad-radius-sm）；
+   · 只用「发丝线 + 极浅面层 + 强调色点缀」三层，去掉重描边与重投影；
+   · 强调色统一取主题变量 --sky-accent / --sky-accent-soft，随主题自动换色；
+   · 明暗由 html[data-ui-dark='true'] 切换一套令牌，规则本身不写死色值；
+   · 本段为纯追加覆盖层，上方 TurboWarp 原始样式保持不动，便于回滚。
+   ============================================================================ */
+
+/* ==== 设计令牌：浅色（默认） ==== */
+.container {
+    --ad-line: rgba(0, 0, 0, 0.08);
+    --ad-line-strong: rgba(0, 0, 0, 0.16);
+    --ad-surface: rgba(0, 0, 0, 0.028);
+    --ad-surface-hover: rgba(0, 0, 0, 0.055);
+    --ad-card: #ffffff;
+    --ad-fg: rgba(0, 0, 0, 0.88);
+    --ad-fg-soft: rgba(0, 0, 0, 0.62);
+    --ad-fg-mute: rgba(0, 0, 0, 0.42);
+    --ad-accent: var(--sky-accent, #3a9bff);
+    --ad-accent-soft: var(--sky-accent-soft, rgba(58, 155, 255, 0.14));
+    --ad-radius: 12px;
+    --ad-radius-sm: 10px;
+    --ad-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --ad-shadow-2: 0 14px 32px rgba(0, 0, 0, 0.16);
+    --ad-ring: 0 0 0 3px var(--ad-accent-soft);
+}
+
+/* ==== 设计令牌：暗色 ==== */
+html[data-ui-dark='true'] .container {
+    color-scheme: dark;
+    --ad-line: rgba(255, 255, 255, 0.1);
+    --ad-line-strong: rgba(255, 255, 255, 0.2);
+    --ad-surface: rgba(255, 255, 255, 0.055);
+    --ad-surface-hover: rgba(255, 255, 255, 0.1);
+    --ad-card: rgba(255, 255, 255, 0.055);
+    --ad-fg: rgba(255, 255, 255, 0.95);
+    --ad-fg-soft: rgba(255, 255, 255, 0.78);
+    --ad-fg-mute: rgba(255, 255, 255, 0.52);
+    --ad-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --ad-shadow-2: 0 16px 36px rgba(0, 0, 0, 0.48);
+}
+
+/* ==== 基础容器 ==== */
+.container {
+    background-color: $ui-modal-background;
+    color: var(--ad-fg);
+    color-scheme: light;
+    font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+.container .section {
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+}
+
+/* ==== 顶部搜索栏 ==== */
+.container .header {
+    padding: 12px 18px;
+    background-color: $ui-modal-background;
+    box-shadow: none;
+    border-bottom: 1px solid var(--ad-line);
+}
+.container .header .section {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.container .search-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--ad-surface);
+    border: 1px solid var(--ad-line);
+    border-radius: 999px;
+    padding: 0 2px 0 12px;
+    height: 32px;
+    box-sizing: border-box;
+    transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.container .search-container:hover {
+    border-color: var(--ad-line-strong);
+}
+.container .search-container:focus-within {
+    background-color: var(--ad-card);
+    border-color: var(--ad-accent);
+    box-shadow: var(--ad-ring);
+}
+.container .search-input {
+    line-height: 1;
+    width: 260px;
+    max-width: 46vw;
+    height: 100%;
+    padding: 0;
+    margin: 0 6px 0 0;
+    border: none;
+    background-color: transparent;
+    color: inherit;
+    font-size: 13px;
+    font-family: inherit;
+}
+.container .search-input::placeholder {
+    color: var(--ad-fg-mute);
+}
+.container .search-button {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    margin: auto 0;
+    border-radius: 999px;
+    background-size: 14px 14px;
+    opacity: 0.55;
+    transition: opacity 0.16s ease, background-color 0.16s ease;
+}
+.container .search-button:hover {
+    opacity: 1;
+    background-color: var(--ad-surface-hover);
+}
+
+.container .feedback-button-outer {
+    height: 32px;
+    padding: 0 14px;
+    margin-left: 10px;
+    border: 1px solid var(--ad-line);
+    border-radius: 999px;
+    background-color: transparent;
+    color: var(--ad-fg-soft) !important;
+    font-size: 12px;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+.container .feedback-button-outer:hover {
+    background-color: var(--ad-surface);
+    border-color: var(--ad-line-strong);
+    color: var(--ad-fg) !important;
+}
+.container .feedback-button-outer:focus-within {
+    box-shadow: var(--ad-ring);
+    border-color: var(--ad-accent);
+}
+.container .feedback-button-inner {
+    font-weight: 600;
+}
+
+/* ==== 滚动区域 ====
+   本面板曾是"漏网容器"：原先写了 `scrollbar-width: thin` 并自绘了一套
+   ::-webkit-scrollbar 外观（10px + --ad-line-strong 滑块）。只要 scrollbar-width
+   不是 auto，Chromium 就会弃用全局 `::-webkit-scrollbar` 皮肤、回落到浏览器默认
+   滚动条 —— 深色下就是那条近纯黑、与卡片融为一体的条。
+   按 SKY-SCROLLBAR-SPEC「禁止组件自行编写 ::-webkit-scrollbar 外观」，
+   这里的外观光整段删除，滚动条交给 sky-scrollbar-global.css 统一渲染。 */
+.container .addons {
+    padding: 6px 18px 22px;
+}
+
+/* ==== 分组标题 ==== */
+.container .addon-group {
+    margin: 16px 0 4px;
+}
+.container .addon-group:first-child {
+    margin-top: 8px;
+}
+.container .addon-group-name {
+    padding: 4px 2px;
+    color: var(--ad-fg-mute);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.container .addon-group-name::after {
+    margin-left: 12px;
+    border-top: 1px solid var(--ad-line);
+}
+.container .addon-group-expand-container {
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.16s ease;
+}
+.container .addon-group-name:hover .addon-group-expand-container {
+    background-color: var(--ad-surface-hover);
+}
+.container .addon-group-expand-icon {
+    width: 12px;
+    height: 12px;
+    opacity: 0.65;
+    transition: transform 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.container .addon-group-expand-icon[data-open="true"] {
+    transform: scaleY(-1);
+}
+
+/* ==== 插件卡片 ==== */
+.container .addon {
+    margin: 6px 0;
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-radius);
+    background-color: var(--ad-card);
+    box-shadow: none;
+    font-size: 13px;
+    transition: border-color 0.16s ease, background-color 0.16s ease;
+}
+.container .addon:hover {
+    border-color: var(--ad-line-strong);
+}
+/* 已启用卡片：左侧强调色细条（inset 阴影，不影响布局） */
+.container .addon:has(.switch[state="on"]) {
+    box-shadow: inset 3px 0 0 var(--ad-accent);
+}
+.container .addon-dirty {
+    background-color: var(--ad-surface);
+}
+
+.container .addon-header {
+    height: 52px;
+    padding: 0 14px;
+    gap: 0;
+}
+
+.container .extension-image {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    opacity: 0.9;
+}
+
+.container .addon-title {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-weight: 600;
+    color: var(--ad-fg);
+}
+.container .addon-title-text {
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.container .addon-switch {
+    margin-right: 12px;
+}
+.container .addon-id {
+    margin-left: 10px;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background-color: var(--ad-surface);
+    color: var(--ad-fg-soft);
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.container .inline-description {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-left: 16px;
+    overflow: hidden;
+    opacity: 1;
+    color: var(--ad-fg-soft);
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: nowrap;
+    text-align: right;
+    text-overflow: ellipsis;
+}
+
+.container .addon-operations {
+    flex: 0 0 auto;
+    min-width: 26px;
+    padding-left: 10px;
+    justify-content: flex-end;
+}
+.container .reset-button {
+    width: 26px;
+    height: 26px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: background-color 0.16s ease;
+}
+.container .reset-button:hover {
+    background-color: var(--ad-surface-hover);
+}
+.container .reset-button:focus-within {
+    box-shadow: var(--ad-ring);
+}
+.container .reset-button-image {
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    opacity: 0.6;
+}
+.container .reset-button:hover .reset-button-image {
+    opacity: 1;
+}
+
+/* ==== 开关 ==== */
+.container .switch {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background-color: var(--ad-line-strong);
+    appearance: none;
+    -webkit-appearance: none;
+    box-sizing: border-box;
+    outline: none;
+    transition: background-color 0.2s ease;
+}
+.container .switch[state="on"] {
+    background-color: var(--ad-accent);
+}
+.container .switch::before {
+    width: 14px;
+    height: 14px;
+    top: 3px;
+    left: 3px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+    transition: left 0.2s cubic-bezier(0.32, 0.72, 0, 1), right 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.container .switch[state="on"]::before {
+    left: auto;
+    right: 3px;
+    background: #ffffff;
+}
+.container .switch:focus-within {
+    box-shadow: var(--ad-ring);
+}
+
+/* ==== 标签（淡底同色字，取消底边线） ==== */
+.container .tag {
+    margin-left: 8px;
+    padding: 1px 6px;
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    letter-spacing: 0.01em;
+}
+.container .tag-recommended {
+    color: #1a5fe0;
+    background-color: rgba(23, 94, 248, 0.12);
+}
+.container .tag-theme {
+    color: #23706a;
+    background-color: rgba(154, 212, 207, 0.34);
+}
+.container .tag-beta {
+    color: #c24a0e;
+    background-color: rgba(253, 102, 43, 0.14);
+}
+.container .tag-easter-egg {
+    color: #4a7a26;
+    background-color: rgba(185, 243, 141, 0.34);
+}
+.container .tag-new {
+    color: #8e12c9;
+    background-color: rgba(177, 23, 248, 0.12);
+}
+.container .tag-danger {
+    color: #d01f1f;
+    background-color: rgba(253, 43, 43, 0.12);
+}
+html[data-ui-dark='true'] .container .tag-recommended {
+    color: #8ab6ff;
+    background-color: rgba(23, 94, 248, 0.22);
+}
+html[data-ui-dark='true'] .container .tag-theme {
+    color: #9ad4cf;
+    background-color: rgba(154, 212, 207, 0.16);
+}
+html[data-ui-dark='true'] .container .tag-beta {
+    color: #ffa87a;
+    background-color: rgba(253, 102, 43, 0.2);
+}
+html[data-ui-dark='true'] .container .tag-easter-egg {
+    color: #b9f38d;
+    background-color: rgba(185, 243, 141, 0.16);
+}
+html[data-ui-dark='true'] .container .tag-new {
+    color: #e8b8ff;
+    background-color: rgba(177, 23, 248, 0.28);
+}
+html[data-ui-dark='true'] .container .tag-danger {
+    color: #ff9a9a;
+    background-color: rgba(253, 43, 43, 0.2);
+}
+
+/* ==== 卡片展开区 ==== */
+.container .addon-details {
+    padding: 0 14px 12px;
+    margin-bottom: 0;
+    animation: ad-details-in 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes ad-details-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+.container .description {
+    color: var(--ad-fg-soft);
+    font-size: 12.5px;
+    line-height: 1.65;
+}
+.container .credit-title {
+    padding-right: 6px;
+    color: var(--ad-fg-mute);
+    font-size: 12px;
+}
+.container .credit {
+    color: var(--ad-fg-soft);
+    font-size: 12px;
+    line-height: 1.7;
+}
+/* 链接统一走强调色，保证明暗两套底上都有足够对比度 */
+.container a[href],
+.container .credit a,
+.container .credit-container a {
+    color: var(--ad-accent);
+    text-decoration: none;
+}
+.container a[href]:hover,
+.container .credit a:hover,
+.container .credit-container a:hover {
+    text-decoration: underline;
+}
+.container a[href]:focus,
+.container a[href]:active {
+    box-shadow: var(--ad-ring);
+    border-radius: 4px;
+}
+
+/* ==== 提示条 ==== */
+.container .notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    overflow: visible;
+    line-height: 1.6;
+    margin: 10px 0;
+    white-space: normal;
+    word-break: break-word;
+    padding: 10px 12px;
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-radius-sm);
+    background-color: var(--ad-accent-soft);
+    color: var(--ad-fg);
+    font-size: 12.5px;
+    font-weight: 500;
+}
+.container .notice-icon {
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+}
+
+/* ==== 设置项控件 ==== */
+.container .setting-container {
+    margin-top: 12px;
+    gap: 4px;
+}
+.container .setting {
+    margin: 6px 20px 6px 0;
+    min-height: 32px;
+    row-gap: 6px;
+    column-gap: 10px;
+}
+.container .notice > * {
+    min-width: 0;
+}
+.container .setting-label {
+    margin-right: 8px;
+    color: var(--ad-fg-soft);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0.01em;
+    opacity: 1;
+}
+
+.container .setting input[type="text"],
+.container .setting input[type="number"] {
+    width: 78px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-radius-sm);
+    background-color: var(--ad-surface);
+    color: inherit;
+    font-family: inherit;
+    font-size: 13px;
+    transition: border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+}
+.container .setting input[type="text"]:hover,
+.container .setting input[type="number"]:hover {
+    border-color: var(--ad-line-strong);
+}
+.container .setting input[type="text"]:focus,
+.container .setting input[type="number"]:focus,
+.container .setting input[type="text"]:active,
+.container .setting input[type="number"]:active {
+    border-color: var(--ad-accent);
+    background-color: var(--ad-card);
+    box-shadow: var(--ad-ring);
+}
+.container .setting input[type="checkbox"] {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    border: 1px solid var(--ad-line-strong);
+    border-radius: 6px;
+    background-color: var(--ad-surface);
+    appearance: none;
+    -webkit-appearance: none;
+    accent-color: var(--ad-accent);
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+.container .setting input[type="checkbox"]:hover {
+    border-color: var(--ad-fg-mute);
+}
+.container .setting input[type="checkbox"]:checked {
+    border-color: var(--ad-accent);
+    background-color: var(--ad-accent);
+}
+.container .setting input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 5px;
+    height: 9px;
+    border: solid #ffffff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+.container .setting input[type="checkbox"]:focus-visible {
+    box-shadow: var(--ad-ring);
+    border-color: var(--ad-accent);
+}
+.container .setting input[type="color"] {
+    width: 64px;
+    height: 30px;
+    padding: 2px;
+    border: 1px solid var(--ad-line);
+    border-radius: 8px;
+    background-color: var(--ad-surface);
+    cursor: pointer;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.container .setting input[type="color"]:hover {
+    border-color: var(--ad-line-strong);
+}
+.container .setting input[type="color"]:focus {
+    border-color: var(--ad-accent);
+    box-shadow: var(--ad-ring);
+    outline: none;
+}
+.container .setting input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+.container .setting input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 6px;
+}
+
+.container .reset-setting-button {
+    height: 32px;
+    margin-left: 6px;
+    padding: 0 8px;
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-radius-sm);
+    background-color: transparent;
+    color: var(--ad-fg-soft);
+    transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+.container .reset-setting-button:hover {
+    background-color: var(--ad-surface-hover);
+    border-color: var(--ad-line-strong);
+}
+.container .reset-setting-button:focus-within {
+    box-shadow: var(--ad-ring);
+    border-color: var(--ad-accent);
+}
+.container .reset-setting-button img {
+    width: 14px;
+    height: 14px;
+    opacity: 0.6;
+}
+.container .reset-setting-button[data-for-text-input="true"] {
+    height: 32px;
+    border-radius: var(--ad-radius-sm);
+}
+
+/* ==== 分段选择器 ==== */
+.container .select {
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-radius-sm);
+    overflow: hidden;
+    background-color: var(--ad-surface);
+}
+.container .select-option {
+    padding: 6px 14px;
+    border: none;
+    background-color: transparent;
+    color: var(--ad-fg-soft);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 18px;
+    transition: background-color 0.16s ease, color 0.16s ease;
+}
+.container .select-option:first-child,
+.container .select-option:last-child {
+    border-radius: 0;
+}
+.container .select-option:hover {
+    background-color: var(--ad-surface-hover);
+    color: var(--ad-fg);
+}
+.container .select-option.selected {
+    background-color: var(--ad-accent-soft);
+    color: var(--ad-accent);
+    font-weight: 600;
+}
+.container .select-option:focus-within {
+    box-shadow: none;
+}
+
+/* ==== 通用按钮 ==== */
+.container .button {
+    height: 32px;
+    padding: 0 14px;
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-radius-sm);
+    background: transparent;
+    color: var(--ad-fg-soft);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+.container .button:hover {
+    background-color: var(--ad-surface-hover);
+    border-color: var(--ad-line-strong);
+    color: var(--ad-fg);
+}
+.container .button:active,
+.container .button:focus-within {
+    box-shadow: var(--ad-ring);
+    border-color: var(--ad-accent);
+}
+.container .presets {
+    margin-right: 0;
+}
+.container .preset-button {
+    margin-right: 8px;
+}
+
+/* ==== 底部操作区 ==== */
+.container .footer {
+    padding: 12px 18px 14px;
+    border-top: 1px solid var(--ad-line);
+    opacity: 1;
+}
+.container .footer-buttons {
+    margin-bottom: 10px;
+    gap: 8px;
+}
+.container .footer-buttons > .button {
+    margin-right: 0;
+}
+.container .version {
+    margin-bottom: 0;
+    color: var(--ad-fg-soft);
+    font-size: 11.5px;
+    letter-spacing: 0.01em;
+}
+
+/* ==== 空态与不支持列表 ==== */
+.container .no-results {
+    padding: 48px 0;
+    color: var(--ad-fg-mute);
+    font-size: 13px;
+    font-style: normal;
+}
+.container .unsupported-container {
+    margin-bottom: 12px;
+    color: var(--ad-fg-mute);
+    font-size: 12px;
+}
+.container .unsupported-text {
+    color: var(--ad-fg-mute);
+    font-size: 12px;
+}
+.container .unsupported-addon {
+    padding-left: 8px;
+    color: var(--ad-fg-soft);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+/* ==== 未保存改动浮条（底部居中胶囊） ==== */
+.container .dirty-outer {
+    top: auto;
+    bottom: 0;
+    width: 100%;
+    margin-left: 0;
+    padding-bottom: 12px;
+    animation: dirty-appear 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.container .dirty-inner {
+    padding: 7px 9px 7px 16px;
+    border-radius: 999px;
+    background-color: #1d1f24;
+    color: rgba(255, 255, 255, 0.92);
+    box-shadow: var(--ad-shadow-2);
+    font-size: 12.5px;
+    font-weight: 500;
+    text-align: left;
+}
+.container .dirty-inner .button,
+.container .dirty-button {
+    height: 26px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 999px;
+    background-color: var(--ad-accent);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+}
+.container .dirty-inner .button:hover,
+.container .dirty-button:hover {
+    background-color: var(--ad-accent);
+    color: #ffffff;
+    filter: brightness(1.08);
+}
+.container .dirty-button {
+    margin-left: 10px;
+}
+
+/* ==========================================================================
+ * 动效（设置窗口）
+ * ------------------------------------------------------------
+ * 只做"看得见但不啰嗦"的三件事：
+ *   1. 插件卡片进入时淡入 + 轻上移（搜索过滤后重新排列也有同样反馈）；
+ *   2. 卡片悬停轻微抬升、阴影加深，替代纯色块无反馈；
+ *   3. 分组折叠箭头旋转、按钮按下微缩，补齐交互手感。
+ * 全部走 background/transform/opacity，不触发布局重排；系统开启"减少动态效果"
+ * 时统一关闭。
+ * ========================================================================== */
+
+@keyframes ad-card-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.container .addon {
+    animation: ad-card-in 0.26s cubic-bezier(0.32, 0.72, 0, 1) both;
+    transition: transform 0.18s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.18s ease,
+        border-color 0.18s ease;
+}
+
+/* 悬停：抬起 1px + 阴影加深（拖动列表时不改变尺寸，不产生抖动） */
+.container .addon:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* 分组折叠箭头：翻转/回正都走过渡，不再瞬移 */
+.container .addon-group-expand-icon {
+    transition: transform 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* 按钮按下：轻微回缩，给点击一个"咬合"反馈 */
+.container .button {
+    transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease,
+        transform 0.1s ease;
+}
+
+.container .button:active {
+    transform: scale(0.97);
+}
+
+/* 搜索框聚焦时描边柔和过渡（原先是瞬间切换） */
+.container .search-input {
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .container .addon,
+    .container .button,
+    .container .addon-group-expand-icon,
+    .container .search-input {
+        animation: none;
+        transition: none;
+    }
+
+    .container .addon:hover,
+    .container .button:active {
+        transform: none;
     }
 }

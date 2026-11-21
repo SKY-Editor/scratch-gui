@@ -1,0 +1,183 @@
+/*
+ * SKYEditor 统一滚动条 —— 全局皮肤（原生滚动条版）
+ * ------------------------------------------------------------
+ * 规范文档：docs/SKY-SCROLLBAR-SPEC.md
+ *
+ * 说明：
+ *   1. 本文件是全项目滚动条的唯一视觉来源，任何容器只要可滚动就自动继承，无需改 JSX；
+ *   2. 需要「按下变粗 + 过渡动画」的容器，改用 sky-scrollbar.jsx 的
+ *      <SkyScrollContainer> / <SkyScrollbar>，与本文件共用同一组 CSS 变量；
+ *   3. 任何组件/页面都禁止再自行编写 ::-webkit-scrollbar 外观样式，
+ *      如确有旧规则请删除；需要隐藏滚动条时用 data-sky-scrollbar="none"。
+ *
+ * 注：本项目所有 .css 都经过 css-loader（modules: true），
+ *     因此跨组件复用的选择器一律使用「元素 / 通配 / 属性选择器」，不用类名，
+ *     以免被哈希化后外部无法命中。
+ */html[data-ui-theme='sky-editor']{
+    /* 尺寸 */
+    --sky-scrollbar-track-width: 10px;
+    --sky-scrollbar-thumb-width: 4px;
+    --sky-scrollbar-thumb-width-active: 8px;
+    /* thumb 与轨道左右边缘的留白（透明 border 实现，保证不贴边） */
+    --sky-scrollbar-gap: 3px;
+    /* thumb 与轨道上下边缘的留白（同样用透明 border 裁切，滚动条首尾不顶边） */
+    --sky-scrollbar-gap-y: 6px;
+    /* thumb 最短长度：与自绘组件 MIN_THUMB_HEIGHT / MIN_THUMB_WIDTH 保持一致（32px） */
+    --sky-scrollbar-thumb-min: 32px;
+    --sky-scrollbar-radius: 999px;
+    /* 颜色：中性灰，深浅底都可见 */
+    /* 轨道底色：浅底只给一层极淡的黑（几乎不可见，仅界定滚动区域） */
+    --sky-scrollbar-track-color: rgba(0, 0, 0, 0.028);
+    --sky-scrollbar-thumb-color: rgba(127, 127, 127, 0.38);
+    --sky-scrollbar-thumb-color-hover: rgba(127, 127, 127, 0.58);
+    --sky-scrollbar-thumb-color-active: rgba(127, 127, 127, 0.74);
+    /* 浅色容器专用色（白底用黑半透明，比中性灰更干净） */
+    --sky-scrollbar-thumb-color-light: rgba(0, 0, 0, 0.18);
+    --sky-scrollbar-thumb-color-light-hover: rgba(0, 0, 0, 0.32);
+    --sky-scrollbar-thumb-color-light-active: rgba(0, 0, 0, 0.42);
+    /* 组件态：滚动条与容器右边缘的默认间距 */
+    --sky-scrollbar-inset-x: 6px;
+    --sky-scrollbar-inset-y: 6px;
+    /* 过渡 */
+    --sky-scrollbar-transition: width 180ms ease, background-color 180ms ease;
+}/* --------------------------------------------------------------------------
+ * 深色底专用配色（data-ui-dark 由 applyUiThemeChrome 写在 <html> 上）
+ * 原有中性灰 rgba(127,127,127,.38) 叠在深色卡片上合成后趋近纯黑，
+ * 滑块几乎与背景融为一体、辨识度差。这里整体上移一档：
+ *   滑块 → 中性灰白（白 34% 叠深底 ≈ #626262，与 #111111 底拉开明度差，
+ *          悬停/拖动分别加深到 46% / 58%，保留"越操作越明显"的分层）
+ *   轨道 → 5% 白，仅用于界定滚动区域，不抢视觉
+ * 浅色底继续沿用 :root 的默认值，浅色容器仍走 [data-sky-scrollbar='light']。
+ * -------------------------------------------------------------------------- */html[data-ui-theme='sky-editor'][data-ui-dark='true']{
+    --sky-scrollbar-track-color: rgba(255, 255, 255, 0.05);
+    --sky-scrollbar-thumb-color: rgba(255, 255, 255, 0.34);
+    --sky-scrollbar-thumb-color-hover: rgba(255, 255, 255, 0.46);
+    --sky-scrollbar-thumb-color-active: rgba(255, 255, 255, 0.58);
+}/* ==========================================================================
+ * L0 原生层：统一静态外观（规范 §2.3.1 的 L0 承诺）
+ * ------------------------------------------------------------
+ * 所有原生滚动条统一为「4px 半透明细线 + 悬停只加深」，与自绘条共享同一组
+ * CSS 变量，静态视觉 100% 一致：透明 border 裁切出 thumb 上下 6px、左右 3px
+ * 留白（background-clip: padding-box），轨道只垫一层极淡底色用于界定滚动区域
+ * （浅底 rgba(0,0,0,.028) / 深底 rgba(255,255,255,.05)，见上方变量）。
+ * 原生层做不到的（按下变粗、180ms 过渡、距边 6px、零占位）是规范 §2.3.1
+ * 明示的 L0 能力边界 —— 需要这几项的容器请升级 SkyScrollContainer / SkyScrollbar。
+ * 被自绘条接管的容器由组件自动打 data-sky-sb-managed 标记，原生 thumb 退回
+ * 透明（仍保留 10px 占位，零布局位移），绝不会与自绘条同框。
+ * ========================================================================== */html[data-ui-theme='sky-editor'] ::-webkit-scrollbar{
+    width: var(--sky-scrollbar-track-width);
+    height: var(--sky-scrollbar-track-width);
+    /* 轨道底色取变量：浅底极淡黑、深底 5% 白，只用于界定滚动区域，
+       滑块（4px 半透明＋左右 3px 透明留白）始终浮在这层底色之上 */
+    background: var(--sky-scrollbar-track-color);
+}html[data-ui-theme='sky-editor'] ::-webkit-scrollbar-track,
+html[data-ui-theme='sky-editor'] ::-webkit-scrollbar-track-piece,
+html[data-ui-theme='sky-editor'] ::-webkit-scrollbar-corner{
+    background: transparent;
+}html[data-ui-theme='sky-editor'] ::-webkit-scrollbar-thumb{
+    background-color: var(--sky-scrollbar-thumb-color) !important;
+    border-style: solid !important;
+    border-color: transparent !important;
+    border-width: var(--sky-scrollbar-gap-y) var(--sky-scrollbar-gap) !important;
+    background-clip: padding-box !important;
+    border-radius: var(--sky-scrollbar-radius) !important;
+    min-height: var(--sky-scrollbar-thumb-min);
+}html[data-ui-theme='sky-editor'] ::-webkit-scrollbar-thumb:hover{
+    background-color: var(--sky-scrollbar-thumb-color-hover) !important;
+}html[data-ui-theme='sky-editor'] ::-webkit-scrollbar-thumb:active{
+    background-color: var(--sky-scrollbar-thumb-color-active) !important;
+}/* 横向条：留白方向反转（左右各 6px、上下各 3px）；min-height 归零避免撑破 10px 轨道 */html[data-ui-theme='sky-editor'] ::-webkit-scrollbar-thumb:horizontal{
+    border-width: var(--sky-scrollbar-gap) var(--sky-scrollbar-gap-y) !important;
+    min-height: 0;
+    min-width: var(--sky-scrollbar-thumb-min);
+}/* 浅色容器：容器加 data-sky-scrollbar="light"（规范 §3.1 公开属性），thumb 转黑色半透明 */html[data-ui-theme='sky-editor'] [data-sky-scrollbar='light']::-webkit-scrollbar-thumb{
+    background-color: var(--sky-scrollbar-thumb-color-light) !important;
+}html[data-ui-theme='sky-editor'] [data-sky-scrollbar='light']::-webkit-scrollbar-thumb:hover{
+    background-color: var(--sky-scrollbar-thumb-color-light-hover) !important;
+}html[data-ui-theme='sky-editor'] [data-sky-scrollbar='light']::-webkit-scrollbar-thumb:active{
+    background-color: var(--sky-scrollbar-thumb-color-light-active) !important;
+}/* ---- 自绘接管的容器（data-sky-sb-managed，SkyScrollbar.attach 打标 / detach 摘除）----
+ * 原生 thumb 退回透明但保留 10px 占位 → 布局零位移；视觉完全交给组件自绘条，
+ * 不会出现「原生 thumb + 自绘 thumb」双条同框；卸载后摘标即恢复 L0 外观。 */html[data-ui-theme='sky-editor'] [data-sky-sb-managed]::-webkit-scrollbar-thumb{
+    background-color: transparent !important;
+    border: 0 !important;
+}/* 浅色调（半透明黑）由自绘条的 light 属性（组件 className）提供；
+ * 原生条统一用 :root 中性灰即可（浅底上同样可见）；
+ * 自绘接管的容器由 data-sky-sb-managed 退回透明，不存在「原生+自绘叠成两条」。 *//* 需要彻底隐藏滚动条（舞台内部、画布类容器）：容器加 data-sky-scrollbar="none" */html[data-ui-theme='sky-editor'] [data-sky-scrollbar='none']{
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}html[data-ui-theme='sky-editor'] [data-sky-scrollbar='none']::-webkit-scrollbar{
+    width: 0;
+    height: 0;
+    display: none;
+}/* ==========================================================================
+   自绘滚动条（[data-sky-sb] 家族）
+   ------------------------------------------------------------
+   视觉与交互的唯一来源，三条链路共用本文件的 CSS 变量与轨道/thumb 样式：
+     - 窗口内：<WindowScrollbar>（win11-window），轨道挂窗口里、随窗口同层叠；
+     - 整页：sky-scrollbar-doc.js（gui.jsx 启动）接管文档级滚动条；
+     - 组件态：SkyScrollContainer / SkyScrollbar（sky-scrollbar.jsx）。
+   原生滚动条一律保留 10px 占位但 thumb 隐形 → 容器布局、内容宽度、折行
+   全部保持原样，零跳动，视觉交给上面三条自绘链路。
+
+   ⚠ 全部用属性选择器、不用类名：本文件经 gui.css @import 进入打包链路后
+   同样被 css-loader 的 modules 处理，类名会被哈希成 gui_xxx_xxx，
+   而自绘条是纯 JS 建 DOM，拿不到哈希名。
+   ========================================================================== *//* ---- 轨道容器（fixed 悬浮层） ---- */html[data-ui-theme='sky-editor'] [data-sky-sb='track']{
+    position: fixed;
+    width: 10px;
+    /* 与窗口同级：文档级滚动条属于页面层，必须落在窗口之下（窗口起始 510），
+       否则窗口打开后，页面滚动条会浮在所有窗口之上。 */
+    z-index: 400;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 160ms ease;
+}html[data-ui-theme='sky-editor'] [data-sky-sb='track'][data-visible='1']{
+    opacity: 1;
+}/* ---- thumb ---- */html[data-ui-theme='sky-editor'] [data-sky-sb='thumb']{
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    border-radius: 999px;
+    background: var(--sky-scrollbar-thumb-color);
+    transition: width 180ms ease, background-color 180ms ease;
+    pointer-events: auto;
+    will-change: width;
+}/* 视觉 4px，横向命中区左右各外扩 3px（共 10px），与原生条手感一致 */html[data-ui-theme='sky-editor'] [data-sky-sb='thumb']::before{
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -3px;
+    right: -3px;
+}/* 悬停只加深不变粗 */html[data-ui-theme='sky-editor'] [data-sky-sb='track']:hover [data-sky-sb='thumb']:not([data-active='1']){
+    background: var(--sky-scrollbar-thumb-color-hover);
+}/* 按下：变粗到 8px + 更深（宽度过渡 180ms 由上面 transition 驱动） */html[data-ui-theme='sky-editor'] [data-sky-sb='thumb'][data-active='1']{
+    width: 8px;
+    background: var(--sky-scrollbar-thumb-color-active);
+}/* 浅色底（tone=light 时才用；深色底不加 tone，走上面的中性灰白变量） */html[data-ui-theme='sky-editor'] [data-sky-sb='thumb'][data-tone='light']{
+    background: var(--sky-scrollbar-thumb-color-light);
+}html[data-ui-theme='sky-editor'] [data-sky-sb='track']:hover [data-sky-sb='thumb'][data-tone='light']:not([data-active='1']){
+    background: var(--sky-scrollbar-thumb-color-light-hover);
+}html[data-ui-theme='sky-editor'] [data-sky-sb='thumb'][data-tone='light'][data-active='1']{
+    background: var(--sky-scrollbar-thumb-color-light-active);
+}/* ============================================================
+ * 文档级（整页）滚动条 —— 由 sky-scrollbar-doc.js 接管
+ * ------------------------------------------------------------
+ * 背景：容器级自绘挂载器明确跳过 HTML/BODY，而 Edge/Chromium 的
+ *      文档级滚动条走 overlay 渲染，不遵守上面 ::-webkit-scrollbar
+ *      的透明 border 裁切与 transition —— 表现为紧贴视口右边缘、
+ *      首尾顶到屏幕上下边、按下也不会变粗（即“旧版观感”）。
+ * 做法：接管后用 [[data-sky-sb='track'|'thumb']] 同一套自绘条显示，
+ *      原生文档滚动条彻底隐藏，并按测得的占位做 padding 补偿。
+ * ============================================================ */html[data-ui-theme='sky-editor'][data-sky-doc-sb='1']::-webkit-scrollbar,
+html[data-ui-theme='sky-editor'][data-sky-doc-sb='1']::-webkit-scrollbar-thumb,
+html[data-ui-theme='sky-editor'][data-sky-doc-sb='1']::-webkit-scrollbar-track{
+    width: 0;
+    height: 0;
+    display: none;
+    background: transparent;
+}html[data-ui-theme='sky-editor'][data-sky-doc-pad='1']{
+    padding-right: var(--sky-doc-sbw, 0px);
+}
