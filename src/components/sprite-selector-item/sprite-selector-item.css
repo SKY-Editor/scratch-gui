@@ -152,3 +152,15 @@
     cursor: pointer;
     accent-color: $looks-secondary;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .sprite-selector-item {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .sprite-info {
+    border-bottom-left-radius: var(--sky-radius);
+    border-bottom-right-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .check-button {
+    border-radius: var(--sky-radius-sm);
+}

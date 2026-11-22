@@ -26,8 +26,12 @@ import DeletionRestorer from '../../containers/deletion-restorer.jsx';
 import TurboMode from '../../containers/turbo-mode.jsx';
 import MenuBarHOC from '../../containers/menu-bar-hoc.jsx';
 import SettingsMenu from './settings-menu.jsx';
-import SettingsWindow from './settings-window.jsx';
-import AddonsWindow from './addons-window.jsx';
+import SettingsWindow from '../../Theme/sky-editor/components/settings-window/settings-window.jsx';
+import AddonsWindow from '../../Theme/sky-editor/components/addons-window/addons-window.jsx';
+import PackagerWindow from '../packager/packager-window.jsx';
+import ExportWindow from './export-window.jsx';
+import BilupMenuBar from '../../Theme/bilup';
+import {detectMenuBarTheme} from '../../lib/sky-settings-store.js';
 
 import FramerateChanger from '../../containers/tw-framerate-changer.jsx';
 import ChangeUsername from '../../containers/tw-change-username.jsx';
@@ -108,7 +112,11 @@ import SeeInsideButton from './tw-see-inside.jsx';
 import {notScratchDesktop} from '../../lib/isScratchDesktop.js';
 import {APP_NAME} from '../../lib/brand.js';
 
-const twMessages = defineMessages({
+const twMessages = // 编辑器菜单栏主题色（独立于窗口标签栏）在模块加载时立即应用，
+// 保证首帧顶栏就是用户所选配色（默认使用主题色）。
+detectMenuBarTheme();
+
+defineMessages({
     compileError: {
         id: 'tw.menuBar.compileError',
         defaultMessage: '{sprite}: {error}',
@@ -206,7 +214,9 @@ class MenuBar extends React.Component {
         this.state = {
             settingsWindowOpen: false,
             settingsWindowTab: 'settings',
-            addonsWindowOpen: false
+            addonsWindowOpen: false,
+            packagerWindowOpen: false,
+            exportWindowOpen: false
         };
         bindAll(this, [
             'handleClickSeeInside',
@@ -229,6 +239,10 @@ class MenuBar extends React.Component {
             'handleOpenAddonsWindow',
             'handleCloseAddonsWindow',
             'handleClickAddons',
+            'handleOpenPackagerWindow',
+            'handleClosePackagerWindow',
+            'handleOpenExportWindow',
+            'handleCloseExportWindow',
             'getSaveToComputerHandler',
             'restoreOptionMessage'
         ]);
@@ -271,7 +285,13 @@ class MenuBar extends React.Component {
         this.props.onRequestCloseFile();
     }
     handleClickPackager () {
-        this.props.onClickPackager();
+        // SKY Editor: 打包/解包器以内嵌 Win11Window 窗口打开（仅 sky-editor 主题）；
+        // 其余主题保持 TurboWarp 原行为（新标签页打开外部打包器）。
+        if (this.props.uiTheme === 'sky-editor') {
+            this.handleOpenPackagerWindow();
+        } else {
+            this.props.onClickPackager();
+        }
         this.props.onRequestCloseFile();
     }
     handleClickDesktopSettings () {
@@ -292,6 +312,21 @@ class MenuBar extends React.Component {
     }
     handleCloseAddonsWindow () {
         this.setState({addonsWindowOpen: false});
+    }
+    handleOpenPackagerWindow () {
+        this.setState({packagerWindowOpen: true});
+    }
+    handleClosePackagerWindow () {
+        this.setState({packagerWindowOpen: false});
+    }
+    handleOpenExportWindow () {
+        // 统一导出窗口：所有「导出 / 另存为 / 保存到电脑」入口都收敛到这里，
+        // 由用户在窗口里选择 .sb3 / .star / .rj 后再落盘。
+        this.setState({exportWindowOpen: true});
+        this.props.onRequestCloseFile();
+    }
+    handleCloseExportWindow () {
+        this.setState({exportWindowOpen: false});
     }
     handleClickAddons () {
         if (this.props.uiTheme === 'sky-editor') {
@@ -519,6 +554,8 @@ class MenuBar extends React.Component {
         const aboutButton = this.buildAboutMenu(this.props.onClickAbout);
         const menuBar = (
             <Box
+                // 顶栏图标（单色 SVG）按背景明暗自适应：深底转白、浅底转黑
+                data-sky-icon-adaptive-root=""
                 className={classNames(
                     this.props.className,
                     styles.menuBar,
@@ -658,7 +695,7 @@ class MenuBar extends React.Component {
                                                 </MenuItem>
                                             )}
                                             {this.props.canCreateCopy && (
-                                                <MenuItem onClick={this.handleClickSaveAsCopy}>
+                                                <MenuItem onClick={this.handleOpenExportWindow}>
                                                     {createCopyMessage}
                                                 </MenuItem>
                                             )}
@@ -678,7 +715,7 @@ class MenuBar extends React.Component {
                                         <SB3Downloader
                                             showSaveFilePicker={this.props.showSaveFilePicker}
                                         >
-                                            {(_className, downloadProject, extended) => (
+                                            {(_className, _downloadProject, extended) => (
                                                 <React.Fragment>
                                                     {extended.available && (
                                                         <React.Fragment>
@@ -696,8 +733,7 @@ class MenuBar extends React.Component {
                                                                     />
                                                                 </MenuItem>
                                                             )}
-                                                            {/* eslint-disable-next-line max-len */}
-                                                            <MenuItem onClick={this.getSaveToComputerHandler(extended.saveAsNew)}>
+                                                            <MenuItem onClick={this.handleOpenExportWindow}>
                                                                 <FormattedMessage
                                                                     defaultMessage="Save as..."
                                                                     // eslint-disable-next-line max-len
@@ -709,7 +745,7 @@ class MenuBar extends React.Component {
                                                     )}
                                                     {notScratchDesktop() && (
                                                         <MenuItem
-                                                            onClick={this.getSaveToComputerHandler(downloadProject)}
+                                                            onClick={this.handleOpenExportWindow}
                                                         >
                                                             {extended.available ? (
                                                                 <FormattedMessage
@@ -881,6 +917,7 @@ class MenuBar extends React.Component {
                                 </MenuSection>
                             </MenuBarMenu>
                         </MenuLabel>
+                        <BilupMenuBar />
                         {this.props.isTotallyNormal && (
                             <MenuLabel
                                 open={this.props.modeMenuOpen}
@@ -1083,21 +1120,25 @@ class MenuBar extends React.Component {
                         >
                             <MusicIcon size={16} />
                             <FormattedMessage
-                                defaultMessage="音乐"
+                                defaultMessage="Music"
                                 description="Button to open the music player in the menu bar"
-                                id="sky.musicPlayerButton"
+                                id="sky.musicPlayer.menuButton"
                             />
                         </button>
                     </div>
                 </div>
 
-                <div className={styles.accountInfoGroup}>
-                    <TWSaveStatus
-                        showSaveFilePicker={this.props.showSaveFilePicker}
-                    />
-                </div>
+                <div className={styles.menuBarSpacer} />
 
-                {aboutButton}
+                <div className={styles.accountArea}>
+                    <div className={styles.accountInfoGroup}>
+                        <TWSaveStatus
+                            showSaveFilePicker={this.props.showSaveFilePicker}
+                            onRequestExport={this.handleOpenExportWindow}
+                        />
+                    </div>
+                    {aboutButton}
+                </div>
             </Box>
         );
 
@@ -1105,7 +1146,7 @@ class MenuBar extends React.Component {
             <React.Fragment>
                 {menuBar}
                 <TWNews />
-                {(this.props.uiTheme === 'sky-editor' && this.state.settingsWindowOpen) && (
+                {this.state.settingsWindowOpen && (
                     <SettingsWindow
                         onClose={this.handleCloseSettingsWindow}
                         defaultTab={this.state.settingsWindowTab}
@@ -1125,6 +1166,16 @@ class MenuBar extends React.Component {
                 {(this.props.uiTheme === 'sky-editor' && this.state.addonsWindowOpen) && (
                     <AddonsWindow
                         onClose={this.handleCloseAddonsWindow}
+                    />
+                )}
+                {(this.props.uiTheme === 'sky-editor' && this.state.packagerWindowOpen) && (
+                    <PackagerWindow
+                        onClose={this.handleClosePackagerWindow}
+                    />
+                )}
+                {this.state.exportWindowOpen && (
+                    <ExportWindow
+                        onClose={this.handleCloseExportWindow}
                     />
                 )}
             </React.Fragment>

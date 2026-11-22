@@ -34,3 +34,13 @@
 [dir="rtl"] .detail-area {
     border-right: 1px solid $ui-black-transparent;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) [dir="ltr"] .wrapper {
+    border-top-right-radius: var(--sky-radius);
+    border-bottom-right-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) [dir="rtl"] .wrapper {
+    border-top-left-radius: var(--sky-radius);
+    border-bottom-left-radius: var(--sky-radius);
+}

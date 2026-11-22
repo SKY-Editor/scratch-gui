@@ -583,15 +583,66 @@ class Tab extends EventTargetShim {
 
                 oldShow.call(this, event, items, rtl);
 
-                const blocklyContextMenu = ScratchBlocks.WidgetDiv.DIV.firstChild;
-                items.forEach((item, i) => {
-                    if (i !== 0 && item.separator) {
-                        const itemElt = blocklyContextMenu.children[i];
-                        itemElt.style.paddingTop = '2px';
-                        itemElt.classList.add('sa-blockly-menu-item-border');
-                        itemElt.style.borderTop = '1px solid var(--ui-black-transparent)';
-                    }
-                });
+                const widgetDiv = ScratchBlocks.WidgetDiv.DIV;
+                const blocklyContextMenu =
+                    widgetDiv.querySelector('.goog-menu') || widgetDiv.firstChild;
+                if (!blocklyContextMenu) return;
+
+                // 分割线是独立、可选的视觉分隔元素：单独插入 1px 分隔节点，
+                // 菜单项本身保持原样显示（separator: true 只是「在这一项上方画线」的标记），
+                // 不再把边框挂到菜单项上，分割线也不随菜单项悬停一起高亮。
+                // 先清掉可能残留的分隔节点，避免重复渲染时叠加。
+                blocklyContextMenu
+                    .querySelectorAll(':scope > .sa-blockly-menu-separator')
+                    .forEach(node => node.remove());
+
+                // 只取真正的菜单项节点（忽略装饰/容器节点），保证与 items 一一对应
+                const menuChildren = Array.from(blocklyContextMenu.children).filter(node => (
+                    node.classList.contains('goog-menuitem') ||
+                    node.classList.contains('goog-menuseparator') ||
+                    node.getAttribute('role') === 'menuitem'
+                ));
+                if (menuChildren.length !== items.length) return;
+
+                // 倒序遍历：插入新节点不会影响尚未处理的索引。
+                for (let i = items.length - 1; i > 0; i--) {
+                    if (!items[i] || !items[i].separator) continue;
+                    const itemElt = menuChildren[i];
+                    if (!itemElt || !itemElt.parentNode) continue;
+                    // 真命令项保持可见；只有无文案的纯占位项才移出可视流
+                    const hasText = typeof items[i].text === 'string' && items[i].text.trim() !== '';
+                    itemElt.classList.remove('sa-blockly-menu-item-border');
+                    itemElt.style.borderTop = '0';
+                    itemElt.style.boxShadow = 'none';
+                    if (!hasText) itemElt.style.display = 'none';
+
+                    const dividerElt = document.createElement('div');
+                    dividerElt.className = 'sa-blockly-menu-separator';
+                    dividerElt.setAttribute('role', 'separator');
+                    // 上下留白与左右内缩统一取自 sky-ctx-menu-unified.css 的令牌
+                    dividerElt.style.cssText = [
+                        'display:block',
+                        'flex:0 0 auto',
+                        'width:auto',
+                        'height:1px',
+                        'min-height:1px',
+                        'max-height:1px',
+                        'margin:var(--sky-ctx2-divgap, 5px) 0',
+                        'padding:0 var(--sky-ctx2-inset, 8px)',
+                        'box-sizing:border-box',
+                        'border:0',
+                        'border-radius:0',
+                        'background-color:var(--sky-ctx2-line, var(--ui-black-transparent, rgba(0, 0, 0, 0.15)))',
+                        'background-image:none',
+                        'background-clip:content-box',
+                        'box-shadow:none',
+                        'outline:0',
+                        'font-size:0',
+                        'line-height:0',
+                        'pointer-events:none'
+                    ].join(';');
+                    itemElt.parentNode.insertBefore(dividerElt, itemElt);
+                }
             };
         });
     }

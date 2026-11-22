@@ -14,7 +14,7 @@
  *      （由 themeReducer 初始化 / uiThemePersistance.detectUiTheme 写入，主题切换时同步）
  *   2) html[data-sky-ctx-menu="se"]      —— 用户在
  *      「设置 → SKYEditor 外观 → 右键菜单样式」选择了「SKYEditor样式」
- *      （由 lib/contextMenuStylePersistance.js 的 applyContextMenuStyle 写入）
+ *      （由 lib/sky-settings-store.js 的 applyContextMenuStyle 写入）
  *
  * 零影响保证：
  *   - 非 sky-editor 主题：条件 1 不满足 → 本文件所有规则均不命中。
@@ -57,7 +57,7 @@
  * 按 theme.isDark() 注入到 :root 的一组「明暗语义变量」（--popover-background / --text-primary /
  * --ui-black-transparent / --shadow / --color-scheme，取值见 themes/gui/dark.js 与 light.js）。
  * CSS 无法读取变量值做条件分支，因此浅色模式不另写一套选择器，而是让颜色统一由这组语义变量表达
- * （见 lib/contextMenuStylePersistance.js 的 SE_VARS 与下方各处 var() 的内层兜底），
+ * （见 lib/sky-settings-store.js 的 SE_VARS 与下方各处 var() 的内层兜底），
  * 双属性限定与变量下发机制保持不变：浅色 GUI 主题下自动得到
  * 浅色底 + 深灰文字 + 淡边框/淡分隔线 + 柔和阴影 + 淡灰悬停，深色主题下保持 SE 深色观感。
  *
@@ -75,7 +75,7 @@
  *   非窗口菜单却落到深色底 + 亮字 —— 即「浅色模式下其它右键菜单配色整体不对」。
  *   叠加 disabled 采用「独立灰 #9A9EB0 × 0.45 透明」双重变淡，不一致被进一步放大。
  * 修复：本文件所有颜色项改为与窗口菜单「逐项同变量 + 同兜底取值」，并用同一批
- *   --sky-ctx-menu-* 变量（变量内容由 contextMenuStylePersistance.js 的 SE_VARS 统一
+ *   --sky-ctx-menu-* 变量（变量内容由 sky-settings-store.js 的 SE_VARS 统一
  *   以明暗语义变量表达，浅色下即浅色底 + 深灰文字 + 淡边框/分隔线）；disabled 不再自造
  *   独立灰值，透明度对齐窗口菜单兜底 0.5，hover 文字色与常态文字色同源。
  * ---------------------------------------------------------------------------
@@ -111,7 +111,7 @@
     color: var(--sky-ctx-menu-fg, inherit);
     background-color: var(--sky-ctx-menu-bg, #fff);
     border: 1px solid var(--sky-ctx-menu-border, rgba(0, 0, 0, 0.15));
-    border-radius: var(--sky-ctx-menu-radius, 8px);
+    border-radius: var(--sky-radius);
     box-shadow: var(--sky-ctx-menu-shadow, 0 0 5px 1px rgba(0, 0, 0, 0.25));
     z-index: var(--sky-ctx-menu-z-index, 1000);
 }
@@ -123,7 +123,7 @@
 :global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] nav.react-contextmenu .react-contextmenu-item) {
     box-sizing: border-box;
     padding: var(--sky-ctx-menu-item-padding, 6px 12px);
-    border-radius: var(--sky-ctx-menu-item-radius, 4px);
+    border-radius: var(--sky-radius);
     color: var(--sky-ctx-menu-fg, inherit);
     white-space: nowrap;
     cursor: pointer;
@@ -205,7 +205,7 @@
     color: var(--sky-ctx-menu-fg, inherit);
     background-color: var(--sky-ctx-menu-bg, #fff);
     border: 1px solid var(--sky-ctx-menu-border, rgba(0, 0, 0, 0.15));
-    border-radius: var(--sky-ctx-menu-radius, 8px);
+    border-radius: var(--sky-radius);
     box-shadow: var(--sky-ctx-menu-shadow, 0 0 5px 1px rgba(0, 0, 0, 0.25));
     /*
      * 刻意不声明 animation / transform / position / z-index / pointer-events：
@@ -219,7 +219,7 @@
 :global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu .goog-menuitem) {
     box-sizing: border-box;
     padding: var(--sky-ctx-menu-item-padding, 6px 12px);
-    border-radius: var(--sky-ctx-menu-item-radius, 4px);
+    border-radius: var(--sky-radius);
     color: var(--sky-ctx-menu-fg, inherit);
     transition: var(--sky-ctx-menu-item-transition, none);
 }
@@ -239,7 +239,7 @@
     box-sizing: border-box;
     border-width: 0;
     padding: var(--sky-ctx-menu-item-padding, 6px 12px);
-    border-radius: var(--sky-ctx-menu-item-radius, 4px);
+    border-radius: var(--sky-radius);
     background-color: var(--sky-ctx-menu-hover-bg, rgba(0, 0, 0, 0.08));
     border-color: transparent;
     color: var(--sky-ctx-menu-hover-fg, inherit);
@@ -249,11 +249,16 @@
     color: var(--sky-ctx-menu-hover-fg, inherit);
 }
 
-/* Blockly 用内联 border-top 画分隔线 */
-:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu .goog-menuitem[style*='border-top']) {
+/* Blockly 分隔线：addons/api.js 注入的独立节点（不再是菜单项的内联 border-top） */
+:global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu .sa-blockly-menu-separator) {
     box-sizing: border-box;
-    margin: 4px 0;
-    border-top-color: var(--sky-ctx-menu-divider, rgba(0, 0, 0, 0.15));
+    height: 1px;
+    margin: var(--sky-ctx2-divgap, 5px) 0;
+    padding: 0 8px;
+    border: 0;
+    background-color: var(--sky-ctx-menu-divider, rgba(0, 0, 0, 0.15));
+    background-clip: content-box;
+    pointer-events: none;
 }
 
 /*
@@ -286,4 +291,25 @@
 /* 禁用项悬停：与 .win11-menu-item-disabled:hover 一致（不高亮、文字不变色） */
 :global(html[data-ui-theme='sky-editor'][data-sky-ctx-menu='se'] .blocklyContextMenu .goog-menuitem-disabled.goog-menuitem-highlight) {
     background-color: var(--sky-ctx-menu-disabled-hover-bg, transparent);
+}
+
+/* ══ 暗色（html[data-ui-dark='true']）适配 ══
+   本文件所有颜色都走 --sky-ctx-menu-* 令牌，暗色只需重定义令牌，
+   不必为每个规则再写一遍暗色版本。 */
+:global(html[data-ui-dark='true']) {
+    --sky-ctx-menu-bg: #1E2027;
+    --sky-ctx-menu-fg: #E8EAEF;
+    --sky-ctx-menu-border: rgba(255, 255, 255, 0.12);
+    --sky-ctx-menu-hover-bg: rgba(255, 255, 255, 0.10);
+    --sky-ctx-menu-hover-fg: #FFFFFF;
+    --sky-ctx-menu-divider: rgba(255, 255, 255, 0.12);
+    --sky-ctx-menu-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+}
+
+/* 兜底：部分菜单（窗口内右键 / 设置窗口右键）由 JS 以内联 var(--sky-ctx-menu-bg) 写色，
+   而 :root 的令牌注入优先级更高，会把暗色拉回 #111111，与 #1E2027 的暗色工作区反差过大。
+   这里用元素级 !important 直接落到与工作区一致的暗面色，保证菜单不"发黑"。 */
+:global(html[data-ui-dark='true'] .react-contextmenu),
+:global(html[data-ui-dark='true'] .win11-context-menu) {
+    background-color: #1E2027 !important;
 }

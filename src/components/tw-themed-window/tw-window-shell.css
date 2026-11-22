@@ -1,0 +1,94 @@
+@import "../../css/colors.css";
+@import "../../css/units.css";
+
+/*
+ * TurboWarp 官方弹窗口径（与上游一致，勿在此引入 --sk-* / --sky-* 变量）
+ * 标题栏与描边圆角由 modal.css 提供，这里只补内容区与外壳的布局约束。
+ *
+ * 尺寸口径：外壳宽高由 jsx 内联 style 精确下发（业务声明的 width / height），
+ * 本文件只负责「外壳是 flex 纵向容器、内容区填满剩余高度」这部分，避免内容反向
+ * 撑开外壳（撑开 = 视觉上的最大化窗口）。
+ */
+
+.content {
+    /* 兜底：视口过小时不让外壳溢出屏幕（内联定义的 width/height 仍优先） */
+    max-width: calc(100vw - 80px);
+    max-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 外壳内层：撑满官方描边内的全部空间，纵向排布「标题栏 + 内容区」 */
+.inner {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* 标题栏高度由官方 $library-header-height 决定，不参与伸缩 */
+.header {
+    flex-shrink: 0;
+}
+
+.body {
+    flex: 1 1 auto;
+    min-height: 0;
+    background: $ui-modal-background;
+    color: $ui-modal-foreground;
+    padding: 1.5rem 2.25rem;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+/* 插件窗口等「自带完整内容」的场景：内容区不加官方内边距，保持原 UI 比例与尺寸 */
+.bodyFlush {
+    padding: 0;
+    /* 插件内容自带滚动容器，外层不再二次滚动，避免双层滚动条 */
+    overflow: hidden;
+    /* 内容根节点按 flex 填满外壳，插件内部布局拿到确定的宽高 */
+    display: flex;
+    flex-direction: column;
+}
+
+/*
+ * 单一内容根节点时让它撑满内容区：业务自己的滚动容器（overflow-y: auto）才有确定高度，
+ * 背景色也能铺到底，不会在窗口底部露出外壳底色。
+ * 多根节点场景（如插件自带工具栏 + 主体）保持原样按内容排布，不被均分高度。
+ */
+.bodyFlush > *:only-child {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/*
+ * 标题栏左侧动作区（官方 modal 左列位置）。
+ * 只做容器限位，不改插件按钮自身样式：高度撑满官方标题栏，内容按原尺寸居中，
+ * 溢出时横向滚动而不换行，避免工具按钮挤压标题。
+ */
+.headerActions {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 1rem;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.headerActions > * {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    gap: 0.25rem;
+}
+
+/* 与官方设置弹窗一致的小屏口径 */
+@media (max-height: 600px) {
+    .content {
+        margin: 50px auto;
+    }
+}

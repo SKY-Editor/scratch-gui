@@ -20,3 +20,8 @@
     background-color: rgba(255, 81, 81, 0.25);
     border: 1px solid red;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .unsandboxed-warning {
+    border-radius: var(--sky-radius);
+}

@@ -47,3 +47,10 @@ can set a width for example or what it should do in a flex box (eg. grow).
     background-color: $ui-white;
     color: $text-primary;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .title-field {
+    border-radius: var(--sky-radius);
+    -webkit-border-radius: var(--sky-radius);
+    -moz-border-radius: var(--sky-radius);
+}

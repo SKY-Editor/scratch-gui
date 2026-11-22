@@ -198,3 +198,16 @@ $arrow-rounding: 0.125rem;
     top: $arrow-inset !important;
     transform: rotate(-45deg) !important;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .more-buttons-outer {
+    border-top-left-radius: var(--sky-radius-sm);
+    border-top-right-radius: var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .more-buttons:first-child {
+    border-top-right-radius: var(--sky-radius-sm);
+    border-top-left-radius: var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .tooltip {
+    border-radius: var(--sky-radius)!important;
+}

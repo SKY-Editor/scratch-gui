@@ -28,3 +28,8 @@
 .container:active {
     background-color: $looks-light-transparent;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .container {
+    border-radius: var(--sky-radius);
+}

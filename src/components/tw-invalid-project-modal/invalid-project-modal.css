@@ -38,3 +38,11 @@
     background-color: $looks-secondary;
     color: white;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .error {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .button {
+    border-radius: var(--sky-radius-sm);
+}

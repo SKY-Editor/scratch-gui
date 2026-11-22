@@ -32,3 +32,8 @@
 .project-link {
     margin-bottom: 2px;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .description {
+    border-radius: var(--sky-radius);
+}

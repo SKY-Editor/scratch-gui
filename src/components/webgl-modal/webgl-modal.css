@@ -73,3 +73,11 @@
     color: $looks-secondary;
     text-decoration: none;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .modal-content {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .button-row button {
+    border-radius: var(--sky-radius-sm);
+}

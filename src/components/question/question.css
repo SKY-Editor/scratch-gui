@@ -76,3 +76,8 @@
     right: -7px;
     left: -7px;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .question-container {
+    border-radius: var(--sky-radius);
+}

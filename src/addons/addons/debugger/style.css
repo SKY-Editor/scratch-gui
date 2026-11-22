@@ -181,11 +181,16 @@
 }
 
 .sa-debugger-log-repeats {
-  background-color: var(--looks-secondary);
+  background-color: hsla(163, 85%, 40%, 1);
   color: white;
   border-radius: 100px;
   padding: 1px 6px;
   margin-right: 4px;
+}
+
+/* SKYEditor 皮肤：重复次数徽标跟随主题色 */
+html.sky-editor-theme .sa-debugger-log-repeats {
+  background-color: var(--looks-secondary);
 }
 
 .sa-debugger-log-icon {
@@ -282,7 +287,7 @@
 
 /* ===== "更多"下拉菜单（所有主题生效） ===== */
 /* 下拉按钮固定宽高与图标按钮一致，点击后弹出 fixed 定位浮层（不参与 flex 布局，避免挤压其他按钮） */
-.sa-debugger-interface .sa-debugger-header-buttons .sa-debugger-dropdown-button {
+.sa-debugger-header-buttons .sa-debugger-dropdown-button {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -315,275 +320,975 @@
 .sa-debugger-dropdown-item:active {
   background-color: rgba(0, 0, 0, 0.3);
 }
+/* ===== SKYEditor 统一窗口样式（uiTheme === "sky-editor" 时启用） ===== */
+/* 窗口外壳（标题栏 / 图标 / 标题 / 三按钮 / 拖拽 / 缩放 / Esc / 最大最小化 / 焦点置顶）
+   全部由编辑器 React 主体系的 Win11Window 组件提供——与设置窗口、Packager 同一个组件、
+   同一套 windowFocusManager、同一窗口层容器；宿主桥见
+   src/components/gui/sky-addon-window-host.jsx（addon 侧通过 window.__skyAddonWindow 接入）。
+   因此本文件 sky 分区不再复刻任何外壳样式，只保留两件宿主特有的事：
+   1) 内容容器：不再是窗口本体，只是一层填满窗口 body 的内容布局（撤销 .card 的
+      absolute 定位、固定宽高、圆角与投影）；
+   2) 内容层外观：页签行 .sa-debugger-tabs、内容区 .sa-debugger-tab-content、
+      标题栏右侧动作按钮 .sa-debugger-header-buttons（本插件的暂停 / 更多按钮，由宿主
+      渲染进 React 标题栏的 actions 槽位）。
+   复刻的 win11-titlebar / win11-title / win11-title-icon / win11-controls / win11-button /
+   win11-resize-handle-* / win11-context-menu / win11-maximized / win11-minimized 已删除，
+   改由 React 壳统一提供。 */
 
-/* ===== SKYEditor 统一窗口样式（uiTheme === 'sky-editor' 时启用） ===== */
-/* 窗口交互（标题栏拖动 / 双击最大化 / 右键系统菜单 / 最小化最大化关闭 / 8 向 resize）
-   完全复用共享引擎 createSkyWin11Window（src/addons/libraries/common/sky-win11-window.js，
-   逻辑提炼自 components/tw-win11-window/win11-window.jsx），插件不再保留独立实现；
-   此处仅按 win11-window.css 观感提供引擎交互元素的样式
-   （类名语义对齐：win11-controls / win11-button / win11-resize-handle-* /
-   win11-context-menu / win11-menu-item-* / win11-maximized / win11-minimized）。 */
-
-/* 1. 窗口容器：高光描边 + 深层投影，深色编辑器背景下也能呈现独立悬浮窗口。
-   position: fixed 使引擎以视口为基准做初始居中 / 拖动 / 最大化铺满。 */
-.sa-debugger-interface.sa-debugger-sky-window {
-  position: fixed;
+/* 1. 内容容器：填满窗口 body。外壳几何（fixed / left / top / width / height /
+   最大化 / 最小化 / 拖动过渡）由 React 壳管理，此处不得再写死定位。 */
+.sa-debugger-interface.sa-debugger-hosted {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  /* border-box：容器宽高由窗口 body 给定，padding/border 一律向内收，
+     避免 100% + padding 造成横向溢出（溢出会顶出窗口底部通宽横向滚动条）。 */
   box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  height: 100%;
+  /* flex 子项最小尺寸归零：否则 min-content（页签行等）会把容器撑宽 */
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+  color: var(--ui-modal-foreground);
   overflow: hidden;
-  /* 覆盖 .card 自带的 cursor:move（系统四向箭头），SKY 模式统一使用自有光标 */
+  /* 覆盖 .card 自带的 cursor:move（系统四向箭头），内容区使用默认光标 */
   cursor: default;
 }
-/* 最大化：铺满视口（引擎仅切换类，不写死坐标） */
-.sa-debugger-interface.sa-debugger-sky-window.win11-maximized {
-  left: 0 !important;
-  top: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  border-radius: 0;
-}
-/* 最小化：仅保留标题栏 */
-.sa-debugger-interface.sa-debugger-sky-window.win11-minimized {
-  height: 40px !important;
-}
-.sa-debugger-interface.sa-debugger-sky-window.win11-minimized .sa-debugger-tab-content,
-.sa-debugger-interface.sa-debugger-sky-window.win11-minimized .sa-debugger-compiler-warning {
-  display: none !important;
-}
-/* 拖动 / 菜单移动 / 缩放进行中：关闭过渡，避免引擎写回位置时动画跳变 */
-.sa-debugger-interface.sa-debugger-sky-window.win11-interacting {
-  transition: none !important;
-}
 
-/* 2. 标题栏：恒定 40px 高，主题色 + 轻渐变质感 + 底部深色分隔线 */
-.sa-debugger-sky-window [class*="card_header-buttons_"] {
+/* 2. 标题栏右侧动作区：宿主把 .sa-debugger-header-buttons 渲染进 React 标题栏的
+   actions 槽位，与窗口三按钮同一行、同一 40px 高度。用 .sa-debugger-hosted-actions
+   做 sky 专属限位（该类仅在 sky 主题下由 syncSkyChrome 添加），非 sky 主题零影响；
+   类名都是本插件自有类，不依赖窗口壳的类名哈希策略。 */
+.sa-debugger-header-buttons.sa-debugger-hosted-actions {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0;
-  padding: 0;
-  height: 40px;
-  background-color: var(--looks-secondary);
-  background-image: linear-gradient(rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.08));
-  border-color: var(--looks-secondary-dark);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
-  color: #fff;
-  /* 悬停标题栏显示抓取手，不再出现系统四向箭头 */
-  cursor: grab;
-}
-
-/* 3. 标题：图标 + 文字（复刻 Win11Window 标题栏形式，文字恒白） */
-.sa-debugger-sky-window .sa-debugger-sky-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 14px;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
   flex-shrink: 0;
-}
-.sa-debugger-sky-window .sa-debugger-sky-title img {
-  width: 16px;
-  height: 16px;
-  filter: brightness(0) invert(1) !important;
-}
-
-/* 4. 标签：标题栏中部胶囊页签（选中白底、主题色文字） */
-.sa-debugger-sky-window .sa-debugger-tabs {
-  margin: 0;
-  padding: 0 10px;
-}
-.sa-debugger-sky-window .sa-debugger-tabs li {
-  background-color: rgba(0, 0, 0, 0.18);
-  border-color: rgba(0, 0, 0, 0.2);
-}
-.sa-debugger-sky-window .sa-debugger-tabs li:hover {
-  background-color: rgba(0, 0, 0, 0.28);
-}
-.sa-debugger-sky-window .sa-debugger-tabs li.sa-debugger-tab-selected {
-  background-color: #fff;
-  color: var(--looks-secondary);
-}
-
-/* 5. 右侧按钮组：窗口控件风格（横排、全高 40px、悬停半透明块、关闭红底） */
-.sa-debugger-sky-window .sa-debugger-header-buttons {
-  margin-left: auto;
-  padding: 0;
-  height: 40px;
-  display: flex;
   align-items: stretch;
-}
-.sa-debugger-sky-window .sa-debugger-header-buttons [class*="shrink-expand-button"] {
-  flex-direction: row;
   height: 40px;
-  padding: 0 12px;
+  /* 按钮前景跟随标题栏前景：去主题色时标题栏是浅色底，写死白色会让按钮整体消失。
+     变量由窗口壳在 .win11-titlebar 上给出（浅色 #1f2430 / 深色 #e8eaef）。 */
+  --sa-action-fg: var(--sky-titlebar-foreground, #fff);
+  /* 图标是黑色描边 svg：深色标题栏反相成白色，浅色标题栏直接用原黑色 */
+  --sa-action-icon-filter: brightness(0) invert(1);
+}
+/* 去主题色 + 浅色 UI：标题栏变成浅底，按钮与图标改深色，避免"纯白看不见"
+   （选择器带上 .sa-debugger-header-buttons，特异性需高于上面那条双类规则） */
+html[data-sky-tab-bar-theme='white']:not([data-ui-dark='true'])
+    .sa-debugger-header-buttons.sa-debugger-hosted-actions {
+  --sa-action-fg: var(--sky-titlebar-foreground, #1f2430);
+  --sa-action-icon-filter: brightness(0);
+}
+/* 去主题色 + 浅色 UI 时的兜底：把「更多」下拉按钮（文字 + 图标）直接锁成深色。
+   它是 div 冒充的按钮，框架自带的按钮类可能给它写死白色前景，一旦变量链某环
+   丢失就会退化成白字白图标，在 #f7f8fa 标题栏上等于"消失"，所以这里不再依赖
+   变量，直接给绝对色值。 */
+html[data-sky-tab-bar-theme='white']:not([data-ui-dark='true'])
+    .sa-debugger-header-buttons.sa-debugger-hosted-actions .sa-debugger-dropdown-button,
+html[data-sky-tab-bar-theme='white']:not([data-ui-dark='true'])
+    .sa-debugger-header-buttons.sa-debugger-hosted-actions .sa-debugger-dropdown-button span {
+  color: #1f2430;
+}
+html[data-sky-tab-bar-theme='white']:not([data-ui-dark='true'])
+    .sa-debugger-header-buttons.sa-debugger-hosted-actions .sa-debugger-dropdown-button img {
+  filter: brightness(0);
+}
+.sa-debugger-hosted-actions [class*="shrink-expand-button"] {
+  flex-direction: row;
+  height: 100%;
+  padding: 0 10px;
   gap: 6px;
   background: transparent;
-  color: #fff;
+  color: var(--sa-action-fg, #fff);
   border: none;
   border-radius: 0;
-  /* 窗口控件按钮恢复点击指针，不继承标题栏的抓取手 */
   cursor: pointer;
 }
-.sa-debugger-sky-window .sa-debugger-header-buttons [class*="shrink-expand-button"]:hover {
+.sa-debugger-hosted-actions [class*="shrink-expand-button"]:hover {
   background: rgba(0, 0, 0, 0.1);
 }
-.sa-debugger-sky-window .sa-debugger-header-buttons [class*="shrink-expand-button"]:active {
+.sa-debugger-hosted-actions [class*="shrink-expand-button"]:active {
   background: rgba(0, 0, 0, 0.18);
 }
-/* 关闭按钮（最后一项）：hover 红底白字，对齐 Win11 关闭控件 */
-.sa-debugger-sky-window .sa-debugger-header-buttons [class*="shrink-expand-button"]:last-child:hover {
-  background: #e81123;
-}
-.sa-debugger-sky-window .sa-debugger-header-buttons img {
+.sa-debugger-hosted-actions img {
   width: 16px;
   height: 16px;
   margin: 0;
-  filter: brightness(0) invert(1);
+  filter: var(--sa-action-icon-filter, brightness(0) invert(1));
 }
-.sa-debugger-sky-window .sa-debugger-header-buttons span {
+.sa-debugger-hosted-actions span {
   font-size: 12px;
   line-height: 1;
   white-space: nowrap;
 }
 
-/* 6. 内容区：统一窗口主体背景 */
-.sa-debugger-sky-window .sa-debugger-tab-content {
+/* 3. 内容区主体：flex 撑满剩余高度并纵向滚动（窗口 body 已是 flex 容器） */
+/* 页签行：固定高度不参与拉伸，且自身不横向溢出（页签多时裁掉而不是撑宽窗口内容） */
+.sa-debugger-interface.sa-debugger-hosted .sa-debugger-tabs {
+  flex-shrink: 0;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.sa-debugger-interface.sa-debugger-hosted .sa-debugger-tab-content {
+  flex: 1;
+  min-height: 0;
+  /* 只保留纵向滚动：内容区横向一律不滚，横向溢出直接裁掉，
+     彻底杜绝窗口底部那条通宽横向滚动条（日志行的白空格文本曾会顶出横向溢出）。 */
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+  position: relative;
   background: var(--ui-modal-background);
   color: var(--ui-modal-foreground);
 }
 
-/* 7. Win11 窗口控件（最小化/最大化/关闭），由共享引擎创建，仅 sky-editor 显示 */
-.sa-debugger-sky-window .win11-controls {
-  display: flex;
-  align-items: stretch;
-  height: 40px;
-  margin-left: 4px;
-  flex-shrink: 0;
+
+/* ==========================================================================
+   SKYEditor 主题 · 调试器窗口 UI 现代化
+   --------------------------------------------------------------------------
+   仅在 uiTheme === "sky-editor"（宿主桥接管、容器带 .sa-debugger-hosted-sky）时生效，
+   TurboWarp 原版窗口（565px×25rem 那段）完全不受影响。
+   色板全部由运行时变量推导：--ui-modal-foreground（正文色）/ --sky-accent（主题色）/
+   html[data-ui-dark]（明暗），因此深色、浅色主题自动跟随，不写死颜色。
+   ========================================================================== */
+
+.sa-debugger-interface.sa-debugger-hosted-sky {
+  /* 明暗自动推导的发丝线 / 悬停底 / 强调色底 */
+  --sa-fg: var(--ui-modal-foreground, #575e75);
+  --sa-accent: var(--sky-accent, #1c86ff);
+  --sa-line: color-mix(in srgb, var(--sa-fg) 14%, transparent);
+  --sa-line-soft: color-mix(in srgb, var(--sa-fg) 9%, transparent);
+  --sa-hover: color-mix(in srgb, var(--sa-fg) 6%, transparent);
+  --sa-accent-soft: color-mix(in srgb, var(--sa-accent) 13%, transparent);
+  --sa-warn: #d99418;
+  --sa-error: #d93036;
+  --sa-icon-filter: brightness(0);
+  --sa-mono: "Cascadia Mono", "JetBrains Mono", Consolas, "SF Mono", ui-monospace, monospace;
+  --sa-ui-font: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+  background-color: transparent;
+  color: var(--sa-fg);
 }
-.sa-debugger-sky-window .win11-button {
-  width: 46px;
-  height: 40px;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
+
+html[data-ui-dark='true'] .sa-debugger-interface.sa-debugger-hosted-sky {
+  --sa-warn: #ffd08a;
+  --sa-error: #ff9ea2;
+  --sa-icon-filter: brightness(0) invert(1);
+}
+
+/* ── 字体口径：界面文字统一系统字体（全站 #theme-fonts 的 *!important 需同级 !important 覆盖），
+      日志/线程等需要等宽对齐的区域单独保留等宽字体 ── */
+/* 注意：全站 #theme-fonts 注入的是 *:not(...) 组合（8 个 :not 使其权重达 0,8,0），
+   普通 .class * 的 !important 压不过它，故用 #app 提权。 */
+#app .sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs,
+#app .sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs *,
+#app .sa-debugger-interface.sa-debugger-hosted-sky .sa-performance-tab-content,
+#app .sa-debugger-interface.sa-debugger-hosted-sky .sa-performance-tab-content * {
+  font-family: var(--sa-ui-font) !important;
+}
+
+#app .sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log,
+#app .sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log *,
+#app .sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-threads,
+#app .sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-threads * {
+  font-family: var(--sa-mono) !important;
+}
+
+/* 空状态与编译器提示条属于说明文字，放回界面字体（写在等宽规则之后，同权重后者胜） */
+#app .sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log.sa-debugger-log-empty,
+#app .sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log.sa-debugger-compiler-warning,
+#app .sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log-empty,
+#app .sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-compiler-warning {
+  font-family: var(--sa-ui-font) !important;
+}
+
+/* ── 页签栏：由"半透明胶囊按钮"改为"下划线分段标签"，透明底、无边框、选中态主题色 + 2px 指示条 ── */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs {
+  height: 42px;
+  box-sizing: border-box;
+  align-items: stretch;
+  gap: 2px;
+  padding: 0 8px;
+  font-size: 12.5px;
+  background-color: transparent;
+  border-bottom: 1px solid var(--sa-line-soft);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li {
+  position: relative;
+  margin: 0 !important;
+  padding: 0 12px;
   border: none;
   border-radius: 0;
-  color: #fff;
-  cursor: pointer;
-}
-.sa-debugger-sky-window .win11-button:hover {
-  background: rgba(0, 0, 0, 0.1);
-}
-.sa-debugger-sky-window .win11-button:active {
-  background: rgba(0, 0, 0, 0.18);
-}
-.sa-debugger-sky-window .win11-button.win11-close:hover {
-  background: #e81123;
-}
-.sa-debugger-sky-window .win11-button svg {
-  display: block;
+  background-color: transparent;
+  color: var(--sa-fg);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  opacity: 0.68;
+  transition: opacity 0.14s ease, color 0.14s ease;
 }
 
-/* 8. 标题栏右键系统菜单（引擎 append 到 body，调试器专用）：默认 TurboWarp 原始浅色
-   样式（与 win11-window.css 一致），SKYEditor 深色样式通过 --sky-ctx-menu-* CSS 变量
-   下发（设置 -> SKYEditor 外观 -> 右键菜单样式），两选项下均命中本规则。
-   本菜单即「SKYEditor样式」选项对齐的参考观感（200px 宽 / 4px 内边距 / 12px 字），
-   尺寸同样走变量，保证设置窗口菜单与调试器菜单在 SE 模式下观感完全一致。 */
-.win11-context-menu {
-  position: fixed;
-  z-index: var(--sky-ctx-menu-z-index, 1000);
-  min-width: var(--sky-ctx-menu-min-width, 200px);
-  padding: var(--sky-ctx-menu-padding, 4px);
-  font-size: var(--sky-ctx-menu-font-size, 12px);
-  user-select: none;
-  background-color: var(--sky-ctx-menu-bg, #fff);
-  border: 1px solid var(--sky-ctx-menu-border, rgba(0, 0, 0, 0.15));
-  border-radius: var(--sky-ctx-menu-radius, 4px);
-  box-shadow: var(--sky-ctx-menu-shadow, 0 0 5px 1px rgba(0, 0, 0, 0.25));
-  color: var(--sky-ctx-menu-fg, inherit);
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li + li {
+  margin-inline-start: 2px !important;
 }
-.win11-menu-item {
-  padding: var(--sky-ctx-menu-item-padding, 6px 12px);
-  border-radius: var(--sky-ctx-menu-item-radius, 4px);
-  color: var(--sky-ctx-menu-fg, inherit);
-  cursor: pointer;
+
+/* 悬停底用伪元素铺在中间一段，避免整条 42px 的色块显得笨重 */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li::before {
+  content: "";
+  position: absolute;
+  inset: 6px 0;
+  border-radius: 7px;
+  background-color: transparent;
+  transition: background-color 0.14s ease;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li:hover {
+  background-color: transparent;
+  opacity: 1;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li:hover::before {
+  background-color: var(--sa-hover);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li.sa-debugger-tab-selected {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--sa-accent);
+  font-weight: 600;
+  opacity: 1;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li.sa-debugger-tab-selected::before {
+  background-color: color-mix(in srgb, var(--sa-accent) 8%, transparent);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li.sa-debugger-tab-selected::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background-color: var(--sa-accent);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li img {
+  width: 14px;
+  height: 14px;
+  margin: 0 6px 0 0;
+  filter: var(--sa-icon-filter);
+  opacity: 0.8;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li.sa-debugger-tab-selected img {
+  filter: none;
+  opacity: 1;
+}
+
+/* ── 内容区：透明底，让窗口壳背景直接透出，不再硬铺 --ui-modal-background ── */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tab-content {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* ── 日志行：24px 行高（与 log-view.js 的 rowHeight 同步）、等宽字体、悬停底色、
+      类型高亮由"整行染色"改为"左侧 2px 色条 + 10% 淡底" ── */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log-inner {
+  font-size: 12.5px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log {
+  box-sizing: border-box;
+  left: 4px;
+  right: 4px;
+  width: auto;
+  height: 24px;
+  line-height: 23px;
+  padding: 0 8px;
+  border-bottom: none;
+  border-radius: 6px;
+  color: var(--sa-fg);
+  transition: background-color 0.12s ease;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log:hover {
+  background-color: var(--sa-hover);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log[data-type="warn"] {
+  background-color: color-mix(in srgb, var(--sa-warn) 13%, transparent);
+  border-bottom: none;
+  box-shadow: inset 2px 0 0 var(--sa-warn);
+  color: var(--sa-fg);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log[data-type="error"] {
+  background-color: color-mix(in srgb, var(--sa-error) 13%, transparent);
+  border-bottom: none;
+  box-shadow: inset 2px 0 0 var(--sa-error);
+  color: var(--sa-error);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log-repeats {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  margin: 0 6px 0 0;
+  border-radius: 5px;
+  background-color: var(--sa-accent-soft);
+  color: var(--sa-accent);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: 1px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log-link {
+  color: var(--sa-accent);
+  opacity: 0.9;
+  text-decoration: none;
+  border-bottom: 1px dashed color-mix(in srgb, var(--sa-accent) 50%, transparent);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log-link:hover {
+  opacity: 1;
+  color: var(--sa-accent);
+  text-decoration: none;
+  border-bottom-style: solid;
+}
+
+/* 空状态：去掉斜体大字，改为克制的次级说明文字 */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log-empty {
+  font: 500 13px/1.6 var(--sa-ui-font) !important;
+  font-style: normal;
+  letter-spacing: 0.01em;
+  color: color-mix(in srgb, var(--sa-fg) 52%, transparent);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-compiler-warning {
+  height: 32px;
+  line-height: 32px;
+  color: var(--sa-accent);
+  font-size: 12.5px;
+  border-bottom: 1px solid var(--sa-line-soft);
+}
+
+/* ── 线程视图：行高对齐、运行态改为"淡强调底 + 左侧色条"、名称加重 ── */
+/* 滚动容器必须把自身 padding 算进 100% 高度，否则会多出 16px 溢出，
+   在空列表时右侧冒出一条"没内容也要滚"的滚动条。 */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log-outer {
+  box-sizing: border-box;
+  height: 100%;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-threads {
+  padding: 6px 0 10px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-thread-title {
+  padding: 0 12px;
+  line-height: 24px;
+  font-size: 12.5px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-thread-target-name {
+  margin-right: 6px;
+  font-weight: 600;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-thread-id {
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--sa-fg) 55%, transparent);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-thread-running {
+  background-color: var(--sa-accent-soft);
+  box-shadow: inset 2px 0 0 var(--sa-accent);
+  font-weight: 600;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-thread-compiled {
+  opacity: 0.7;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-block-preview {
+  height: 18px;
+  line-height: 18px;
+  padding: 0 6px;
+  margin-right: 6px;
+  border-radius: 5px;
+  font-size: 11.5px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-block-preview[data-shape="round"] {
+  border-radius: 100px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-block-preview[data-shape="stacked"] {
+  border-radius: 5px;
+}
+
+/* ── 性能页：留白与图表圆角 ── */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-performance-tab-content {
+  padding: 16px 16px 20px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-chart {
+  border-radius: 10px;
+}
+
+/* ── 标题栏右侧动作区（日志/线程/性能各页自带按钮）：胶囊化，悬停底色跟随标题栏明暗基调 ── */
+.sa-debugger-header-buttons.sa-debugger-hosted-actions [class*="shrink-expand-button"] {
+  height: calc(100% - 12px);
+  margin: 6px 0;
+  padding: 0 10px;
+  border-radius: 8px;
+}
+
+.sa-debugger-header-buttons.sa-debugger-hosted-actions [class*="shrink-expand-button"]:hover {
+  background-color: var(--sky-titlebar-hover, rgba(255, 255, 255, 0.16));
+}
+
+.sa-debugger-header-buttons.sa-debugger-hosted-actions [class*="shrink-expand-button"]:active {
+  background-color: var(--sky-titlebar-active, rgba(255, 255, 255, 0.26));
+}
+
+html[data-ui-theme='sky-editor'] .sa-debugger-unpause {
+  animation-name: saDebuggerUnpauseSky;
+}
+
+@keyframes saDebuggerUnpauseSky {
+  from {
+    background-color: color-mix(in srgb, var(--sky-accent, #1c86ff) 16%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+/* ── "更多"下拉浮层（挂在 document.body 下，故用全局作用域 + 主题属性限定）：
+      深黑底 → 与窗口同色系的浮层，10px 圆角、发丝边、柔和投影 ── */
+html[data-ui-theme='sky-editor'] .sa-debugger-dropdown {
+  min-width: 168px;
+  padding: 6px;
+  border: 1px solid var(--sa-line, color-mix(in srgb, var(--ui-modal-foreground, #575e75) 14%, transparent));
+  border-radius: 10px;
+  background-color: var(--ui-modal-background);
+  color: var(--ui-modal-foreground);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16), 0 3px 10px rgba(0, 0, 0, 0.08);
+  font-size: 12.5px;
+}
+
+html[data-ui-theme='sky-editor'] .sa-debugger-dropdown-item {
+  padding: 0 10px;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  border-radius: 7px;
+  color: inherit;
+  line-height: 30px;
+  transition: background-color 0.12s ease;
+}
+
+html[data-ui-theme='sky-editor'] .sa-debugger-dropdown-item:hover {
+  background-color: color-mix(in srgb, var(--ui-modal-foreground, #575e75) 7%, transparent);
+  color: inherit;
+}
+
+html[data-ui-theme='sky-editor'] .sa-debugger-dropdown-item:active {
+  background-color: color-mix(in srgb, var(--ui-modal-foreground, #575e75) 12%, transparent);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SKYEditor 主题 · 调试器动效与布局（第二阶段）
+   ① 通用交互动效：页签指示条、切页入场、下拉浮层、日志/线程行
+   ② 性能页重做：指标卡片 + 实时数值 + 渐变曲线，动效为主要看点
+   所有动画在 prefers-reduced-motion 下自动收敛为瞬时完成。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. 页签：文字/图标过渡，选中指示条从中心展开，图标随选中微抬 ── */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li > span {
+  transition: color 0.16s ease;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li img {
+  transition: opacity 0.16s ease, transform 0.2s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li:hover img {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li.sa-debugger-tab-selected img {
+  transform: translateY(-1px) scale(1.06);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li::after {
+  transform-origin: center bottom;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-tabs li.sa-debugger-tab-selected::after {
+  animation: saTabIndicator 0.3s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@keyframes saTabIndicator {
+  from {
+    transform: scaleX(0.18);
+    opacity: 0;
+  }
+
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+/* ── 2. 切页入场：内容区淡入 + 轻微上移（由 userscript 的 setActiveTab 重放） ── */
+.sa-debugger-tab-content.sa-tab-enter,
+.sa-performance-tab-content.sa-tab-enter {
+  animation: saTabEnter 0.26s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@keyframes saTabEnter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── 3. 性能页布局：指标卡片纵向排列，卡片内为「标题 + 实时数值 + 曲线」 ── */
+/* SKYEditor：性能页从 grid 流式改为「画布 + 绝对定位卡片」。
+   卡片坐标/尺寸由 performance.js 的布局引擎写入行内 left/top/width/height，
+   容器只负责滚动，因此这里不再用 grid-template-columns。 */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-performance-tab-content {
+  position: relative;
+  padding: 14px 16px 18px;
+  /* 滚动统一交给窗口内容区 .sa-debugger-tab-content（那里由窗口自绘滚动条接管）。
+     本页不再自建滚动容器，否则会多出一条外观/位置都不一致的滚动条。 */
+  overflow: visible;
+}
+
+/* 卡片画布：高度由布局引擎按内容最低点设置 */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-canvas {
+  position: relative;
+  width: 100%;
+  min-height: 140px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 11px 14px 8px;
+  border: 1px solid var(--sa-line-soft);
+  border-radius: 12px;
+  background-color: color-mix(in srgb, var(--sa-fg) 3.2%, transparent);
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card:hover {
+  border-color: var(--sa-line);
+  background-color: color-mix(in srgb, var(--sa-fg) 5%, transparent);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+/* 卡片入场只在性能页 show 时重放（.sa-perf-enter 由 performance.js 添加） */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-performance-tab-content.sa-perf-enter .sa-perf-card {
+  animation: saPerfCardIn 0.4s cubic-bezier(0.22, 0.9, 0.28, 1) both;
+  animation-delay: calc(var(--sa-perf-index, 0) * 70ms);
+}
+
+@keyframes saPerfCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(9px) scale(0.996);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-title {
+  font-family: var(--sa-ui-font);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  color: color-mix(in srgb, var(--sa-fg) 86%, transparent);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-metric {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  line-height: 1;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-value {
+  font-family: var(--sa-mono);
+  font-size: 19px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+  color: var(--sa-fg);
+  transition: color 0.24s ease;
+}
+
+/* 数值滚动期间描一圈主题色，滚动结束后回落到正文色 */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-value-tween {
+  color: var(--sa-accent);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-unit {
+  font-family: var(--sa-ui-font);
+  font-size: 10.5px;
+  letter-spacing: 0.6px;
+  color: color-mix(in srgb, var(--sa-fg) 42%, transparent);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-plot {
+  position: relative;
+  min-height: 22px;
+  /* 高度由布局引擎算好（卡片高 - 头部占位），小卡自动收紧 */
+  height: var(--sa-perf-plot-h, 132px);
+  overflow: hidden;
+}
+
+/* 图表本体不再额外留白，圆角与卡片一致 */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card .sa-debugger-chart {
+  border-radius: 8px;
+}
+
+/* ── 4. 日志页：悬停行的左侧强调条淡入（warn/error 常驻，普通行仅悬停） ── */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log {
+  transition: background-color 0.12s ease, box-shadow 0.16s ease;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log:hover {
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--sa-accent) 55%, transparent);
+}
+
+/* 重复次数徽标：数据刷新时轻微弹一下 */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log-repetition-badge {
+  transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-log:hover .sa-debugger-log-repetition-badge {
+  transform: scale(1.06);
+}
+
+/* ── 5. 线程页：正在运行的那一行做极缓的背景呼吸，指示"活动线程" ── */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-debugger-thread-running {
+  animation: saThreadRunning 1.8s ease-in-out infinite;
+}
+
+@keyframes saThreadRunning {
+  0%,
+  100% {
+    background-color: color-mix(in srgb, var(--sa-accent) 9%, transparent);
+  }
+
+  50% {
+    background-color: color-mix(in srgb, var(--sa-accent) 17%, transparent);
+  }
+}
+
+/* ── 6. 下拉浮层：从右上角轻微展开淡入 ── */
+html[data-ui-theme='sky-editor'] .sa-debugger-dropdown {
+  transform-origin: top right;
+  animation: saDropdownIn 0.16s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@keyframes saDropdownIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── 6.5 性能页仪表盘：尺寸档 / 编辑模式 / 拖拽缩放 / 右键菜单 ── */
+
+/* 三档尺寸的排版差异（坐标与宽高由 JS 写入行内样式，这里只管内部密度） */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-small {
+  padding: 8px 10px 6px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-small .sa-perf-card-head {
+  margin-bottom: 2px;
+  gap: 6px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-small .sa-perf-card-title {
+  font-size: 11px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-small .sa-perf-card-value {
+  font-size: 15px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-small .sa-perf-card-unit {
+  font-size: 9.5px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-small .sa-debugger-chart {
+  border-radius: 7px;
+}
+
+/* 大号卡：数值更醒目，标题与单位同步放大一档 */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-large .sa-perf-card-value {
+  font-size: 22px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-large .sa-perf-card-title {
+  font-size: 13px;
+}
+
+/* 编辑模式：可抓取光标 + 边框提示（不改变布局，避免"一进编辑就跳版"） */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-performance-tab-content.sa-perf-editing .sa-perf-card {
+  cursor: grab;
+  border-color: color-mix(in srgb, var(--sa-accent) 26%, var(--sa-line-soft));
+  /* 拖动/缩放时不要被浏览器手势抢走指针 */
+  touch-action: none;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-performance-tab-content.sa-perf-editing .sa-perf-card:hover {
+  border-color: color-mix(in srgb, var(--sa-accent) 55%, transparent);
+}
+
+/* 右键菜单打开中的卡片：加一圈主题色描边，明确"菜单操作的是哪一张" */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-menu-open {
+  z-index: 5;
+  border-color: color-mix(in srgb, var(--sa-accent) 72%, transparent) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sa-accent) 22%, transparent);
+}
+
+/* 拖动/缩放中的卡片：抬起阴影 + 置顶，并把过渡关掉避免跟手迟滞 */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-dragging {
+  z-index: 6;
+  cursor: grabbing;
+  border-color: color-mix(in srgb, var(--sa-accent) 68%, transparent) !important;
+  background-color: color-mix(in srgb, var(--sa-fg) 6.5%, transparent);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: none;
+}
+
+/* 右下角缩放手柄：平时完全隐藏（不挡曲线），编辑态浮现，hover 卡片变主题蓝倒角 */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  opacity: 0;
+  pointer-events: none;
+  cursor: nwse-resize;
+  touch-action: none;
+  transition: opacity 0.16s ease;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-resize::before,
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-resize::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  border-right: 1.5px solid color-mix(in srgb, var(--sa-fg) 30%, transparent);
+  border-bottom: 1.5px solid color-mix(in srgb, var(--sa-fg) 30%, transparent);
+  border-bottom-right-radius: 2px;
+  transition: border-color 0.16s ease, transform 0.16s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-resize::before {
+  width: 9px;
+  height: 9px;
+}
+
+/* 内侧再叠一个小倒角，形成"双线"层次，hover 时一起变蓝 */
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-resize::after {
+  width: 4px;
+  height: 4px;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-performance-tab-content.sa-perf-editing .sa-perf-resize {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card:hover .sa-perf-resize::before,
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card:hover .sa-perf-resize::after,
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-resizing .sa-perf-resize::before,
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-resizing .sa-perf-resize::after {
+  border-color: var(--sa-accent);
+}
+
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card:hover .sa-perf-resize::before,
+.sa-debugger-interface.sa-debugger-hosted-sky .sa-perf-card-resizing .sa-perf-resize::before {
+  transform: scale(1.14);
+}
+
+/* 右键菜单：挂在 body（position: fixed），因此这里重建一套被 .sa-debugger-hosted-sky
+   限定的调色变量，保证窗口内外的明暗/主题色表现完全一致。 */
+.sa-perf-menu {
+  --sa-fg: var(--ui-modal-foreground, #575e75);
+  --sa-accent: var(--sky-accent, #1c86ff);
+  --sa-line: color-mix(in srgb, var(--sa-fg) 14%, transparent);
+  --sa-line-soft: color-mix(in srgb, var(--sa-fg) 9%, transparent);
+  --sa-hover: color-mix(in srgb, var(--sa-fg) 7%, transparent);
+  --sa-accent-soft: color-mix(in srgb, var(--sa-accent) 14%, transparent);
+  --sa-ui-font: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+  position: fixed;
+  z-index: 100001;
+  min-width: 196px;
+  padding: 5px;
+  border: 1px solid var(--sa-line);
+  border-radius: 10px;
+  background-color: color-mix(in srgb, var(--sa-fg) 5%, var(--ui-modal-background, #ffffff));
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
+  color: var(--sa-fg);
+  font-family: var(--sa-ui-font);
+  font-size: 12.5px;
+  /* 未打开时常驻不可见，避免抢焦点与 ::before 勾选图层外露 */
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.985);
+  transform-origin: top left;
+  transition: opacity 0.14s ease, transform 0.14s cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0.14s;
+  user-select: none;
+}
+
+.sa-perf-menu.sa-perf-menu-open {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+}
+
+.sa-perf-menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  /* 左侧留出勾选位，未选中时也不会有文字位移 */
+  padding: 6px 9px 6px 26px;
+  border-radius: 7px;
+  cursor: default;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.sa-perf-menu-item:hover {
+  background-color: var(--sa-hover);
+}
+
+.sa-perf-menu-item:active {
+  background-color: color-mix(in srgb, var(--sa-fg) 11%, transparent);
+}
+
+.sa-perf-menu-item-checked {
+  background-color: var(--sa-accent-soft);
+  color: var(--sa-accent);
+}
+
+/* 勾选标记：两条边拼出的对勾，颜色跟随 currentColor */
+.sa-perf-menu-item-checked::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 9px;
+  height: 5px;
+  border-left: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: translateY(-68%) rotate(-45deg);
+}
+
+.sa-perf-menu-item-disabled {
+  opacity: 0.38;
+}
+
+.sa-perf-menu-item-disabled:hover,
+.sa-perf-menu-item-disabled:active {
+  background-color: transparent;
+}
+
+.sa-perf-menu-label {
+  flex: 1 1 auto;
   white-space: nowrap;
 }
-.win11-menu-item:hover {
-  background-color: var(--sky-ctx-menu-hover-bg, rgba(0, 0, 0, 0.08));
-  color: var(--sky-ctx-menu-hover-fg, inherit);
-}
-.win11-menu-item-divider {
-  margin: 4px 0;
-  border-top: 1px solid var(--sky-ctx-menu-divider, rgba(0, 0, 0, 0.15));
+
+/* 右侧快捷键 / 数值提示 */
+.sa-perf-menu-hint {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  letter-spacing: 0.3px;
+  color: color-mix(in srgb, var(--sa-fg) 44%, transparent);
 }
 
-/* 9. 8 向 resize 热区（引擎创建，贴窗口外缘，6px 触发条 + 12px 角） */
-.sa-debugger-sky-window .win11-resize-handle {
-  position: absolute;
-  z-index: 999;
-  display: none;
+.sa-perf-menu-item:hover .sa-perf-menu-hint {
+  color: color-mix(in srgb, var(--sa-fg) 62%, transparent);
 }
-.sa-debugger-sky-window .win11-resize-handle-n {
-  top: 0;
-  left: 8px;
-  right: 8px;
-  height: 6px;
-  cursor: n-resize;
+
+.sa-perf-menu-divider {
+  height: 1px;
+  margin: 5px 8px;
+  background-color: var(--sa-line-soft);
 }
-.sa-debugger-sky-window .win11-resize-handle-s {
-  bottom: 0;
-  left: 8px;
-  right: 8px;
-  height: 6px;
-  cursor: s-resize;
+
+.sa-perf-menu-caption {
+  padding: 6px 9px 3px 26px;
+  font-size: 10.5px;
+  letter-spacing: 0.6px;
+  color: color-mix(in srgb, var(--sa-fg) 42%, transparent);
 }
-.sa-debugger-sky-window .win11-resize-handle-e {
-  right: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 6px;
-  cursor: e-resize;
-}
-.sa-debugger-sky-window .win11-resize-handle-w {
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 6px;
-  cursor: w-resize;
-}
-.sa-debugger-sky-window .win11-resize-handle-ne {
-  top: 0;
-  right: 0;
-  width: 12px;
-  height: 12px;
-  cursor: ne-resize;
-}
-.sa-debugger-sky-window .win11-resize-handle-nw {
-  top: 0;
-  left: 0;
-  width: 12px;
-  height: 12px;
-  cursor: nw-resize;
-}
-.sa-debugger-sky-window .win11-resize-handle-se {
-  bottom: 0;
-  right: 0;
-  width: 12px;
-  height: 12px;
-  cursor: se-resize;
-}
-.sa-debugger-sky-window .win11-resize-handle-sw {
-  bottom: 0;
-  left: 0;
-  width: 12px;
-  height: 12px;
-  cursor: sw-resize;
+
+/* ── 7. 无障碍兜底：尊重系统"减少动态效果"设置 ── */
+@media (prefers-reduced-motion: reduce) {
+  .sa-debugger-interface.sa-debugger-hosted *,
+  .sa-debugger-interface.sa-debugger-hosted *::before,
+  .sa-debugger-interface.sa-debugger-hosted *::after,
+  html[data-ui-theme='sky-editor'] .sa-debugger-dropdown {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
 }

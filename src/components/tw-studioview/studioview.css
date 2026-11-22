@@ -107,7 +107,17 @@ With changes to make it work properly in the scratch-gui environment.
   border-radius: 2px 2px 2px 0;
   width: 100%;
 }
+
+/* SKYEditor 皮肤：占位标题使用容器级圆角 */
+:global(html.sky-editor-theme) .studioview-placeholder .studioview-title {
+  border-radius: var(--sky-radius) var(--sky-radius) var(--sky-radius) 0;
+}
 .studioview-placeholder .studioview-author {
   border-radius: 0 0 2px 2px;
   width: 50%;
+}
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .studioview-placeholder .studioview-author {
+    border-radius: 0 0 var(--sky-radius) var(--sky-radius);
 }

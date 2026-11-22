@@ -304,3 +304,25 @@
 .hidden {
     display: none;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .left-card {
+    border-top-left-radius: var(--sky-radius);
+    border-bottom-left-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .right-card {
+    border-top-right-radius: var(--sky-radius);
+    border-bottom-right-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .card {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .step-image {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .deck {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .see-all-button {
+    border-radius: var(--sky-radius-sm);
+}

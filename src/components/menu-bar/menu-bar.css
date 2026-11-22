@@ -69,9 +69,37 @@
     cursor: pointer;
 }
 
+/* SKY: 顶栏各项点击/hover 高亮采用「控件级小圆角」方案
+   （高 34px 居中内缩、圆角 var(--sky-radius-sm) = 6px）。
+   「音乐」「SKYEditor反馈」等独立按钮保留大圆角 var(--sky-radius)，
+   两套圆角并存：菜单项利落、按钮圆润。
+   项自身仍占满 $menu-bar-height，不改高度、不占额外空间，下拉菜单
+   定位（margin-top: $menu-bar-height）不受影响；只把高亮底色从
+   48px 直角色块挪到居中内缩的伪元素上。 */
 .menu-bar-item.active,
 .menu-bar-item.hoverable:hover {
     background-color: $ui-black-transparent;
+}
+
+/* SKYEditor 皮肤的「控件级小圆角」高亮：只在该皮肤下把底色搬到居中内缩的伪元素上。
+   TurboWarp 主题使用上游官方直角色块（上面这条规则原样生效）。 */
+:global(html.sky-editor-theme) .menu-bar-item.active,
+:global(html.sky-editor-theme) .menu-bar-item.hoverable:hover {
+    background-color: transparent;
+}
+
+:global(html.sky-editor-theme) .menu-bar-item.active::before,
+:global(html.sky-editor-theme) .menu-bar-item.hoverable:hover::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 34px;
+    transform: translateY(-50%);
+    border-radius: var(--sky-radius-sm);
+    background-color: $ui-black-transparent;
+    pointer-events: none;
 }
 
 .menu-bar-item.growable {
@@ -105,10 +133,47 @@
     text-decoration: none;
 }
 
+/* SKY: 深色模式下顶栏与按钮底色都偏深，若文字仍用品牌蓝，会与按钮底色
+   几乎同色（实拍：按钮底色 rgb(83,129,210)、文字 rgb(50,105,201)，看不清）。
+   深色模式一律跟随顶栏前景色，保证「SKYEditor 反馈」正常显示。 */
+:global(html[data-ui-dark='true']) .feedback-link {
+    color: var(--menu-bar-foreground, #ffffff);
+}
+
+:global(html.sky-editor-theme) {
+    /* 反馈按钮底色：顶栏为深色时用半透明白，避免"只见白块" */
+    --sky-menu-feedback-bg: #ffffff;
+}
+
+:global(html.sky-editor-theme[data-ui-dark='true']) {
+    --sky-menu-feedback-bg: rgba(255, 255, 255, 0.16);
+}
+
+/* SKY: 暗色模式 + 顶栏使用主题色时，顶栏本身就是品牌亮色（如 #1c86ff），
+   再叠 16% 半透明白会让胶囊比顶栏更亮，白字几乎糊进底色（实拍：反馈按钮看不清）。
+   这一态改用半透明黑底，既保留按钮形态，又拉回白字对比；
+   关闭主题色的暗色顶栏是深底 #1E2027，仍沿用上面的半透明白底即可。 */
+:global(html.sky-editor-theme[data-ui-dark='true']:not([data-sky-menubar-theme='plain'])) {
+    --sky-menu-feedback-bg: rgba(0, 0, 0, 0.20);
+}
+
+/* SKY: 关闭「编辑器菜单栏使用主题色」后顶栏是白底，白色胶囊会与顶栏融成一片，
+   改用极淡黑底，让「SKYEditor 反馈」仍保留按钮形态（文字为品牌蓝，两态都可读）。 */
+:global(html.sky-editor-theme[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) {
+    --sky-menu-feedback-bg: rgba(0, 0, 0, 0.05);
+}
+
 .feedback-button {
+    /* 上游官方原值：TurboWarp 主题下保持白底直角的官方胶囊按钮 */
     background-color: white;
     color: inherit;
     height: 34px;
+}
+
+/* SKYEditor 皮肤：底色改为跟随顶栏明暗，并与「音乐」按钮统一圆角 */
+:global(html.sky-editor-theme) .feedback-button {
+    background-color: var(--sky-menu-feedback-bg);
+    border-radius: var(--sky-radius-sm);
 }
 
 /* SKY: 音乐播放器按钮——避免复用 feedback-button 的硬编码白底导致深色
@@ -263,14 +328,33 @@
 }
 
 /* SKYEditor 主题：顶栏整体水平居中，仅调整对齐/位置，不改样式 */
+/* SKYEditor 主题居中布局：菜单组严格居中，右侧按钮组（保存到电脑、关于等）
+   绝对定位贴右缘，不参与左右弹性对称计算，避免按钮宽度破坏居中。 */
 .sky-editor-centered {
-    justify-content: center;
+    position: relative;
+    justify-content: flex-start;
 }
 
-/* SKYEditor 主题居中布局时，右侧按钮组（保存到电脑等）仍固定在顶栏右侧，
-   与经典主题行为一致，不随菜单一起居中 */
-.sky-editor-centered .account-info-group {
-    margin-left: auto;
+/* 左侧弹性留白，与 .menu-bar-spacer 对称，保证菜单组水平居中 */
+.sky-editor-centered::before {
+    content: "";
+    flex: 1;
+}
+
+/* 中间弹性空隙，与左侧留白对称，配合 ::before 让菜单组严格居中 */
+.sky-editor-centered .menu-bar-spacer {
+    flex: 1;
+}
+
+/* 右侧按钮区：绝对定位到顶栏右缘，垂直居中，不占 flex 空间 */
+.sky-editor-centered .account-area {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
 }
 
 .sky-editor-centered .main-menu {
@@ -285,4 +369,78 @@
     flex-grow: 0;
     width: auto;
     max-width: $menu-bar-item-max-width;
+}
+
+
+/* SKYEditor 主题：顶栏底色【跟随主题色（accent）】，不在此处写死任何颜色。
+   仅作用于 html.sky-editor-theme，不影响经典 / bilup / Azure 等主题。
+
+   themed（默认）状态下不再覆盖背景与文字：
+     - 底色吃 .menu-bar 原生的 $menu-bar-background（= --menu-bar-background，
+       由 lib/themes/guiHelpers.js 的 applyGuiColors 按当前 accent 下发，
+       暗色模式取 accent 的深色版 --looks-secondary-dark）；
+     - 文字吃 $menu-bar-foreground（--menu-bar-foreground，按顶栏底色明暗自动取黑白）。
+   历史问题：此处曾写死 #4083FB / #1F3557，导致切换主题色后顶栏恒为蓝色，已移除。
+
+   顶栏配色由【独立开关】控制（设置 → 外观 → 主题 → 编辑器菜单栏）：
+     - data-sky-menubar-theme='themed'（默认）：跟随主题色，底色随 accent 变化；
+     - data-sky-menubar-theme='plain'          ：不使用主题色，跟随界面底色
+                                                浅色 → 白底 + 近黑字；暗色 → 深底 + 浅字。
+   顶栏与「主题色窗口标签栏」（data-sky-tab-bar-theme，只作用于窗口标题栏）
+   互不影响：关掉其中任意一个，另一个保持原配色。 */
+
+/* ① 主题色态（浅色 / 暗色通用）：底色与文字一律交给主题色变量，
+      这里只清掉可能残留的背景图，保证 accent 变更后顶栏立即跟随。 */
+:global(html.sky-editor-theme:not([data-sky-menubar-theme='plain'])) .menu-bar {
+    background-color: var(--menu-bar-background, #4C97FF);
+    background-image: none;
+    color: var(--menu-bar-foreground, #ffffff);
+}
+
+/* ③ 关闭主题色（浅色模式）：白底 + 近黑字。
+      文字与按钮走 inherit（.menu-item-link / .feedback-button / .music-player-button
+      都是 color: inherit），因此这一条同时把顶栏文字和按钮变成黑色。 */
+:global(html.sky-editor-theme[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) .menu-bar {
+    background-color: #f7f8fa;
+    background-image: none;
+    color: #1F2430;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+}
+
+/* ④ 关闭主题色（暗色模式）：深底 + 浅字，与暗色工作区同色系 */
+:global(html.sky-editor-theme[data-sky-menubar-theme='plain'][data-ui-dark='true']) .menu-bar {
+    background-color: #1E2027;
+    background-image: none;
+    color: #E8EAEF;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.10);
+}
+
+/* ⑤ 关闭主题色后的菜单项悬停底色：浅底淡黑、深底淡白
+      （原白色半透明在浅色顶栏上完全看不出来） */
+:global(html.sky-editor-theme[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) .menu-bar-item.active::before,
+:global(html.sky-editor-theme[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) .menu-bar-item.hoverable:hover::before {
+    background-color: rgba(0, 0, 0, 0.06);
+}
+
+:global(html.sky-editor-theme[data-sky-menubar-theme='plain'][data-ui-dark='true']) .menu-bar-item.active::before,
+:global(html.sky-editor-theme[data-sky-menubar-theme='plain'][data-ui-dark='true']) .menu-bar-item.hoverable:hover::before {
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+/* ⑥ 顶栏图标（文件/编辑/教程/设置等是单色白 SVG）的明暗自适应
+      ─────────────────────────────────────────────────────────────
+      统一交给 src/lib/iconContrast.js 在运行时判定"图标背后的实际背景明暗"：
+      深底转纯白、浅底转中性深灰（不再纯黑，纯黑在白底上过于生硬）。
+      这里只保留一条兜底：脚本尚未执行的首帧，先按浅底给深色，避免白图标压白底看不见。
+      彩色图标由 data-sky-icon-color / 脚本按 src 判定跳过，不会被染色。 */
+:global(html.sky-editor-theme[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) .menu-bar img:not([data-sky-icon-tone]):not([data-sky-icon-color]) {
+    filter: brightness(0) opacity(0.72);
+}
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .music-player-button {
+    border-radius: var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .profile-icon {
+    border-radius: var(--sky-radius-sm);
 }

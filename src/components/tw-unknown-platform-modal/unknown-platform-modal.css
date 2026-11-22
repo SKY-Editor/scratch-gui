@@ -54,3 +54,8 @@
 .button:disabled {
     opacity: 0.8;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .button {
+    border-radius: var(--sky-radius-sm);
+}

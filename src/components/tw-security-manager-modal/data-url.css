@@ -14,3 +14,8 @@
     font-family: monospace;
     margin: 0.5rem 0;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .code {
+    border-radius: var(--sky-radius);
+}

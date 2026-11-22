@@ -125,3 +125,9 @@
     background: black;
     filter: opacity(15%) brightness(0%);
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .sprite-selector {
+    border-top-right-radius: var(--sky-radius);
+    border-top-left-radius: var(--sky-radius);
+}

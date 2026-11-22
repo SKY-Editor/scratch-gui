@@ -99,3 +99,102 @@
     margin: 0.5rem;
     cursor: pointer;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   书包栏（底部背包按钮）：做成独立圆角矩形卡片
+   ──────────────────────────────────────────────────────────────────
+   原样式是贴窗口底边、横跨整个左侧列（含左侧标签栏）的白底长条，
+   只有上两角圆角、上边一条 1px 线，与上方积木卡片的分层语言不一致。
+   这里改成与积木卡片同左缘、同右缘、四角 --sky-radius 圆角、
+   --sky-stroke 描边的卡片，左右与底部各留 6px 缝，与其它组件框间距统一。
+   坐标：左缘 = blocks 区 52px + 6px 缝 = 58px；右缘贴积木卡片右缘。
+   ══════════════════════════════════════════════════════════════════ */
+:global(html.sky-editor-theme) .backpack-container {
+    padding: 0 0 6px 58px;
+    /* 左侧整列是纵向 flex：书包按自身高度占位，不参与压缩，
+       剩余高度全部留给上方 Tabs/积木区（否则会被 flex 一起压扁） */
+    flex: 0 0 auto;
+}
+
+:global(html.sky-editor-theme) .backpack-header {
+    margin-top: 0;
+    height: 30px;
+    box-sizing: border-box;
+    padding: 0 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: var(--sky-stroke-width) solid var(--sky-stroke);
+    /* 面板级圆角统一引用 --sky-radius（原为写死的 8px，与积木卡片 12px 不一致） */
+    border-radius: var(--sky-radius);
+    background: $ui-white;
+    /* 展开/收起时圆角形态切换要有过渡，否则下两角会瞬间弹成直角 */
+    transition: border-radius 0.28s ease;
+}
+
+/* 展开态：header 与下方列表拼成同一张卡片 —— 下两角改直角，
+   header 的底边描边留作两者之间的分隔线 */
+:global(html.sky-editor-theme) .backpack-container-expanded .backpack-header {
+    border-radius: var(--sky-radius) var(--sky-radius) 0 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   书包列表：展开 / 收起动画
+   ──────────────────────────────────────────────────────────────────
+   组件层已把列表改为常驻节点（不再用 {expanded ? ... : null} 条件渲染），
+   否则元素进出 DOM 无法做过渡动画。这里用 min-height/max-height 双阈值
+   做高度过渡（min-height 覆盖原生的 5.5rem 才能收得干净），
+   配合 opacity 与轻微上移，收起时视觉上是「缩回 header 里」。
+   面板语言与其它卡片一致：左右下三边 --sky-stroke 描边、下两角
+   --sky-radius；上边不画线，由 header 底边充当中间分割线。
+   ══════════════════════════════════════════════════════════════════ */
+:global(html.sky-editor-theme) .backpack-list {
+    border: var(--sky-stroke-width) solid var(--sky-stroke);
+    border-top: none;
+    border-radius: 0 0 var(--sky-radius) var(--sky-radius);
+    background: $ui-white;
+    overflow: hidden;
+    min-height: 5.5rem;
+    max-height: 5.5rem;
+    opacity: 1;
+    transition:
+        min-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.2s ease,
+        border-width 0.3s ease;
+    /* 注意：这里绝不能写 transform（连 translateY(0) 都不行）。
+       本容器是背包物品的定位祖先，一旦带 transform 就会成为 position:fixed
+       后代的包含块，物品右键菜单（react-contextmenu 用 fixed 定位）会被强制
+       相对本容器定位，再被上面的 overflow:hidden 整块裁掉，表现就是
+       「背包展开后物品右键菜单不显示」。折叠动画只保留高度与透明度过渡。 */
+}
+
+:global(html.sky-editor-theme) .backpack-list-collapsed {
+    min-height: 0;
+    max-height: 0;
+    opacity: 0;
+    border-width: 0;
+    pointer-events: none;
+}
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) [dir="ltr"] .backpack-header {
+    border-top-right-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) [dir="rtl"] .backpack-header {
+    border-top-left-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .more {
+    border-radius: var(--sky-radius);
+}
+
+/* TW/官方主题：组件层把列表改为常驻节点（上游原为条件渲染），
+   收起态必须显式隐藏，否则 TW 主题下背包列表一直显示（折叠失效）。
+   SKY 主题下面用高度过渡动画，需覆盖回 flex。 */
+.backpack-list-collapsed {
+    display: none;
+}
+
+:global(html.sky-editor-theme) .backpack-list-collapsed {
+    display: flex;
+}

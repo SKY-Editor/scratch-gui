@@ -75,3 +75,11 @@
 [dir="rtl"] .coming-soon-image {
     margin-right: .125rem;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .coming-soon {
+    border-radius: var(--sky-radius)!important;
+}
+:global(html.sky-editor-theme) .coming-soon:after {
+    border-radius: var(--sky-radius);
+}

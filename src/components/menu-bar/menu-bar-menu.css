@@ -1,0 +1,200 @@
+@import "../../css/colors.css";
+
+/* 顶栏菜单（MenuBarMenu）浮层样式
+   ---------------------------------------------------------------------------
+   菜单本体 Portal 到 body 下的浮层容器，这里接管原本写在 .menu 上的
+   外观（背景 / 边框 / 圆角 / 阴影），使视觉与改造前完全一致。
+   位置、层级、动画由 SkyPopover 统一控制。 */
+
+.menu-popover {
+    background-color: $menu-bar-background;
+    color: $menu-bar-foreground;
+    border: 1px solid $ui-black-transparent;
+    border-radius: var(--sky-radius, 12px);
+    box-shadow: 0 8px 8px 0 $shadow;
+    padding: 0;
+    min-width: 186px;
+}
+
+/* 浮层内的 MenuComponent 只负责列表结构与子菜单，不再自己定位/画背景 */
+.menu-in-popover {
+    position: static;
+    left: auto;
+    right: auto;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: inherit;
+    background-color: transparent;
+    box-shadow: none;
+}
+
+/* 子菜单展开动画：与顶栏菜单的展开动画保持同一节奏 */
+.menu-in-popover [class*='submenu'] {
+    animation: skyMenuSubIn 140ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes skyMenuSubIn {
+    from {
+        opacity: 0;
+        transform: translateX(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 子菜单折叠动画：menu.css 用 display 切换，折叠瞬间消失没有过渡。
+   这里在浮层作用域内改为 visibility / opacity / max-height / transform 过渡，
+   展开与折叠都能平滑过渡；不影响浮层外的任何菜单。 */
+.menu-in-popover [class*='submenu'] {
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    max-height: 0;
+    transform: translateX(-6px);
+    pointer-events: none;
+    transition:
+        opacity 120ms ease,
+        transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1),
+        max-height 160ms cubic-bezier(0.22, 0.61, 0.36, 1),
+        visibility 0s linear 160ms;
+}
+
+.menu-in-popover .menu-item:hover > [class*='submenu'],
+.menu-in-popover .menu-item[class*='expanded'] > [class*='submenu'] {
+    visibility: visible;
+    opacity: 1;
+    max-height: 520px;
+    transform: translateX(0);
+    pointer-events: auto;
+    transition:
+        opacity 120ms ease,
+        transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1),
+        max-height 160ms cubic-bezier(0.22, 0.61, 0.36, 1),
+        visibility 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .menu-in-popover [class*='submenu'] {
+        animation: none;
+        transition: none;
+    }
+}
+
+/* ── 关闭「编辑器菜单栏」主题色后的跟随 ────────────────────────────────
+   菜单已 Portal 到 body，不再是 .menu-bar 的后代，
+   menu-bar.css 里那条 html[data-sky-menubar-theme='plain'] .menu-bar 覆盖
+   够不到它，必须在这里单独跟随，否则白顶栏下仍是主题色底 + 白字。
+   只跟随顶栏自己的开关；暗色模式（data-ui-dark='true'）下拉由全局暗色规则
+   接管，这里用 :not([data-ui-dark='true']) 排除，避免把深色下拉刷成白底。 */
+:global(html[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) .menu-popover {
+    background-color: $ui-white;
+    color: #1F2430;
+}
+:global(html[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) .menu-in-popover [class*='menu-item'],
+:global(html[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) .menu-in-popover [class*='menu-section'] {
+    color: #1F2430;
+}
+:global(html[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) .menu-in-popover [class*='menu-item']:hover,
+:global(html[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) .menu-in-popover [class*='menu-item'][class*='active'],
+:global(html[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) .menu-in-popover [class*='menu-item'][class*='expanded'] {
+    background-color: $ui-black-transparent;
+}
+
+/* ===== SKYEditor 皮肤：顶栏下拉面板同步「右键菜单统一皮肤」(v5) =====
+   令牌真源与右键菜单完全同一套：components/context-menu/sky-ctx-menu-unified.css 在同一
+   主题作用域上定义的 --sky-ctx2-* 令牌（暗色仅在 html[data-ui-dark='true'] 下重定义），
+   所以顶栏下拉与右键菜单共用同一批取值，深浅主题天然一致，不会各自漂移。
+   落到顶栏下拉的形态（逐项对齐右键菜单）：
+     1) 外容器：极淡 1px 描边 + 5px 内边距（padding），菜单项因此内缩，四角为圆角；
+     2) 每个菜单项自身是完整圆角矩形，圆角取同心内圆角 --sky-ctx2-inner
+        （= 外圆角 - 描边 - 内边距），相邻两项之间留 2px 细缝；
+     3) 默认态无底色、无描边，只透出容器底色；悬停 / 展开子菜单才填充底色，
+        不出现任何外轮廓或描边环；
+     4) 分组分割线改为左右各内缩 8px 的 1px 细线，上下各留 5px，不通栏；
+     5) 子菜单面板与主面板同一皮肤。
+   生效范围：仅 html:is([data-ui-theme='sky-editor'], .sky-editor-theme)，
+   其他主题一行不动；不新增 DOM、不改 min-width（仍 186px）、不改行高与点击交互。
+   --------------------------------------------------------------------------- */
+
+/* 1. 外容器：浮层根节点同时带 [data-sky-popover][data-sky-popover-variant='panel']，
+     其默认皮肤（$ui-primary 底 / 1px 描边 / 12px 圆角 / panel 阴影 / padding:0）特异度更高，
+     这里带上两个属性选择器提权，确保统一皮肤的取值真正生效。 */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme)) [data-sky-popover][data-sky-popover-variant].menu-popover {
+    box-sizing: border-box;
+    padding: var(--sky-ctx2-pad, 5px);
+    background-color: var(--sky-ctx2-outer-bg, $menu-bar-background);
+    color: var(--sky-ctx2-fg, $menu-bar-foreground);
+    border: var(--sky-ctx2-bw, 1px) solid var(--sky-ctx2-border, $ui-black-transparent);
+    border-radius: var(--sky-ctx2-radius, var(--sky-radius, 12px));
+    box-shadow: var(--sky-ctx2-shadow, 0 8px 8px 0 $shadow);
+}
+
+/* 2. 子菜单面板与主面板同一皮肤（宽度由 min-width 决定，padding 只内缩内容） */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme)) .menu-popover [class*='submenu'] > [class*='menu']:not([class*='menu-item']) {
+    box-sizing: border-box;
+    padding: var(--sky-ctx2-pad, 5px);
+    background-color: var(--sky-ctx2-outer-bg, $menu-bar-background);
+    color: var(--sky-ctx2-fg, $menu-bar-foreground);
+    border: var(--sky-ctx2-bw, 1px) solid var(--sky-ctx2-border, $ui-black-transparent);
+    border-radius: var(--sky-ctx2-radius, var(--sky-radius, 12px));
+    box-shadow: var(--sky-ctx2-shadow, 0 8px 8px 0 $shadow);
+}
+
+/* 3. 每个菜单项各自成完整圆角矩形：默认态透明、无描边无轮廓 */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme)) :is(.menu-popover, [class*='submenu']) [class*='menu-item'] {
+    background-color: transparent;
+    background-image: none;
+    background-clip: padding-box;
+    border: 0;
+    border-radius: var(--sky-ctx2-inner, 6px);
+    box-shadow: none;
+    outline: none;
+    color: var(--sky-ctx2-fg, $menu-bar-foreground);
+    transition: none;
+}
+
+/* 4. 相邻菜单项之间留细缝（分割线项另有独立留白，规则在下面覆盖） */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme)) :is(.menu-popover, [class*='submenu']) [class*='menu-item'] + [class*='menu-item'] {
+    margin-top: var(--sky-ctx2-gap, 2px);
+}
+
+/* 5. 只在悬停 / 展开子菜单 / 当前激活时显底色，且不带任何外轮廓 */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme)) :is(.menu-popover, [class*='submenu']) [class*='menu-item']:is(:hover, [class*='expanded'], [class*='active']) {
+    background-color: var(--sky-ctx2-hover-bg, $ui-black-transparent);
+    color: var(--sky-ctx2-fg, $menu-bar-foreground);
+    border-color: transparent;
+    box-shadow: none;
+    outline: none;
+}
+
+/* 6. 禁用项不高亮 */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme)) :is(.menu-popover, [class*='submenu']) [class*='menu-item']:hover[class*='disabled'],
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme)) :is(.menu-popover, [class*='submenu']) [class*='menu-item'][class*='disabled'] {
+    background-color: transparent;
+}
+
+/* 7. 分组分割线：去掉横贯整行的 border-top，改为左右内缩 8px、上下各留 5px 的细线 */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme)) :is(.menu-popover, [class*='submenu']) [class*='menu-section'] {
+    border-top: 0;
+    position: relative;
+}
+
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme)) :is(.menu-popover, [class*='submenu']) [class*='menu-section']:not(:first-child) {
+    margin-top: calc(var(--sky-ctx2-divgap, 5px) * 2 + 2px);
+}
+
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme)) :is(.menu-popover, [class*='submenu']) [class*='menu-section']:not(:first-child)::before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * (var(--sky-ctx2-divgap, 5px) + 1px));
+    left: var(--sky-ctx2-inset, 8px);
+    right: var(--sky-ctx2-inset, 8px);
+    height: 1px;
+    background-color: var(--sky-ctx2-line, $ui-black-transparent);
+    pointer-events: none;
+}

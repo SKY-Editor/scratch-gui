@@ -214,3 +214,26 @@
     height: 100%;
     filter: $filter-icon-black;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .open-button {
+    border-radius: var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .font-input {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .font-dropdown-outer {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .font-playground {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .button {
+    border-radius: var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .fallback-button {
+    border-radius: var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .manage-font {
+    border-radius: var(--sky-radius);
+}

@@ -157,3 +157,14 @@ stage doesn't "spill" out from under its rounded corners. instead, shift these o
     0% { opacity: 1; }
     100% { opacity: 0; }
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .stage {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .frame {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .green-flag-overlay-wrapper {
+    border-radius: var(--sky-radius);
+}

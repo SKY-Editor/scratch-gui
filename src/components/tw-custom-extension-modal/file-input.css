@@ -15,3 +15,8 @@
 .container:focus-within {
     border-color: $looks-secondary;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .container {
+    border-radius: var(--sky-radius);
+}

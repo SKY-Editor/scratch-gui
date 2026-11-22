@@ -109,10 +109,508 @@
     }
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   SKYEditor 主题：积木区卡片化 + 面板间缝（严格对齐 TW风格 (2).png）
+   ──────────────────────────────────────────────────────────────────
+   参考图 TW风格 (2).png 为 5120×2882 @DPR2.5，逻辑视口 2048×1152，
+   以下坐标由原图像素扫描换算（物理 / 2.5）：
+     · 菜单栏           0-47.6 #4083FB
+     · 顶部缝           48-53.6   #E7F0FE（6px）
+     · 左侧标签栏       0-51.6    #E9F0FB
+     · 标签栏后缝       52.4-57.6 #E7F0FE（5.2px）
+     · 分类栏           58.8-111.2 白底（52.4 宽），右缘 1px 细线
+     · flyout           112.4-361  #F9F9F9（与分类栏同卡片，无缝）
+     · flyout 后缝      361.6-367.2 #E7F0FE（5.6px）
+     · 工作区           368.4-     #F9F9F9（独立卡片）
+     · 底部缝           ≈1119.6 起 #E7F0FE（4px）
+   即：分类栏+flyout 是一张卡片，工作区是另一张卡片，卡片之间留 6px 底色缝，
+   卡片自身带圆角。全部规则限定 html.sky-editor-theme，不影响其它主题。
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════
+   积木区：拆成「左侧分类栏卡片」+「右侧工作区卡片」两张圆角矩形
+   ──────────────────────────────────────────────────────────────────
+   要求：积木区整体带 1px 轮廓，且左侧分类栏与右侧工作区互相独立，
+   各自是一个圆角矩形框，中间留 6px 底色缝，描边色与舞台卡片一致
+   （var(--sky-stroke)），四周缝隙与其它组件框统一 6px。
+   实现：
+   · 外层 injectionDiv 不再当卡片，只负责让出四周 6px 缝（背景透明，
+     透出 body-wrapper 的 var(--sky-gap) 底色），自身不再有圆角/底色；
+   · 左侧分类栏用真实 DOM（blocklyToolboxDiv）画描边 + 上两角圆角，
+     下两角圆角由紧贴其下的「添加扩展」按钮承担（同一个左栏卡片）；
+   · 右侧工作区没有独立 DOM，用 clip-path 把 blocklySvg 左侧 60px
+     （分类栏 54 + 缝 6）裁掉并裁出 8px 圆角，再用 injectionDiv::after
+     在上层画 1px 轮廓。
+   ══════════════════════════════════════════════════════════════════ */
+:global(html.sky-editor-theme) .blocks :global(.injectionDiv) {
+    top: 6px;
+    left: 6px;
+    bottom: 6px;
+    /* scratch-blocks 自带 height:100%，会让内容溢出容器底沿（压住下方书包栏），
+       这里显式按 top+bottom 各 6px 收口，使底缝与其它组件框的 6px 一致 */
+    height: calc(100% - 12px);
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+    background: transparent;
+    /* ── 积木区左侧总裁剪（解决「折叠/展开时分类栏左侧上下顶出方块」）────────
+       injectionDiv 左缘 = 分类栏左缘（left:6px 让出标签栏后的 6px 缝）。
+       flyout 与 rect 底板都画在 svg 的局部负坐标里（rect x=-59.5、宽 309），
+       再叠加折叠态 translate(-250)，整块面板就会一路画到 injectionDiv 左侧：
+         · 分类栏左描边外侧、标签栏那块区域、乃至积木区左边界以外；
+         · 分类栏是 12px 圆角卡片，圆角外侧本来透底色，面板一经过就从
+           左上角、左下角顶出一块白色方角 —— 正是用户看到的「左侧上下突出」。
+       ── 为什么不用 inset(0) / overflow:hidden：
+          · inset(0) 会把右、上、下也一起裁掉，拖拽中的积木滑到舞台栏上方时
+            会被切掉一截（拖拽层 .blocklyBlockDragSurface 也是 injectionDiv 的子元素）；
+          · overflow:hidden 还会把 svg 的 overflow:visible 一起压掉，
+            rect 在分类栏底下（x 0…60）的那段描边/底板会被整条裁掉。
+       这里用 polygon 只封住左边界：x≥0 区域向右/向上/向下都不裁 ——
+       折叠时面板越到左侧的部分在绘制阶段直接消失，拖拽积木不受任何影响。 */
+    /* 底边收到 100%（容器底沿），不放开：
+       svg 实际高度（Blockly 按窗口算，实测 854px）比本容器（766px）高 88px，
+       多出来的部分会画到下方书包栏上面（svgo 背景 + 横向滚动条），把书包栏
+       上半截整个盖住 —— 书包里物品的点击/右键都会先落到这层 svg 上，
+       表现就是「背包展开后物品右键菜单不显示」。拖动积木时另行放开（见文件末尾）。 */
+    clip-path: polygon(0 -4000px, 6000px -4000px, 6000px 100%, 0 100%);
+}
+
+/* 工作区卡片左缘位置（相对 injectionDiv，单位 px）：
+     · 折叠态（无 flyout）：分类栏 60 + 6px 缝 = 66
+     · 展开态（有 flyout）：flyout 卡片右缘 310 + 6px 缝 = 316
+   分类栏宽度必须与 scratch-blocks 的定位常量一致：
+   Blockly.Toolbox.prototype.width = 310（= flyout 250 + 分类栏 60），
+   flyout 的 x 由 categoryWidth = 310 - 250 = 60 算出，即 flyout 左缘天然贴住
+   60px 分类栏的右缘。把分类栏改窄/改宽而不动这个常量，就会在分类栏与 flyout
+   之间露出背景缝（展开态多一道 6px 缝，正是之前与参考图不符的原因）。
+   两态由 hide-flyout 的 .sa-flyoutClose 类区分，纯 CSS 即时切换，
+   使「分类栏 → flyout → 工作区」始终是同一套 6px 缝 + 8px 圆角的连续排布。 */
+/* ══════════════════════════════════════════════════════════════════
+   全站统一圆角基准 --sky-radius
+   ──────────────────────────────────────────────────────────────────
+   参考图圆角取 12px（此前按"顶边起点距卡片左缘 39 物理像素"标定成 18px，
+   实机对比后 18px 明显偏大：弧线横向吃掉近 1/4 分类栏宽度，角部过于圆钝）。
+   以卡片自身宽度归一后量测，参考图弧线跨度约为卡片宽度的 1/5 左右，
+   60px 分类栏对应 12px，故取 12px。
+   此前积木区用 12px 而舞台/角色面板/扩展按钮用 8px，界面上同时存在
+   两套圆角，视觉上明显不一致。所有面板级容器一律引用本变量，
+   今后只需改这一处即可整体调整。
+   ══════════════════════════════════════════════════════════════════ */
+/* 全站样式令牌：圆角 / 描边 / 底色缝
+   ──────────────────────────────────────────────────────────────────
+   --sky-radius      面板级圆角（分类栏、积木卡片、舞台卡片、角色面板、
+                     扩展按钮、书包卡片…），所有"卡片外框"只能引用它。
+   --sky-radius-sm   控件级圆角（标签栏图标按钮、列表内小按钮等），
+                     尺寸远小于面板，用大圆角会显得过钝，故单列一档。
+   --sky-stroke      统一描边色，1px。任何卡片轮廓、分割线都用它。
+   --sky-gap         统一缝色（卡片之间的 6px 间隔底色），同时用于圆角
+                     处的补缝，保证缝与补片颜色永远一致。
+   ══════════════════════════════════════════════════════════════════ */
+:global(html.sky-editor-theme) {
+    --sky-radius: 12px;
+    /* 双圆角：主档 12px 用于面板/卡片，控件级小一档 6px 用于顶栏菜单项等紧凑控件 */
+    --sky-radius-sm: 6px;
+    --sky-stroke: #C4CCD8;
+    --sky-stroke-width: 1px;
+    --sky-gap: #E6F0FF;
+    /* 积木区底色令牌（浅色=默认值）：暗色块里整体替换，下面的规则不再写死颜色 */
+    --sky-blocks-canvas: #F9F9F9;
+    --sky-blocks-category-bg: #FFFFFF;
+    --sky-blocks-flyout: #F9F9F9;
+}
+
+/* ══ 暗色（html[data-ui-dark='true']）适配 ══
+   只替换令牌，浅色规则一行不动；开关由 applyUiThemeChrome 注入的属性驱动。 */
+:global(html.sky-editor-theme[data-ui-dark='true']) {
+    /* 描边统一（老大反馈：左侧描边偏蓝、右侧中性）：取右侧角色列表卡片
+       同源的 $ui-black-transparent（深色 #ffffff26，白 15% 透明），只去蓝调 */
+    --sky-stroke: var(--ui-black-transparent, #ffffff26);
+    --sky-gap: #15171C;
+    /* 底色统一（老大反馈：左侧偏蓝、右侧中性黑）：以下三色均取右侧角色列表
+       同源的 $ui-secondary 变量（深色 #1e1e1e），只去蓝调、不动层次与结构 */
+    --sky-blocks-canvas: var(--ui-secondary, #1E1E1E);
+    --sky-blocks-category-bg: var(--ui-secondary, #1E1E1E);
+    --sky-blocks-flyout: var(--ui-secondary, #1E1E1E);
+}
+
+/* 分类栏内容区底色与分类项：scratch-blocks 用运行时注入的 <style> 上色，
+   同类名权重相同时靠插入顺序取胜，故这里提高选择器权重 + !important 压过它。 */
+:global(html.sky-editor-theme[data-ui-dark='true']) .blocks :global(.blocklyToolboxDiv) :global(.scratchCategoryMenu) {
+    background: var(--sky-blocks-category-bg) !important;
+}
+
+:global(html.sky-editor-theme[data-ui-dark='true']) .blocks :global(.scratchCategoryMenuItem):hover {
+    background-color: #262626 !important;
+}
+
+:global(html.sky-editor-theme[data-ui-dark='true']) .blocks :global(.scratchCategoryMenuItem):active,
+:global(html.sky-editor-theme[data-ui-dark='true']) .blocks :global(.scratchCategoryMenuVertical) :global(.scratchCategoryMenuItem):hover {
+    background-color: #2E2E2E !important;
+}
+
+:global(html.sky-editor-theme[data-ui-dark='true']) .blocks :global(.blocklyTreeLabel),
+:global(html.sky-editor-theme[data-ui-dark='true']) .blocks :global(.scratchCategoryMenuItemLabel) {
+    color: #C6CBD4;
+}
+
+/* 选中分类（categorySelected）：scratch-blocks 的浅灰底在暗色下会亮成一块白 */
+:global(html.sky-editor-theme[data-ui-dark='true']) .blocks :global(.scratchCategoryMenuItem):global(.categorySelected) {
+    background-color: #2A2A2A !important;
+}
+
+:global(html.sky-editor-theme) .blocks {
+    /* 展开态：分类栏 60 + flyout 250 + 6px 缝（flyout ↔ 工作区）= 316 */
+    --sky-work-inset: 316px;
+    /* 注：flyout 卡片右缘不再单独记变量，折叠动画改用 clip-path 后
+       所有依赖右缘的装饰（描边/缝/圆角补片）统一按
+       calc(var(--sky-work-inset) - Npx) 推导，避免两套数值不同步 */
+}
+
+/* 折叠/展开时工作区左缘的动画时长，与 hide-flyout 的 margin 过渡保持同节奏，
+   这样工作区边界是跟着积木栏一起滑的，而不是瞬间跳变 */
+:global(html.sky-editor-theme) .blocks:has(:global(.blocklyFlyout.sa-flyoutClose)) {
+    --sky-work-inset: 66px;
+}
+
+/* 右侧工作区卡片：裁掉左侧 60px（分类栏 54 + 6px 缝）并裁出 8px 圆角。
+   只作用于渲染，不改变 svg 自身的 viewport 尺寸，积木坐标与拖拽手感不受影响。
+   flyout 展开时它盖在工作区左侧之上（背景不透明），配合下方 ::before 画的
+   卡片描边/圆角，视觉上等同于工作区被实时裁切到 flyout 右缘之后。 */
+:global(html.sky-editor-theme) .blocks :global(.blocklySvg) {
+    clip-path: inset(0 0 0 var(--sky-work-inset) round var(--sky-radius));
+    /* 折叠/展开时裁切边界跟着动画平移，工作区左缘才是「实时」变化的 */
+    transition: clip-path 0.3s ease;
+}
+
+/* 菜单（flyout）的底板与描边：画在菜单自己的 <svg> 内部
+   ──────────────────────────────────────────────────────────────────
+   · 旧的 `.injectionDiv::before` 是一个独立浮层（z-index 15 + opacity 过渡），
+     折叠/展开时会淡入淡出，视觉上和菜单是两张皮，已整段删除；
+   · 现在描边由 containers/blocks.jsx 的 attachFlyoutOutline() 在 flyout 的
+     <svg> 里插入 <rect class="skyFlyoutOutline"> 完成：
+     与菜单本体同一坐标系，随菜单一起平移、一起被裁切，
+     不存在第二个图层，也没有任何 opacity 过渡；
+   · rect 的 x 取「-分类栏宽度 60」，让卡片左缘与分类栏左缘对齐（x=0），
+     左段被 z-index 40 的分类栏盖住，只露出 60…310；
+   · rx/ry = 11.5：描边中心线半径 11.5，加半个描边宽度 0.5，
+     外弧正好 12px，与 --sky-radius 对齐。
+   下面两条规则只负责给这个 rect 上色，不参与定位。 */
+.blocks :global(.skyFlyoutOutline) {
+    /* 非主题态必须不可见：否则 SVG 默认黑色填充会糊住菜单 */
+    fill: none;
+    stroke: none;
+    pointer-events: none;
+}
+
+:global(html.sky-editor-theme) .blocks :global(.skyFlyoutOutline) {
+    fill: var(--sky-blocks-flyout);
+    stroke: var(--sky-stroke);
+    stroke-width: 1;
+    /* rect 铺满整个 svg，是菜单里最底层的一块实心矩形；不挡指针，否则菜单空白处
+       （把积木拖回、滚轮滚动）的点击会被这块底板吃掉 */
+    pointer-events: none;
+}
+
+/* 折叠动画：积木栏作为「侧边栏」整体向左收回，而不是被工作区挤压/裁掉。
+   ──────────────────────────────────────────────────────────────────
+   实测结论（build/editor.html 真实 DOM，1440×900）：
+   · .blocklyFlyout 是 .injectionDiv 的**直接子元素**（独立 svg，z-index 20），
+     Blockly 用**内联样式** transform: translate(60px, 0px) 给它定位，
+     所以任何 CSS transform 都压不过它（除非 !important），而 !important 会连
+     展开态的定位一起锁死，窗口缩放时就错位。
+     改用**独立的 translate 属性**叠加：它作用在内联 transform 之后再位移，
+     与 Blockly 自己的定位互不干扰。
+   · 折叠位移量 = flyout 自身宽度（250px）。叠加后折叠态 flyout 落在
+     x = injectionDiv 左缘 - 250 + 60 → 右缘正好停在分类栏右缘，
+     也就是整块面板恰好藏进分类栏背后，随后工作区左缘（--sky-work-inset
+     316→66）跟着左移、恒定留 6px 缝，观感就是「抽屉收回 + 工作区接管空间」。
+   · 动画中途面板会横穿左侧 6px 底色缝与标签栏，靠下面三条规则压住，避免
+     露出残影（这也是之前 margin 位移方案被判定「图层错乱」的根因）：
+       ① 标签栏 [class*="gui_tab-list_"] 提到 z-index 25（> flyout 20）；
+       ② 6px 底色缝用 .blocks::before 画一块不透明底色（z 21）；
+       ③ 分类栏 blocklyToolboxDiv 本身 z-index 40，天然盖住滑过的面板。
+   插件在 .sa-flyoutClose 上写的 margin-left: -250px 必须压成 0，
+   否则位移会和 translate 叠加成 -500px（面板冲进标签栏左侧之外）。 */
+:global(html.sky-editor-theme) .blocks {
+    position: relative;
+    --sky-flyout-width: 250px;
+}
+
+:global(html.sky-editor-theme) .blocks :global(.blocklyFlyout) {
+    margin-left: 0;
+    /* 菜单的底板 + 四边描边由 svg 内部的 <rect class="skyFlyoutOutline"> 提供
+       （容器组件 attachFlyoutOutline() 注入，颜色见下方 .skyFlyoutOutline），
+       不在 CSS 里画任何装饰层。
+       ── 这里原本写的是 clip-path: inset(0 0 0 -60px)，用来"向左扩 60px"
+          容纳 rect 在 svg 坐标 -60…0 的那一段，是无效写法：
+          inset() 的四个偏移量是"向内收缩的内边距"，**负值会被浏览器 clamp 成 0**，
+          实际等价于 inset(0)，rect 左段整段被裁掉 ——
+          表现就是菜单左缘失去 12px 圆角与描边、变成方角，
+          并且分类栏与菜单之间露出一条 6px 的底色缝。
+       所以这一刀不要了：svg 的 overflow: visible 已放开绘制，
+       rect 左段正常画到分类栏底下（分类栏 z-index 40 负责遮住它）；
+       折叠/展开时整块面板向左滑出积木区的部分，统一由父级
+       .injectionDiv 的 clip-path: inset(0) 收口（见上方注入区规则）。
+       四角圆角不在这里做 —— 完全由 rect 的 rx/ry 承担，避免两套圆角叠加。 */
+    overflow: visible;
+    /* 展开态不加位移：参考图里 flyout 左缘与分类栏右缘**紧贴**，
+       中间只有 1px 分隔描边，两者共同构成"积木栏"这一整块外形 */
+    translate: 0 0;
+    transition: translate 0.3s ease, visibility 0s linear 0s;
+}
+
+/* 折叠态：展开/折叠两态分类栏形状一致（上两角圆 + 下两角由扩展按钮承接），
+   此处不再单独覆盖圆角 —— 菜单收走后它就是完整的窄圆角卡片。 */
+
+:global(html.sky-editor-theme) .blocks :global(.blocklyFlyout.sa-flyoutClose) {
+    margin-left: 0;
+    /* 退到分类栏背后：translate 属性与 Blockly 内联的 translate(60px) 叠加，
+       故 -250 时右缘 = 分类栏右缘，整块恰好藏进分类栏 */
+    translate: calc(-1 * var(--sky-flyout-width)) 0;
+    /* 滑到分类栏背后之后再整块隐藏（visibility，0.3s 动画结束后生效）。
+       这里**不能靠 opacity**：Blockly 始终给 .blocklyFlyout 写内联
+       style="display:block; transform:translate(60px,0); opacity:1"，
+       内联声明压过 CSS 普通声明，所以旧写法里的 opacity:0 从来没生效过 ——
+       面板滑到分类栏背后仍是全不透明的 #F9F9F9 实心块，分类栏比它矮
+       （分类栏 = 100% - 3.25rem，下方是扩展按钮条带），加上左上角 12px
+       圆角外侧透明，就会在这些地方露出白底方角，也就是「积木栏后方顶出一块方形」。
+       visibility 不会被 Blockly 的内联样式覆盖，是纯 CSS 侧唯一可靠的收尾手段。 */
+    visibility: hidden;
+    /* 这里刻意不写 opacity：万一哪天 Blockly 不再写内联 opacity:1，这条声明就会
+       真的把面板做成淡出，用户看到的就是"描边/菜单在淡入淡出"。收起动作只允许
+       由位移（translate）+ 终态 visibility 完成。 */
+    transition: translate 0.3s ease, visibility 0s linear 0.3s;
+}
+
+/* flyout 的竖向滚动条是另一个独立 svg（z-index 30，位置在 flyout 右缘外侧）。
+   必须与面板同速平移，否则面板收走了、滚动条还悬在原地，折叠瞬间会留一条
+   与面板脱节的竖条；折叠终态它落在分类栏底下（z 30 < 分类栏 40），不可见。 */
+:global(html.sky-editor-theme) .blocks :global(.blocklyFlyoutScrollbar) {
+    margin-left: 0;
+    opacity: 1;
+    translate: 0 0;
+    /* 上下各让出 12px：滚动条是一整根实心竖条，纵向顶到面板最上/最下一像素，
+       会把右侧两个 12px 圆角的弧线切平（圆角处出现一截灰色直角）。
+       裁掉首尾各 12px 后，滚动条只活在圆角内切区间里，弧线完整。 */
+    clip-path: inset(var(--sky-radius) 0 var(--sky-radius) 0);
+    transition: translate 0.3s ease, visibility 0s linear 0s;
+}
+
+:global(html.sky-editor-theme) .blocks :global(.blocklyFlyoutScrollbar.sa-flyoutClose) {
+    margin-left: 0;
+    translate: calc(-1 * var(--sky-flyout-width)) 0;
+    pointer-events: none;
+    /* 折叠终态直接不可见：滚动条跟着 translate 滑走后，右缘正好停在分类栏右缘，
+       它比分类栏高，分类栏下方（扩展按钮所在的 52px 高条带）及圆角处会漏出
+       一截实心竖条，看起来就是「积木栏后方顶出一块方形」。用 visibility 而不是
+       opacity：Blockly 会给滚动条写内联 opacity，CSS 的 opacity 压不住它。 */
+    visibility: hidden;
+    transition: translate 0.3s ease, visibility 0s linear 0.3s;
+}
+
+/* 分类栏左侧上/下两角的「底色包边」（用户 2026-11 指令：只给左边加遮罩）
+   ──────────────────────────────────────────────────────────────
+   菜单底板（rect.skyFlyoutOutline）按用户的第 2 条要求向左延长到分类栏左缘
+   （x = -60，宽度 +60），分类栏白底（z 40）叠在它上面，各自都是完整圆角矩形。
+   侧效果：折叠/展开动画中面板整体横穿分类栏那 60px，分类栏"左上、左下圆角
+   外侧"那两个 12×12 的反圆角三角里，会透出底板的白（#F9F9F9）—— 就是用户
+   反复看到的「分类栏左侧上下突出的一块」。
+   解法（用户已授权）：在分类栏左缘内侧垫一块 **只有 12px 宽** 的底色，
+   两块 12×12 的径向渐变把圆心放在分类栏圆角内侧顶点上 —— 圆内透明（分类栏
+   本体与内容照常显示），圆外那点小三角填成缝色 var(--sky-gap)。
+   与之前被删掉的 60px 全宽遮罩的根本区别：
+     · 宽度只有 12px，且中间整段（x 12…60）完全透明 → 面板主体、飞出积木、
+       折叠动画都不会被切断，菜单依然一路延长到分类栏底部；
+     · 只作用在分类栏左缘两角，不伪造分类栏圆角（分类栏圆角由它自己的
+       border-radius 真实绘制，z 40 在遮罩之上）。
+   z-index 35：高于面板 20、滚动条 30，低于分类栏 40 / 扩展按钮 42。 */
+:global(html.sky-editor-theme) .blocks :global(.injectionDiv)::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--sky-radius);
+    height: 100%;
+    z-index: 35;
+    pointer-events: none;
+    background:
+        radial-gradient(circle closest-side at 100% 100%, transparent calc(100% - 0.5px), var(--sky-gap) 100%) no-repeat left top / var(--sky-radius) var(--sky-radius),
+        radial-gradient(circle closest-side at 100% 0, transparent calc(100% - 0.5px), var(--sky-gap) 100%) no-repeat left bottom / var(--sky-radius) var(--sky-radius);
+}
+
+/* 左侧标签栏压到积木栏之上：面板收回时会横穿标签栏区域，
+   之前用 margin 位移时正是这里漏出积木残影（elementFromPoint 在 x=10/30/55
+   全部命中 path.blocklyFlyoutBackground）。z-index 只在本层叠上下文里比较，
+   tab-list 与 flyout 同属 [class*="gui_tabs_"] 上下文，故 25 > 20 即可盖住。 */
+:global(html.sky-editor-theme) [class*="gui_tabs_"] [class*="tab-list_"] {
+    position: relative;
+    z-index: 25;
+}
+
+/* 标签栏与积木区之间的 6px 底色缝：面板收回时要经过这里，必须有不透明底色
+   兜住（z 21 高于 flyout 20、低于分类栏 40），否则折叠终态会在缝里留一窄条
+   积木栏白底/积木残影。颜色与 body-wrapper 底色一致，视觉上与原来完全一样。 */
+:global(html.sky-editor-theme) .blocks::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    /* 这里只负责缝的底色兜底，**不再画分割线**：
+       竖向标签栏 ↔ 分类栏之间的分割线要上下贯通整列（含书包那一段），
+       由 gui.css 的 `.editorWrapper::after` 在整列高度上绘制（x=55 缝中线）。
+       若在这里再画一条，会出现只在积木区高度内存在的短线，与新线重叠错位。 */
+    background: var(--sky-gap);
+    z-index: 21;
+    pointer-events: none;
+}
+
+/* 右侧工作区卡片的 1px 轮廓：画在 svg 上层（svg 里没有可加边框的容器节点）。
+   左缘跟随 --sky-work-inset：折叠时贴分类栏，展开时贴 flyout 右缘之后。 */
+/* 工作区画布底色：Blockly 主背景 rect 的 fill 由 xml 属性给出（默认 #F9F9F9），
+   这里用令牌覆盖，暗色下自动跟随；.blocklySvg 容器再兜一层背景色。 */
+:global(html.sky-editor-theme) .blocks :global(.blocklyMainBackground) {
+    fill: var(--sky-blocks-canvas);
+}
+
+:global(html.sky-editor-theme) .blocks :global(.blocklySvg) {
+    background-color: var(--sky-blocks-canvas);
+}
+
+:global(html.sky-editor-theme) .blocks :global(.injectionDiv)::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: var(--sky-work-inset);
+    right: 0;
+    bottom: 0;
+    border: 1px solid var(--sky-stroke);
+    border-radius: var(--sky-radius);
+    pointer-events: none;
+    z-index: 3;
+    /* 与 clip-path 同节奏，描边跟着工作区边界一起滑 */
+    transition: left 0.3s ease;
+}
+
+/* 左侧分类栏卡片：白底 + 1px 描边 + 上两角 8px 圆角。
+   宽度必须是 60px（border-box，含 1px 描边）—— 这是 scratch-blocks 里
+   Blockly.Toolbox.prototype.width = 310 减去 flyout 宽度 250 的结果，
+   也是 flyout 的 x 坐标。写成 54px 会让 flyout 左缘与分类栏右缘之间留出
+   6px 背景缝（展开态多一道缝，与参考图不符），同时压缩分类项文字。
+   底边不描边、下角不给圆角，直接与下方扩展按钮拼成同一张卡片。 */
+:global(html.sky-editor-theme) .blocks :global(.blocklyToolboxDiv) {
+    width: 60px;
+    box-sizing: border-box;
+    /* 分类栏必须一路到底，与菜单底板底边齐平：底部「添加扩展按钮」是叠在
+       分类栏之上、与其底部 52px 重叠的（z-index 42 > 40），分类栏若照原生
+       留出 3.25rem 的位子，底部就会剩下一条 52px 的空档（左右两角的圆角
+       月牙也一并露在按钮上方），看上去就是「分类栏没到底、下面露出底色」。 */
+    height: 100% !important;
+    border: 1px solid var(--sky-stroke);
+    border-bottom: none;
+    /* 四角统一 12px 圆角。此前把右上角削成直角，是为了让分类栏顶边与菜单
+       顶边在 x=60 处接成一条直线；现在菜单是独立完整圆角矩形、顶边归菜单
+       自己画，分类栏不必再让角，右侧上下两角按原指令补齐。 */
+    border-radius: var(--sky-radius);
+    background: var(--sky-blocks-category-bg);
+}
+
+/* 折叠态不再需要单独覆盖分类栏圆角：展开/折叠两态都是同一张四角圆角卡片。 */
+
+/* flyout 自带的 1px 右边框去掉：右缘描边已由 .injectionDiv::before 统一画，
+   留着会让 flyout 实际右缘多出 1px，把 6px 缝挤成 5px。 */
+:global(html.sky-editor-theme) .blocks :global(.blocklyFlyout) {
+    border-right: none;
+}
+
+/* 菜单自身的直角填充置空：面板色与四边描边统一由 .injectionDiv::before 底板渲染。
+   flyout 的底色是 <path class="blocklyFlyoutBackground"> 上的 fill，path 没有
+   border-radius 能力，只要它还上色，圆角内侧就有直角色块顶出来 —— 这正是
+   "菜单不是圆角矩形"的根因。置空后：
+     · 菜单底色 = 底板的面板色（四角真实圆角）；
+     · 菜单描边 = 底板的 1px border；
+     · 圆角外侧 = 透出 var(--sky-gap) 缝色，无需任何渐变补片。 */
+:global(html.sky-editor-theme) .blocks :global(.blocklyFlyoutBackground) {
+    fill: transparent;
+}
+
+/* flyout：不要在这里设置无条件的 margin / border。
+   hide-flyout 插件靠 [dir=ltr] .blocklyFlyout.sa-flyoutClose { margin-left: -250px }
+   做折叠位移动画，任何作用域下更高特异性的无条件 margin-left 都会覆盖它，
+   直接导致积木栏无法折叠。这里只在该类不存在（即展开态）时把 flyout 拉回，
+   折叠时自动让位给插件规则。 */
+:global(html.sky-editor-theme) .blocks :global(.blocklyFlyout:not(.sa-flyoutClose)) {
+    /* 展开态 flyout 的 x 由 scratch-blocks 算成 60（= 分类栏宽度），本就与分类栏
+       无缝相接，不需要任何补偿位移；这里显式写 0，只是为了在展开态盖掉插件的
+       折叠位移残留，且不加 !important，折叠态仍由插件规则接管。 */
+    margin-left: 0;
+}
+
+/* hide-flyout 插件在分类栏右缘画的 1px 竖线（.sa-flyout-border-1 / -2）：
+   本主题已用分类栏自身的 1px 描边表达卡片边界，这两条留着会紧贴描边多出
+   一条 1px 叠线（缝里出现第三条竖线）。
+   注意类名必须包在 :global() 里 —— 这些类来自插件、不属于本 CSS Module，
+   直接写 .sa-flyout-border-1 会被哈希成局部类名而完全匹配不上（曾经的失效原因）。 */
+:global(html.sky-editor-theme) .blocks :global(.sa-flyout-border-1),
+:global(html.sky-editor-theme) .blocks :global(.sa-flyout-border-2) {
+    display: none !important;
+}
+
+/* hide-flyout 插件的占位块 / 锁按钮按 --sa-category-width / --sa-flyout-width
+   定位（默认 60px / 250px），必须与 scratch-blocks 的实际尺寸保持一致，
+   否则 hover 判定区错位，表现为积木栏"折不起来 / 乱闪"。 */
+:global(html.sky-editor-theme) [class*="gui_tabs_"] {
+    --sa-category-width: 60px;
+    --sa-flyout-width: 250px;
+}
+
+
 :global(.blocklyContextMenu) {
     animation: contextMenuSlideDown 0.15s ease-out;
 }
 
 :global(.blocklyDropDownDiv) {
     animation: contextMenuSlideDown 0.15s ease-out;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   拖动积木时把积木区整体抬到角色区之上
+   ──────────────────────────────────────────────────────────────────
+   起因：hide-flyout 插件把 [class*="gui_stage-and-target-wrapper_"]
+   提到 z-index: 43（为了让角色区盖住滑出的 flyout），而 .blocks 自身
+   没有 z-index（auto）。拖动中的积木走 .blocklyBlockDragSurface
+   （z-index: 1000），但那个 1000 只在 .blocks 自己的层叠上下文内部
+   比较；对外比的是 .blocks 的 auto=0，于是积木只要被拖出积木区边界
+   （拖向右侧角色区、或往下方书包栏方向），整层立刻被 z-index: 43 的
+   角色区/舞台压住 —— 表现就是「拖动时积木被角色区和书包挡住」。
+   处理：只要有块正在拖动（Blockly 会给被拖的块加 .blocklyDragging），
+   就把 .blocks 抬到 60：高于角色区 43、扩展按钮 42，低于右键菜单
+   10000 与弹窗 510，不影响其它浮层。
+   ══════════════════════════════════════════════════════════════════ */
+:global(html.sky-editor-theme) .blocks:has(:global(.blocklyDragging)) {
+    position: relative;
+    z-index: 60;
+}
+
+/* 注意：下面的 .blocks 抬到 60 会把「添加扩展」按钮（挂在侧栏 tab-panel
+   那棵独立子树上，默认 z-index 42）整体压住，表现为拖动积木时按钮被白色
+   分类栏盖掉。该按钮已在 gui.css 主题规则里抬到 z-index 100，改这里或改
+   那边的层叠时务必同步核对这对关系。 */
+
+/* 拖动积木时放开 injectionDiv 的底边裁剪：
+   上面的 clip-path 平时把 svg 收在容器内（不压书包栏），但拖动中的积木要能
+   滑出积木区下方/右侧，所以恢复成四边都不裁的 polygon。 */
+:global(html.sky-editor-theme) .blocks:has(:global(.blocklyDragging)) :global(.injectionDiv) {
+    clip-path: polygon(0 -4000px, 6000px -4000px, 6000px 6000px, 0 6000px);
+}
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .blocks :global(.injectionDiv) {
+    border-top-right-radius: var(--sky-radius);
+    border-bottom-right-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) [dir="rtl"] .blocks :global(.injectionDiv) {
+    border-top-left-radius: var(--sky-radius);
+    border-bottom-left-radius: var(--sky-radius);
 }

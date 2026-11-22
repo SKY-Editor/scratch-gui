@@ -446,3 +446,20 @@
     height: 60%;
     width: inherit;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .peripheral-tile {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .peripheral-tile button {
+    border-radius: var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .signal-bar {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .connection-button {
+    border-radius: var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .dots-holder {
+    border-radius: var(--sky-radius);
+}

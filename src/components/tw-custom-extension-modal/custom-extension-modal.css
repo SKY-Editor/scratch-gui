@@ -102,3 +102,14 @@
 .load-button:disabled {
     opacity: 0.8;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .load-button {
+    border-radius: var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .url-input, .text-code-input {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .trusted-extension, .unsandboxed-warning {
+    border-radius: var(--sky-radius);
+}

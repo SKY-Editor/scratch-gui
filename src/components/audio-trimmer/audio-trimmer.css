@@ -146,3 +146,13 @@ $hover-scale: 1.25;
 .top-trim-handle img {
     transform: scaleY(-1);
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .start-trim-background .trim-background-mask {
+    border-top-left-radius: var(--sky-radius);
+    border-bottom-left-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .end-trim-background .trim-background-mask {
+    border-top-right-radius: var(--sky-radius);
+    border-bottom-right-radius: var(--sky-radius);
+}

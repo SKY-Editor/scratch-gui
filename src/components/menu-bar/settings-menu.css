@@ -89,73 +89,1744 @@
     margin-left: 0.5rem;
 }
 
-/* ==== Win11 设置窗口内容面板 ====
-   Format aligned with the original advanced settings page (settings-modal.css):
-   font-size 14px, generous spacing, hover highlight, rounded setting rows. */
-.window-settings {
+/* ============================================================================
+   SKY 设置窗口 · 内部组件视觉层（现代化 / 简约）
+   ----------------------------------------------------------------------------
+   设计口径：
+   · 8pt 间距栅格，圆角统一到容器级 --sky-radius（12px）+ 控件级 10px；
+   · 只用「发丝线 + 极浅面层 + 强调色点缀」三层，不使用重描边与重阴影；
+   · 强调色一律取主题变量 --sky-accent / --sky-accent-soft，随主题自动换色；
+   · 深浅色由 .window-shell-light（GUI 浅色）切换一套令牌，规则本身不写死颜色。
+   ============================================================================ */
+
+/* ==== 设计令牌：深色（默认） ==== */
+html[data-ui-theme='sky-editor'] .window-shell {
+    --sk-line: rgba(255, 255, 255, 0.08);
+    --sk-line-strong: rgba(255, 255, 255, 0.16);
+    --sk-surface: rgba(255, 255, 255, 0.045);
+    --sk-surface-hover: rgba(255, 255, 255, 0.08);
+    --sk-sidebar-bg: #232428;
+    --sk-fg: $ui-modal-foreground;
+    --sk-fg-mute: rgba(255, 255, 255, 0.46);
+    --sk-fg-soft: rgba(255, 255, 255, 0.82);
+    --sk-fg-strong: #ffffff;
+    --sk-accent: var(--sky-accent, #3a9bff);
+    --sk-accent-soft: var(--sky-accent-soft, rgba(58, 155, 255, 0.18));
+    --sk-accent-ring: var(--sky-accent-soft, rgba(58, 155, 255, 0.22));
+    --sk-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.28);
+    --sk-shadow-2: 0 10px 28px rgba(0, 0, 0, 0.42);
+}
+
+/* ==== 设计令牌：浅色（GUI 浅色） ==== */
+html[data-ui-theme='sky-editor'] .window-shell-light {
+    --sk-line: rgba(0, 0, 0, 0.08);
+    --sk-line-strong: rgba(0, 0, 0, 0.16);
+    --sk-surface: rgba(0, 0, 0, 0.028);
+    --sk-surface-hover: rgba(0, 0, 0, 0.055);
+    --sk-sidebar-bg: #f7f8fa;
+    --sk-fg: $ui-modal-foreground;
+    --sk-fg-mute: rgba(0, 0, 0, 0.42);
+    --sk-fg-soft: rgba(0, 0, 0, 0.66);
+    --sk-fg-strong: #33363F;
+    --sk-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --sk-shadow-2: 0 12px 28px rgba(0, 0, 0, 0.14);
+}
+
+/* 下拉浮层通过 Portal 渲染到 body 之外，.window-shell 上的自定义属性无法继承，
+   这里为浮层补同一套令牌（.window-option 在浮层内同样生效）。
+   注意：浮层的底色判据是「明暗」而不是「主题色开关」——只要 data-ui-dark='true'，
+   就必须留在下面这套深色令牌里，否则会深底配深字（见文件末尾前景收口段）。 */
+:global([data-sky-popover]) {
+    --sk-line: rgba(255, 255, 255, 0.08);
+    --sk-line-strong: rgba(255, 255, 255, 0.16);
+    --sk-surface: rgba(255, 255, 255, 0.045);
+    --sk-surface-hover: rgba(255, 255, 255, 0.08);
+    --sk-fg: rgba(255, 255, 255, 0.92);
+    --sk-fg-mute: rgba(255, 255, 255, 0.46);
+    --sk-fg-soft: rgba(255, 255, 255, 0.82);
+    --sk-fg-strong: #ffffff;
+    --sk-accent: var(--sky-accent, #3a9bff);
+    --sk-accent-soft: var(--sky-accent-soft, rgba(58, 155, 255, 0.18));
+}
+
+:global(html[data-sky-tab-bar-theme='white']:not([data-ui-dark='true'])) :global([data-sky-popover]),
+:global(html[data-sky-menubar-theme='plain']:not([data-ui-dark='true'])) :global([data-sky-popover]) {
+    --sk-line: rgba(0, 0, 0, 0.08);
+    --sk-line-strong: rgba(0, 0, 0, 0.16);
+    --sk-surface: rgba(0, 0, 0, 0.028);
+    --sk-surface-hover: rgba(0, 0, 0, 0.055);
+    --sk-fg: rgba(20, 22, 28, 0.9);
+    --sk-fg-mute: rgba(0, 0, 0, 0.42);
+    --sk-fg-soft: rgba(0, 0, 0, 0.66);
+    --sk-fg-strong: #33363F;
+}
+
+/* ==== 内容面板 ==== */
+html[data-ui-theme='sky-editor'] .window-settings {
     color: $ui-modal-foreground;
-    /* 顶部留白 1.5rem：与原高级设置页 .body 顶部一致（图3 标题与标题栏间距） */
-    padding: 1.5rem 2.25rem 0.75rem;
+    padding: 20px 28px 28px;
     font-size: 14px;
-}
-
-.window-section-title {
-    padding: 0.75rem 1.25rem 0.25rem;
-    font-weight: bold;
-    font-size: 14px;
-    opacity: 0.85;
-    white-space: nowrap;
-}
-
-.window-placeholder {
-    padding: 1rem 1.25rem;
-    font-size: 13px;
-    opacity: 0.6;
     line-height: 1.6;
 }
 
-.window-option {
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-    padding: 0.5rem 1rem;
-    margin: 0.25rem 0;
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
+/* 分区小标题（等价于「组内小标题」，比模块标题低一级） */
+html[data-ui-theme='sky-editor'] .window-section-title {
+    margin: 20px 0 8px;
+    padding: 0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--sk-fg-mute);
     white-space: nowrap;
 }
 
-.window-option:hover {
-    background-color: $badge-border;
+html[data-ui-theme='sky-editor'] .window-settings > .window-section-title:first-child,
+html[data-ui-theme='sky-editor'] .window-settings .window-section-header:first-child {
+    margin-top: 0;
 }
 
-.window-option:has(.selected) {
-    background-color: $badge-background;
+/* 空态占位：虚线卡片，居中次要文字 */
+html[data-ui-theme='sky-editor'] .window-placeholder {
+    margin-top: 10px;
+    padding: 22px 18px;
+    border: 1px solid var(--sk-line);
+    border-radius: var(--sky-radius, 12px);
+    background-color: var(--sk-surface);
+    color: var(--sk-fg-mute);
+    font-size: 13px;
+    line-height: 1.75;
+    text-align: center;
 }
 
-.window-option.disabled {
-    opacity: 0.5;
+/* ==== 选项行（下拉菜单内 / 列表内通用） ==== */
+html[data-ui-theme='sky-editor'] .window-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 6px 10px;
+    margin: 1px 0;
+    border-radius: 10px;
+    font-size: 14px;
+    color: $ui-modal-foreground;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+html[data-ui-theme='sky-editor'] .window-option:hover {
+    background-color: var(--sk-surface-hover);
+}
+
+html[data-ui-theme='sky-editor'] .window-option:has(.selected) {
+    background-color: var(--sk-accent-soft);
+    color: var(--sk-fg-strong);
+    font-weight: 600;
+}
+
+html[data-ui-theme='sky-editor'] .window-option.disabled {
+    opacity: 0.45;
     cursor: default;
 }
 
-.window-option.disabled:hover {
+html[data-ui-theme='sky-editor'] .window-option.disabled:hover {
     background-color: transparent;
 }
 
-.window-option .check {
+html[data-ui-theme='sky-editor'] .window-option .check {
     flex-shrink: 0;
+    margin: 0;
+    opacity: 0.9;
 }
 
 .language-list {
     max-height: 240px;
+    padding: 2px;
     overflow-y: auto;
     overflow-x: hidden;
 }
 
-/* ==== Win11 整合窗口：左侧标签栏 + 右侧内容区 ==== */
-.window-shell {
+/* ==== 窗口骨架：左侧栏 + 右侧内容区 ==== */
+html[data-ui-theme='sky-editor'] .window-shell {
     display: flex;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* 字体口径（去 TurboWarp 残留）：
+   TurboWarp 全站字体是 Helvetica / Arial 栈，这套栈在 Windows 上实际落到
+   Arial —— 只有 Regular 与 Bold 两档，Regular 与 Bold 是两套独立设计的字形，
+   同一行英文字「常规」和「加粗」看起来像两种字体。
+   这里把设置页统一到 Windows 原生 Segoe UI 体系（Regular / Semilight /
+   Semibold / Bold 自成一套，600 有真实字重不会跳变），中文配微软雅黑 UI。
+   全站 #theme-fonts 注入的 * { font-family: ... !important } 优先级高于普通
+   声明，故此处必须同样带 !important 才能生效。 */
+html[data-ui-theme='sky-editor'] .window-shell,
+html[data-ui-theme='sky-editor'] .window-shell * {
+    font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei",
+        "PingFang SC", sans-serif !important;
+}
+
+/* 侧栏外层：承载侧栏本体 + 右侧自绘滚动条（滚动条绝对定位在它上面）
+   底板颜色挂在外层，保证内容不足一屏时侧栏底色也铺满整个高度 */
+html[data-ui-theme='sky-editor'] .window-sidebar-wrap {
+    position: relative;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    width: 200px;
+    border-right: 1px solid var(--sk-line);
+    background-color: var(--sk-sidebar-bg);
+}
+
+html[data-ui-theme='sky-editor'] .window-sidebar {
+    /* flex:1 1 auto + min-height:0 让它受限于 wrap 高度并真正产生滚动，
+       flex-shrink:0 会让容器被内容撑高（scrollHeight==clientHeight），
+       自绘滚动条因此判定为不可滚动而消失 */
+    flex: 1 1 auto;
+    min-height: 0;
+    /* block 排列：条目按文档流堆叠，避免列向 flex 把设置项压扁 */
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 0 14px;
+    background-color: transparent;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* 滚动条：统一使用 components/sky-scrollbar 提供的组件与全局皮肤，此处不再定义任何滚动条外观 */
+
+/* 浅色模式：图标统一渲染为深色（深色模式保持原本的浅色，不加滤镜） */
+html[data-ui-theme='sky-editor'] .window-sidebar-light .window-tab-icon:not([data-sky-icon-color]) {
+    filter: brightness(0) opacity(0.72);
+}
+
+/* ==== 侧栏分类（分组标题） ==== */
+html[data-ui-theme='sky-editor'] .window-category {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: calc(100% - 20px);
+    margin: 10px 10px 2px;
+    padding: 4px 6px;
+    text-align: left;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--sk-fg-mute);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    cursor: default;
+    white-space: nowrap;
+    transition: color 0.12s ease;
+}
+
+html[data-ui-theme='sky-editor'] .window-category:hover {
+    color: var(--sk-fg-soft);
+}
+
+html[data-ui-theme='sky-editor'] .window-category-expanded {
+    color: var(--sk-fg-soft);
+}
+
+html[data-ui-theme='sky-editor'] .window-category-icon {
+    flex-shrink: 0;
+}
+
+html[data-ui-theme='sky-editor'] .window-category-caret {
+    display: inline-block;
+    width: 10px;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 8px;
+    line-height: 1;
+    color: inherit;
+    opacity: 0.75;
+    /* 展开/收回箭头转向动画：自然态▼朝下（展开），收起态 rotate(-90deg) 朝右 */
+    transition: transform 0.2s ease, opacity 0.12s ease;
+}
+
+html[data-ui-theme='sky-editor'] .window-category:not(.window-category-expanded) .window-category-caret {
+    transform: rotate(-90deg);
+}
+
+html[data-ui-theme='sky-editor'] .window-category-expanded .window-category-caret {
+    transform: rotate(0deg);
+}
+
+html[data-ui-theme='sky-editor'] .window-category-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ==== 侧栏设置项 ==== */
+html[data-ui-theme='sky-editor'] .window-tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: calc(100% - 20px);
+    box-sizing: border-box;
+    min-height: 34px;
+    margin: 1px 10px;
+    padding: 7px 10px;
+    text-align: left;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--sk-fg-soft);
+    font: inherit;
+    font-size: 14px;
+    cursor: default;
+    white-space: nowrap;
+    transition: background-color 0.14s ease, color 0.14s ease;
+}
+
+html[data-ui-theme='sky-editor'] .window-tab-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    opacity: 0.78;
+    transition: opacity 0.14s ease;
+}
+
+html[data-ui-theme='sky-editor'] .window-tab:hover {
+    color: var(--sk-fg-strong);
+    background-color: var(--sk-surface-hover);
+}
+
+html[data-ui-theme='sky-editor'] .window-tab:hover .window-tab-icon {
+    opacity: 1;
+}
+
+/* 选中态：强调色左侧指示条 + 极浅强调底色，文字加重 */
+html[data-ui-theme='sky-editor'] .window-tab-active {
+    color: var(--sk-fg-strong);
+    background-color: var(--sk-accent-soft);
+    font-weight: 600;
+}
+
+html[data-ui-theme='sky-editor'] .window-tab-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 3px;
+    height: 16px;
+    margin-top: -8px;
+    border-radius: 0 3px 3px 0;
+    background-color: var(--sk-accent);
+}
+
+html[data-ui-theme='sky-editor'] .window-tab-active .window-tab-icon {
+    opacity: 1;
+}
+
+/* 浅色侧栏：文字口径已由令牌统一，这里只补饱对比 */
+html[data-ui-theme='sky-editor'] .window-sidebar-light .window-tab-active {
+    color: var(--sk-fg-strong);
+}
+
+/* ==== 分类展开/收回动画：grid 0fr→1fr + 透明度过渡 ==== */
+html[data-ui-theme='sky-editor'] .window-category-items {
+    display: grid;
+    /* 关键：grid 默认列宽按内容收缩，会把 inner 压成内容宽，导致
+       .window-tab 方框只包住文字；改成 1fr 让唯一列撑满左栏 */
+    grid-template-columns: 1fr;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 0.25s ease, opacity 0.2s ease;
+}
+
+html[data-ui-theme='sky-editor'] .window-category-items-expanded {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+html[data-ui-theme='sky-editor'] .window-category-items-inner {
+    overflow: hidden;
+    min-height: 0;
+    width: 100%;
+}
+
+/* ==== 右侧内容区 ==== */
+html[data-ui-theme='sky-editor'] .window-content {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+}
+
+/* ==== 下拉选择器：输入框式触发器 + 浮层菜单 ==== */
+html[data-ui-theme='sky-editor'] .language-dropdown {
+    position: relative;
+    margin: 4px 0;
+}
+
+html[data-ui-theme='sky-editor'] .language-dropdown-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--sk-line);
+    border-radius: 10px;
+    background-color: var(--sk-surface);
+    color: $ui-modal-foreground;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+html[data-ui-theme='sky-editor'] .language-dropdown-button:hover {
+    border-color: var(--sk-line-strong);
+    background-color: var(--sk-surface-hover);
+}
+
+html[data-ui-theme='sky-editor'] .language-dropdown-button:focus-visible {
+    outline: none;
+    border-color: var(--sk-accent);
+    box-shadow: 0 0 0 3px var(--sk-accent-ring);
+}
+
+html[data-ui-theme='sky-editor'] .language-dropdown-caret {
+    font-size: 10px;
+    line-height: 1;
+    opacity: 0.55;
+    transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+html[data-ui-theme='sky-editor'] .language-dropdown-button:hover .language-dropdown-caret {
+    opacity: 0.9;
+}
+
+html[data-ui-theme='sky-editor'] .language-dropdown-caret-open {
+    transform: rotate(180deg);
+}
+
+html[data-ui-theme='sky-editor'] .language-dropdown-menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    max-height: 260px;
+    padding: 6px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: $ui-primary;
+    border: 1px solid var(--sk-line);
+    border-radius: var(--sky-radius, 12px);
+    box-shadow: var(--sk-shadow-2);
+    z-index: 10;
+}
+
+/* ==== 模块标题：图标 + 文字 + 虚线分割 ==== */
+html[data-ui-theme='sky-editor'] .window-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 24px 0 10px;
+    padding: 0;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.01em;
+}
+
+/* 标题内图标做成浅底圆角小方块（不新增 DOM，直接对 img 造型） */
+html[data-ui-theme='sky-editor'] .window-section-header img {
+    box-sizing: content-box;
+    width: 16px;
+    height: 16px;
+    padding: 4px;
+    border-radius: 8px;
+    background-color: var(--sk-accent-soft);
+}
+
+/* 浅色模式：内容页白底，白色标题图标统一转深色 */
+html[data-ui-theme='sky-editor'] .window-shell-light .window-section-header img {
+    filter: brightness(0);
+    opacity: 0.86;
+}
+
+/* 每个分区第一个模块标题不再叠加外层上边距 */
+html[data-ui-theme='sky-editor'] .window-settings > :first-child {
+    margin-top: 0;
+}
+
+html[data-ui-theme='sky-editor'] .window-section-divider {
+    flex-grow: 1;
+    margin-left: 12px;
+    border-top: 1px solid var(--sk-line);
+    opacity: 0.9;
+}
+
+html[data-ui-theme='sky-editor'] .square-color-icon {
+    width: 20px;
+    height: 20px;
+    border: 2px solid $menu-bar-foreground;
+    border-radius: 6px;
+    box-sizing: border-box;
+}
+
+/* ==== 卡片式选择（主题 / 皮肤 / 积木颜色） ==== */
+html[data-ui-theme='sky-editor'] .theme-card-row {
+    display: flex;
+    gap: 10px;
+    padding: 2px 0 6px;
+}
+
+html[data-ui-theme='sky-editor'] .theme-card {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 8px;
+    border: 1px solid var(--sk-line);
+    border-radius: var(--sky-radius, 12px);
+    background-color: transparent;
+    cursor: pointer;
+    text-align: center;
+    user-select: none;
+    transition: border-color 0.14s ease, box-shadow 0.14s ease,
+        background-color 0.14s ease, transform 0.14s ease;
+}
+
+html[data-ui-theme='sky-editor'] .theme-card:hover {
+    border-color: var(--sk-line-strong);
+    background-color: var(--sk-surface);
+    transform: translateY(-1px);
+    box-shadow: var(--sk-shadow-1);
+}
+
+/* 选中态：强调色 1px 描边 + 3px 淡色光环 */
+html[data-ui-theme='sky-editor'] .theme-card-selected {
+    border-color: var(--sk-accent);
+    background-color: var(--sk-surface);
+    box-shadow: 0 0 0 3px var(--sk-accent-ring);
+}
+
+html[data-ui-theme='sky-editor'] .theme-card-selected:hover {
+    border-color: var(--sk-accent);
+    box-shadow: 0 0 0 3px var(--sk-accent-ring);
+}
+
+html[data-ui-theme='sky-editor'] .theme-card.disabled {
+    opacity: 0.45;
+    cursor: default;
+    transform: none;
+    box-shadow: none;
+}
+
+html[data-ui-theme='sky-editor'] .theme-card.disabled:hover {
+    border-color: var(--sk-line);
+    background-color: transparent;
+    box-shadow: none;
+}
+
+html[data-ui-theme='sky-editor'] .theme-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px;
+}
+
+/* 亮色主题下将白色图标反色为深色，保证在浅色卡片上可见 */
+html[data-ui-theme='sky-editor'] .theme-card-icon-invert {
+    filter: invert(1);
+}
+
+html[data-ui-theme='sky-editor'] .theme-card-label {
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--sk-fg-soft);
+    word-break: break-word;
+    white-space: normal;
+}
+
+html[data-ui-theme='sky-editor'] .theme-card-label a {
+    text-decoration: none;
+}
+
+.open-link {
+    margin-left: 8px;
+    cursor: pointer;
+}
+
+/* ==== 云变量服务器页：表单控件 ==== */
+html[data-ui-theme='sky-editor'] .cloud-server-section {
+    padding: 0;
+}
+
+html[data-ui-theme='sky-editor'] .cloud-server-label {
+    padding: 14px 0 6px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--sk-fg-mute);
+    white-space: nowrap;
+}
+
+
+
+
+
+
+/* 连通性测试结果：胶囊状态标签 */
+html[data-ui-theme='sky-editor'] .cloud-server-test-row {
+    padding: 16px 0 0;
+}
+
+html[data-ui-theme='sky-editor'] .cloud-server-test-status-ok,
+html[data-ui-theme='sky-editor'] .cloud-server-test-status-fail {
+    max-width: 420px;
+    padding: 0;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+html[data-ui-theme='sky-editor'] .cloud-server-test-status-ok {
+    color: $looks-secondary;
+}
+
+html[data-ui-theme='sky-editor'] .cloud-server-test-status-fail {
+    color: $error-primary;
+}
+
+html[data-ui-theme='sky-editor'] .cloud-server-test-hint {
+    max-width: 420px;
+    padding: 6px 0 0;
+    font-size: 12px;
+    color: var(--sk-fg-mute);
+}
+
+/* ==== 账号设置页：按钮 / 表单 / 卡片统一口径（发丝线 + 面层 + 强调色，无重描边） ==== */
+
+/* ---- 页面骨架 ---- */
+html[data-ui-theme='sky-editor'] .account-landing {
+    padding: 4px 0 8px;
+    text-align: center;
+}
+
+html[data-ui-theme='sky-editor'] .account-login-title {
+    padding: 4px 0 6px;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--sk-fg-strong);
+}
+
+html[data-ui-theme='sky-editor'] .account-login-intro {
+    padding: 0 0 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--sk-fg-mute);
+}
+
+/* ---- 按钮基础体（四种按钮共用几何与过渡） ---- */
+html[data-ui-theme='sky-editor'] .account-method-button,
+html[data-ui-theme='sky-editor'] .account-primary-button,
+html[data-ui-theme='sky-editor'] .account-ghost-button,
+html[data-ui-theme='sky-editor'] .account-danger-button {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 0 16px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.14s ease, border-color 0.14s ease,
+        box-shadow 0.14s ease, filter 0.14s ease, transform 0.1s ease;
+}
+
+/* 键盘焦点：统一 3px 淡强调光环 */
+html[data-ui-theme='sky-editor'] .account-method-button:focus-visible,
+html[data-ui-theme='sky-editor'] .account-primary-button:focus-visible,
+html[data-ui-theme='sky-editor'] .account-ghost-button:focus-visible,
+html[data-ui-theme='sky-editor'] .account-danger-button:focus-visible,
+html[data-ui-theme='sky-editor'] .account-login-box:focus-visible,
+html[data-ui-theme='sky-editor'] .account-register-entry:focus-visible {
+    outline: none;
+    border-color: var(--sk-accent);
+    box-shadow: 0 0 0 3px var(--sk-accent-ring);
+}
+
+/* 按下：轻微下沉，不做缩放避免布局抖动 */
+html[data-ui-theme='sky-editor'] .account-method-button:active,
+html[data-ui-theme='sky-editor'] .account-primary-button:active,
+html[data-ui-theme='sky-editor'] .account-ghost-button:active,
+html[data-ui-theme='sky-editor'] .account-danger-button:active {
+    transform: translateY(1px);
+}
+
+/* 禁用：整体降透明，取消所有动效 */
+html[data-ui-theme='sky-editor'] .account-primary-button:disabled,
+html[data-ui-theme='sky-editor'] .account-ghost-button:disabled,
+html[data-ui-theme='sky-editor'] .account-method-button:disabled,
+html[data-ui-theme='sky-editor'] .account-danger-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    filter: none;
+}
+
+/* ---- 主按钮：强调色实心 ---- */
+html[data-ui-theme='sky-editor'] .account-primary-button {
+    border-color: var(--sk-accent);
+    background-color: var(--sk-accent);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+html[data-ui-theme='sky-editor'] .account-primary-button:hover:not(:disabled) {
+    border-color: var(--sk-accent);
+    background-color: var(--sk-accent);
+    filter: brightness(1.08);
+    box-shadow: 0 0 0 3px var(--sk-accent-ring);
+}
+
+html[data-ui-theme='sky-editor'] .account-primary-button:active:not(:disabled) {
+    filter: brightness(0.96);
+}
+
+/* ---- 次按钮 / 方式按钮：发丝线描边，悬停出浅面层 ---- */
+html[data-ui-theme='sky-editor'] .account-method-button,
+html[data-ui-theme='sky-editor'] .account-ghost-button {
+    border-color: var(--sk-line);
+    background-color: transparent;
+    color: var(--sk-fg);
+}
+
+html[data-ui-theme='sky-editor'] .account-method-button:hover,
+html[data-ui-theme='sky-editor'] .account-ghost-button:hover {
+    border-color: var(--sk-line-strong);
+    background-color: var(--sk-surface-hover);
+}
+
+/* 登录方式按钮：整行大块，内容居中 */
+html[data-ui-theme='sky-editor'] .account-method-button {
+    width: 100%;
+    min-height: 40px;
+}
+
+/* ---- 危险按钮：红系发丝线，悬停淡红底 ---- */
+html[data-ui-theme='sky-editor'] .account-danger-button {
+    border-color: rgba(226, 84, 84, 0.42);
+    background-color: transparent;
+    color: #e25454;
+    display: inline-flex;
+    margin: 4px auto 12px;
+}
+
+html[data-ui-theme='sky-editor'] .account-danger-button:hover:not(:disabled) {
+    border-color: rgba(226, 84, 84, 0.72);
+    background-color: rgba(226, 84, 84, 0.12);
+    color: #f26a6a;
+}
+
+/* ---- 文字按钮：无底无边，仅强调色文字 ---- */
+html[data-ui-theme='sky-editor'] .account-ghost-button.account-register-entry,
+html[data-ui-theme='sky-editor'] .account-register-entry {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 420px;
+    min-height: 32px;
+    margin: 8px auto 0;
+    padding: 0 8px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--sk-accent);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: color 0.14s ease, background-color 0.14s ease;
+}
+
+html[data-ui-theme='sky-editor'] .account-ghost-button.account-register-entry:hover,
+html[data-ui-theme='sky-editor'] .account-register-entry:hover {
+    border-color: transparent;
+    background-color: var(--sk-accent-soft);
+}
+
+/* 文字按钮贴合文字宽度，不撑满整行 */
+html[data-ui-theme='sky-editor'] .account-form > .account-register-entry,
+html[data-ui-theme='sky-editor'] .account-form > .account-ghost-button.account-register-entry {
+    width: auto;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+html[data-ui-theme='sky-editor'] .account-ghost-button.account-register-entry:disabled,
+html[data-ui-theme='sky-editor'] .account-register-entry:disabled {
+    opacity: 0.45;
+    background-color: transparent;
+    color: var(--sk-fg-mute);
+    cursor: not-allowed;
+}
+
+/* ---- 未登录落地页：大块虚线入口 ---- */
+html[data-ui-theme='sky-editor'] .account-login-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 14px;
+    padding: 26px 16px;
+    border: 1px solid var(--sk-line);
+    border-radius: 14px;
+    background-color: transparent;
+    color: var(--sk-fg);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+html[data-ui-theme='sky-editor'] .account-login-box:hover {
+    border-color: var(--sk-accent);
+    background-color: var(--sk-accent-soft);
+}
+
+html[data-ui-theme='sky-editor'] .account-login-box:active {
+    transform: translateY(1px);
+}
+
+html[data-ui-theme='sky-editor'] .account-login-box-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--sk-fg-strong);
+}
+
+/* ---- 登录方式列表 ---- */
+html[data-ui-theme='sky-editor'] .account-methods {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px 0 8px;
+}
+
+html[data-ui-theme='sky-editor'] .account-methods > button {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ---- 表单 ---- */
+html[data-ui-theme='sky-editor'] .account-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0 8px;
+}
+
+html[data-ui-theme='sky-editor'] .account-form > * {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 420px;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-login-intro {
+    padding: 0 0 2px;
+    text-align: center;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-register-title {
+    padding: 2px 0;
+}
+
+html[data-ui-theme='sky-editor'] .account-form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+html[data-ui-theme='sky-editor'] .account-form-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--sk-fg-mute);
+}
+
+html[data-ui-theme='sky-editor'] .account-form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+/* 主/次按钮在操作行内等宽并排，主次分明 */
+html[data-ui-theme='sky-editor'] .account-form-actions > button {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ---- 验证码 ---- */
+html[data-ui-theme='sky-editor'] .account-captcha-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+html[data-ui-theme='sky-editor'] .account-captcha-image {
+    box-sizing: border-box;
+    width: 120px;
+    height: 44px;
+    border: 1px solid var(--sk-line);
+    border-radius: 8px;
+    object-fit: contain;
+    cursor: pointer;
+    background-color: var(--sk-surface);
+    transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+html[data-ui-theme='sky-editor'] .account-captcha-image:hover {
+    border-color: var(--sk-accent);
+    box-shadow: 0 0 0 3px var(--sk-accent-ring);
+}
+
+html[data-ui-theme='sky-editor'] .account-captcha-placeholder,
+html[data-ui-theme='sky-editor'] .account-captcha-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 120px;
+    height: 44px;
+    border: 1px solid var(--sk-line);
+    border-radius: 8px;
+    background-color: var(--sk-surface);
+    font-size: 12px;
+    text-align: center;
+    color: var(--sk-fg-mute);
+}
+
+html[data-ui-theme='sky-editor'] .account-captcha-error {
+    border-style: solid;
+    border-color: rgba(226, 84, 84, 0.42);
+    background-color: rgba(226, 84, 84, 0.1);
+    color: #e25454;
+    cursor: pointer;
+}
+
+html[data-ui-theme='sky-editor'] .account-captcha-hint {
+    font-size: 12px;
+    color: var(--sk-fg-mute);
+}
+
+/* ---- 提示条 ---- */
+html[data-ui-theme='sky-editor'] .account-notice {
+    padding: 10px 12px;
+    border: 1px solid var(--sk-line);
+    border-radius: 10px;
+    background-color: var(--sk-surface);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--sk-fg-soft);
+}
+
+html[data-ui-theme='sky-editor'] .account-error {
+    padding: 9px 12px;
+    border: 1px solid rgba(226, 84, 84, 0.3);
+    border-left: 3px solid #e25454;
+    border-radius: 10px;
+    background-color: rgba(226, 84, 84, 0.1);
+    font-size: 13px;
+    line-height: 1.55;
+    color: #e25454;
+}
+
+/* ---- 已登录账号卡片 ---- */
+html[data-ui-theme='sky-editor'] .account-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    box-sizing: border-box;
+    max-width: 420px;
+    margin: 10px auto;
+    padding: 22px 16px;
+    border: 1px solid var(--sk-line);
+    border-radius: 14px;
+    background-color: var(--sk-surface);
+    text-align: center;
+    transition: border-color 0.16s ease, background-color 0.16s ease;
+}
+
+html[data-ui-theme='sky-editor'] .account-card:hover {
+    border-color: var(--sk-line-strong);
+    background-color: var(--sk-surface-hover);
+}
+
+html[data-ui-theme='sky-editor'] .account-avatar-wrap {
+    flex-shrink: 0;
+}
+
+html[data-ui-theme='sky-editor'] .account-avatar,
+html[data-ui-theme='sky-editor'] .account-avatar-placeholder {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+}
+
+html[data-ui-theme='sky-editor'] .account-avatar {
+    display: block;
+    border: 1px solid var(--sk-line-strong);
+    object-fit: cover;
+}
+
+html[data-ui-theme='sky-editor'] .account-avatar-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--sk-line);
+    background-color: var(--sk-surface);
+    color: var(--sk-fg-soft);
+    font-size: 22px;
+    font-weight: 600;
+}
+
+html[data-ui-theme='sky-editor'] .account-card-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+html[data-ui-theme='sky-editor'] .account-card-id-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--sk-fg-strong);
+    word-break: break-word;
+}
+
+html[data-ui-theme='sky-editor'] .account-card-bio {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--sk-fg-soft);
+    word-break: break-word;
+}
+
+html[data-ui-theme='sky-editor'] .account-card-bio-fallback {
+    font-size: 13px;
+    font-style: italic;
+    color: var(--sk-fg-mute);
+    word-break: break-word;
+}
+
+html[data-ui-theme='sky-editor'] .account-cloud-hint {
+    max-width: 420px;
+    margin: 0 auto 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--sk-fg-mute);
+    text-align: center;
+}
+
+html[data-ui-theme='sky-editor'] .account-register-title {
+    padding: 2px 0;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--sk-fg-strong);
+}
+
+/* ---- 表单输入框（JSX 中引用 styles.cloudServerInput → .cloud-server-input） ---- */
+html[data-ui-theme='sky-editor'] .cloud-server-input {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 420px;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--sk-line);
+    border-radius: 10px;
+    background-color: var(--sk-surface);
+    color: var(--sk-fg);
+    font: inherit;
+    font-size: 14px;
+    outline: none;
+    transition: background-color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+html[data-ui-theme='sky-editor'] .cloud-server-input::placeholder {
+    color: var(--sk-fg-mute);
+}
+
+html[data-ui-theme='sky-editor'] .cloud-server-input:hover {
+    border-color: var(--sk-line-strong);
+}
+
+html[data-ui-theme='sky-editor'] .cloud-server-input:focus {
+    border-color: var(--sk-accent);
+    background-color: transparent;
+    box-shadow: 0 0 0 3px var(--sk-accent-ring);
+}
+
+/* ==== 按钮类控件按压反馈（仅补按下位移，不叠加已有 hover / 选中态） ==== */
+/* 选项行：沿用 0.12s 背景过渡，追加 1px 下沉 */
+html[data-ui-theme='sky-editor'] .window-option {
+    transition: background-color 0.12s ease, color 0.12s ease, transform 0.1s ease;
+}
+
+/* 侧栏页签：沿用 0.14s 背景过渡，追加 1px 下沉 */
+html[data-ui-theme='sky-editor'] .window-tab {
+    transition: background-color 0.14s ease, color 0.14s ease, transform 0.1s ease;
+}
+
+/* 分组标题：仅颜色过渡，追加 1px 下沉 */
+html[data-ui-theme='sky-editor'] .window-category {
+    transition: color 0.12s ease, transform 0.1s ease;
+}
+
+/* 下拉选择触发器：沿用边框/阴影过渡，追加 1px 下沉 */
+html[data-ui-theme='sky-editor'] .language-dropdown-button {
+    transition: background-color 0.14s ease, border-color 0.14s ease,
+        box-shadow 0.14s ease, transform 0.1s ease;
+}
+
+html[data-ui-theme='sky-editor'] .window-option:not(.disabled):active,
+html[data-ui-theme='sky-editor'] .window-tab:active,
+html[data-ui-theme='sky-editor'] .window-category:active,
+html[data-ui-theme='sky-editor'] .language-dropdown-button:active {
+    transform: translateY(1px);
+}
+
+/* 主题卡片：hover 已是 -1px 上浮，按下回落且极轻微收缩 */
+html[data-ui-theme='sky-editor'] .theme-card:not(.disabled):active {
+    transform: translateY(0) scale(0.995);
+}
+
+/* 下拉菜单项：按下时浅色回馈 */
+html[data-ui-theme='sky-editor'] .language-dropdown-menu button:active,
+html[data-ui-theme='sky-editor'] .language-dropdown-menu li:active {
+    background-color: var(--sk-accent-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html[data-ui-theme='sky-editor'] .window-option:active,
+    html[data-ui-theme='sky-editor'] .window-tab:active,
+    html[data-ui-theme='sky-editor'] .window-category:active,
+    html[data-ui-theme='sky-editor'] .language-dropdown-button:active,
+    html[data-ui-theme='sky-editor'] .theme-card:not(.disabled):active {
+        transform: none;
+    }
+}
+
+
+/* ============================================================================
+   前景色收口：窗口内可读文字统一走 --sk-fg 系列
+   ----------------------------------------------------------------------------
+   .window-option / .language-dropdown-button 原先直接取 $ui-modal-foreground。
+   这个值由 GUI 主题层决定，与下拉面板的实际底色不是同一个判据；两层明暗一旦
+   错配（UI 深色叠在浅色 GUI 变量上，或反之），就会出现「深底 + 深字」。
+   截图中主题下拉里的 02Engine / Bilup / AstraEditor / FrostEditor 看不清即属
+   此类：面板是深色，字却被浅色分支改成了 #1F2430。
+   这里把这两处文字改为 --sk-fg 令牌，取值只由明暗决定，随明暗自动切换。
+   ============================================================================ */
+html[data-ui-theme='sky-editor'] .window-option,
+html[data-ui-theme='sky-editor'] .language-dropdown-button {
+    color: var(--sk-fg);
+}
+
+/* 主题卡片名称（02Engine / Bilup / AstraEditor / FrostEditor 等）从 fg-soft 提到 fg，
+   仍是次级层级，但保证压在深色卡片上足够清晰 */
+html[data-ui-theme='sky-editor'] .theme-card-label {
+    color: var(--sk-fg);
+}
+
+
+/* ============================================================================
+   内部组件克制动效（只加状态过渡，不改尺寸、结构、交互）
+   ============================================================================ */
+
+/* ---- 勾选（打勾）：淡入 + 轻微放大回弹；取消时反向淡出 ---- */
+/* .check 默认 visibility:hidden，用 0.16s 的 visibility 延迟把淡出留在可见状态，
+   取消勾选才不会「啪」地瞬间消失 */
+html[data-ui-theme='sky-editor'] .window-option .check {
+    opacity: 0;
+    transform: scale(0.72);
+    transition: opacity 0.12s ease, transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1),
+        visibility 0s linear 0.16s;
+    will-change: opacity, transform;
+}
+
+html[data-ui-theme='sky-editor'] .window-option .check.selected {
+    opacity: 0.9;
+    transform: scale(1);
+    transition: opacity 0.12s ease, transform 0.18s cubic-bezier(0.34, 1.36, 0.64, 1),
+        visibility 0s linear 0s;
+}
+
+/* 主题卡片上的勾选标记同样补一次淡入回弹 */
+html[data-ui-theme='sky-editor'] .theme-card .check {
+    opacity: 0;
+    transform: scale(0.72);
+    transition: opacity 0.12s ease, transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1),
+        visibility 0s linear 0.16s;
+}
+
+html[data-ui-theme='sky-editor'] .theme-card .check.selected {
+    opacity: 1;
+    transform: scale(1);
+    transition: opacity 0.12s ease, transform 0.18s cubic-bezier(0.34, 1.36, 0.64, 1),
+        visibility 0s linear 0s;
+}
+
+/* ---- 侧栏选中指示条：滑入 / 滑出 ---- */
+/* 原 .window-tab-active::before 是绝对定位的静态蓝条，切换页签时直接闪现。
+   这里给所有 .window-tab 备一条透明蓝条，选中时才落位：纵向位移 + 竖向生长，
+   视觉上是「从上方滑入并拉长」，取消选中时反向收起。 */
+html[data-ui-theme='sky-editor'] .window-tab::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 3px;
+    height: 16px;
+    margin-top: -8px;
+    border-radius: 0 3px 3px 0;
+    background-color: var(--sk-accent);
+    opacity: 0;
+    transform: translateY(-6px) scaleY(0.2);
+    transform-origin: center center;
+    pointer-events: none;
+    transition: opacity 0.14s ease, transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+html[data-ui-theme='sky-editor'] .window-tab-active::before {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+}
+
+/* ---- 按钮宽度 / 文案长度变化过渡 ---- */
+/* 宽度与内边距纳入过渡：显式宽度变化的控件（页签、下拉触发器）会平滑推开；
+   文案长度变化导致的 auto 宽度，需引擎支持 interpolate-size 才可插值，
+   不支持时静默降级为瞬时变化，不影响功能。 */
+html[data-ui-theme='sky-editor'] .window-option {
+    transition: background-color 0.12s ease, color 0.12s ease, transform 0.1s ease,
+        width 0.18s cubic-bezier(0.22, 0.61, 0.36, 1), padding 0.18s ease;
+}
+
+html[data-ui-theme='sky-editor'] .window-tab {
+    transition: background-color 0.14s ease, color 0.14s ease, transform 0.1s ease,
+        width 0.18s cubic-bezier(0.22, 0.61, 0.36, 1), padding 0.18s ease;
+}
+
+html[data-ui-theme='sky-editor'] .language-dropdown-button {
+    transition: background-color 0.14s ease, border-color 0.14s ease,
+        box-shadow 0.14s ease, transform 0.1s ease,
+        width 0.18s cubic-bezier(0.22, 0.61, 0.36, 1), padding 0.18s ease;
+}
+
+@supports (interpolate-size: allow-keywords) {
+    html[data-ui-theme='sky-editor'] .window-option,
+    html[data-ui-theme='sky-editor'] .window-tab,
+    html[data-ui-theme='sky-editor'] .language-dropdown-button {
+        interpolate-size: allow-keywords;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html[data-ui-theme='sky-editor'] .window-option .check,
+    html[data-ui-theme='sky-editor'] .window-option .check.selected {
+        transition: none;
+        transform: none;
+    }
+
+    html[data-ui-theme='sky-editor'] .window-tab::before,
+    html[data-ui-theme='sky-editor'] .window-tab-active::before {
+        transition: none;
+    }
+}
+
+/* ============================================================================
+   账号登录页 · 视觉重做（2026-11-20 追加覆盖层）
+   ----------------------------------------------------------------------------
+   设计口径：
+   · 只在本文件末尾追加，不改动上方任何既有规则，也不影响设置内其它面板；
+   · 颜色一律取 --sk-* 设计令牌，深浅色由 .window-shell / .window-shell-light
+     自动切换，规则本身不写死明暗色值；
+   · 不新增 DOM 结构、不新增 i18n 文案，图标全部由伪元素 mask 绘制；
+   · 动效只有「面板进门淡入 + 悬停/焦点过渡」，并遵循 prefers-reduced-motion。
+   ============================================================================ */
+
+@keyframes skyAccountPanelIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+html[data-ui-theme='sky-editor'] .account-landing,
+html[data-ui-theme='sky-editor'] .account-methods,
+html[data-ui-theme='sky-editor'] .account-form {
+    animation: skyAccountPanelIn 0.24s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* ---- 一、未登录落地页 ---- */
+html[data-ui-theme='sky-editor'] .account-landing {
+    padding: 10px 0 18px;
+}
+
+html[data-ui-theme='sky-editor'] .account-login-title {
+    padding: 2px 0 0;
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    color: var(--sk-fg-strong);
+}
+
+/* 标题下唯一装饰：一段强调色短横 */
+html[data-ui-theme='sky-editor'] .account-login-title::after {
+    content: '';
+    display: block;
+    width: 30px;
+    height: 3px;
+    margin: 10px auto 0;
+    border-radius: 2px;
+    background-color: var(--sk-accent);
+    opacity: 0.85;
+}
+
+html[data-ui-theme='sky-editor'] .account-landing .account-login-intro {
+    max-width: 380px;
+    margin: 0 auto;
+    padding: 10px 0 16px;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--sk-fg-mute);
+}
+
+/* 登录入口：图标居上、文案居下的整块卡片 */
+html[data-ui-theme='sky-editor'] .account-login-box {
+    flex-direction: column;
+    gap: 0;
+    width: min(100%, 420px);
+    margin: 4px auto 14px;
+    padding: 26px 20px 24px;
+    border: 1px solid var(--sk-line);
+    border-radius: 16px;
+    background-color: var(--sk-surface);
+    background-image: radial-gradient(130% 100% at 50% 0%, var(--sk-accent-soft), transparent 70%);
+    box-shadow: var(--sk-shadow-1);
+    transition: border-color 0.16s ease, background-color 0.16s ease,
+        box-shadow 0.16s ease, transform 0.14s ease;
+}
+
+html[data-ui-theme='sky-editor'] .account-login-box:hover {
+    border-color: var(--sk-accent);
+    background-color: var(--sk-surface);
+    box-shadow: 0 0 0 3px var(--sk-accent-ring), var(--sk-shadow-1);
+    transform: translateY(-1px);
+}
+
+html[data-ui-theme='sky-editor'] .account-login-box:active {
+    transform: translateY(0);
+}
+
+html[data-ui-theme='sky-editor'] .account-login-box-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--sk-fg-strong);
+}
+
+/* 入口图标：单色强调色字形，不叠底块 */
+html[data-ui-theme='sky-editor'] .account-login-box-label::before {
+    content: '';
+    width: 34px;
+    height: 34px;
+    background-color: var(--sk-accent);
+}
+
+html[data-ui-theme='sky-editor'] .account-login-box-label::before {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%2523000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M15%203h4a2%202%200%200%201%202%202v14a2%202%200%200%201-2%202h-4%27%2F%3E%3Cpolyline%20points%3D%2710%2017%2015%2012%2010%207%27%2F%3E%3Cline%20x1%3D%2715%27%20y1%3D%2712%27%20x2%3D%273%27%20y2%3D%2712%27%2F%3E%3C%2Fsvg%3E");
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: 28px;
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%2523000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M15%203h4a2%202%200%200%201%202%202v14a2%202%200%200%201-2%202h-4%27%2F%3E%3Cpolyline%20points%3D%2710%2017%2015%2012%2010%207%27%2F%3E%3Cline%20x1%3D%2715%27%20y1%3D%2712%27%20x2%3D%273%27%20y2%3D%2712%27%2F%3E%3C%2Fsvg%3E");
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: 28px;
+}
+
+/* ---- 二、登录方式列表 ---- */
+html[data-ui-theme='sky-editor'] .account-methods {
+    gap: 10px;
+    padding: 6px 0 12px;
+}
+
+html[data-ui-theme='sky-editor'] .account-method-button {
+    justify-content: flex-start;
+    gap: 12px;
+    width: min(100%, 420px);
+    min-height: 56px;
+    padding: 0 14px;
+    border-radius: 14px;
+    background-color: var(--sk-surface);
+    box-shadow: var(--sk-shadow-1);
+    font-weight: 500;
+    color: var(--sk-fg);
+}
+
+html[data-ui-theme='sky-editor'] .account-method-button:hover {
+    border-color: var(--sk-accent);
+    background-color: var(--sk-surface-hover);
+    box-shadow: 0 0 0 3px var(--sk-accent-ring);
+}
+
+html[data-ui-theme='sky-editor'] .account-method-button::before {
+    content: '';
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    background-color: var(--sk-accent);
+    opacity: 0.92;
+}
+
+html[data-ui-theme='sky-editor'] .account-method-button:nth-of-type(1)::before {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27%2523000%27%20stroke%3D%27none%27%3E%3Crect%20x%3D%273%27%20y%3D%273%27%20width%3D%277%27%20height%3D%277%27%20rx%3D%271.8%27%2F%3E%3Crect%20x%3D%2714%27%20y%3D%273%27%20width%3D%277%27%20height%3D%277%27%20rx%3D%271.8%27%2F%3E%3Crect%20x%3D%273%27%20y%3D%2714%27%20width%3D%277%27%20height%3D%277%27%20rx%3D%271.8%27%2F%3E%3Crect%20x%3D%2714%27%20y%3D%2714%27%20width%3D%273.6%27%20height%3D%273.6%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2717.4%27%20y%3D%2717.4%27%20width%3D%273.6%27%20height%3D%273.6%27%20rx%3D%271%27%2F%3E%3C%2Fsvg%3E");
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: 22px;
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27%2523000%27%20stroke%3D%27none%27%3E%3Crect%20x%3D%273%27%20y%3D%273%27%20width%3D%277%27%20height%3D%277%27%20rx%3D%271.8%27%2F%3E%3Crect%20x%3D%2714%27%20y%3D%273%27%20width%3D%277%27%20height%3D%277%27%20rx%3D%271.8%27%2F%3E%3Crect%20x%3D%273%27%20y%3D%2714%27%20width%3D%277%27%20height%3D%277%27%20rx%3D%271.8%27%2F%3E%3Crect%20x%3D%2714%27%20y%3D%2714%27%20width%3D%273.6%27%20height%3D%273.6%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2717.4%27%20y%3D%2717.4%27%20width%3D%273.6%27%20height%3D%273.6%27%20rx%3D%271%27%2F%3E%3C%2Fsvg%3E");
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: 22px;
+}
+html[data-ui-theme='sky-editor'] .account-method-button:nth-of-type(2)::before {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%2523000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M20%2021v-2a4%204%200%200%200-4-4H8a4%204%200%200%200-4%204v2%27%2F%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%277%27%20r%3D%274%27%2F%3E%3C%2Fsvg%3E");
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: 20px;
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%2523000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M20%2021v-2a4%204%200%200%200-4-4H8a4%204%200%200%200-4%204v2%27%2F%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%277%27%20r%3D%274%27%2F%3E%3C%2Fsvg%3E");
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: 20px;
+}
+/* 右侧引导箭头：悬停时向右轻移 */
+html[data-ui-theme='sky-editor'] .account-method-button::after {
+    content: '';
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    margin-left: auto;
+    background-color: var(--sk-fg-mute);
+    transition: transform 0.16s ease, background-color 0.16s ease;
+}
+
+html[data-ui-theme='sky-editor'] .account-method-button:hover::after {
+    transform: translateX(3px);
+    background-color: var(--sk-accent);
+}
+
+html[data-ui-theme='sky-editor'] .account-method-button::after {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%2523000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpolyline%20points%3D%279%206%2015%2012%209%2018%27%2F%3E%3C%2Fsvg%3E");
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: 14px;
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%2523000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpolyline%20points%3D%279%206%2015%2012%209%2018%27%2F%3E%3C%2Fsvg%3E");
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: 14px;
+}
+/* 方式列表里的次级按钮：去边框，只留文字层级 */
+html[data-ui-theme='sky-editor'] .account-methods > .account-ghost-button {
+    min-height: 34px;
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--sk-fg-mute);
+    font-size: 13px;
+}
+
+html[data-ui-theme='sky-editor'] .account-methods > .account-ghost-button:hover {
+    border-color: transparent;
+    background-color: var(--sk-surface-hover);
+    color: var(--sk-fg);
+}
+
+html[data-ui-theme='sky-editor'] .account-methods > .account-ghost-button.account-register-entry {
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--sk-accent);
+    box-shadow: none;
+}
+
+html[data-ui-theme='sky-editor'] .account-methods > .account-ghost-button.account-register-entry:hover {
+    border-color: transparent;
+    background-color: var(--sk-accent-soft);
+    color: var(--sk-accent);
+}
+
+/* ---- 三、登录 / 注册表单：整页一张卡 ---- */
+html[data-ui-theme='sky-editor'] .account-form {
+    gap: 13px;
+    max-width: 480px;
+    margin: 6px auto 8px;
+    padding: 22px 22px 18px;
+    border: 1px solid var(--sk-line);
+    border-radius: 16px;
+    background-color: var(--sk-surface);
+    box-shadow: var(--sk-shadow-1);
+}
+
+/* 卡内子元素跟随卡片内宽，避免 420px 旧上限在卡内造成右侧空档 */
+html[data-ui-theme='sky-editor'] .account-form > * {
+    max-width: 100%;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-register-title {
+    padding: 0;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    color: var(--sk-fg-strong);
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-login-intro {
+    padding: 0 0 6px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--sk-fg-mute);
+}
+
+html[data-ui-theme='sky-editor'] .account-form-row {
+    gap: 7px;
+}
+
+html[data-ui-theme='sky-editor'] .account-form-label {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: var(--sk-fg-soft);
+}
+
+/* 输入框：卡内浅面层 + 聚焦强调色光环（仅作用于账号页表单） */
+html[data-ui-theme='sky-editor'] .account-form .cloud-server-input {
+    min-height: 44px;
+    padding: 0 14px;
+    border-color: var(--sk-line);
+    border-radius: 12px;
+    background-color: var(--sk-surface-hover);
+    color: var(--sk-fg);
+    transition: border-color 0.14s ease, background-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .cloud-server-input:hover {
+    border-color: var(--sk-line-strong);
+}
+
+html[data-ui-theme='sky-editor'] .account-form .cloud-server-input:focus {
+    border-color: var(--sk-accent);
+    background-color: var(--sk-surface-hover);
+    box-shadow: 0 0 0 3px var(--sk-accent-ring);
+}
+
+html[data-ui-theme='sky-editor'] .account-form .cloud-server-input::placeholder {
+    color: var(--sk-fg-mute);
+}
+
+/* 验证码：图与输入框同高并排 */
+html[data-ui-theme='sky-editor'] .account-captcha-row {
+    gap: 12px;
+}
+
+html[data-ui-theme='sky-editor'] .account-captcha-row .cloud-server-input {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    min-height: 46px;
+}
+
+html[data-ui-theme='sky-editor'] .account-captcha-image {
+    flex: 0 0 auto;
+    width: 128px;
+    height: 46px;
+    border-radius: 10px;
+}
+
+html[data-ui-theme='sky-editor'] .account-captcha-placeholder,
+html[data-ui-theme='sky-editor'] .account-captcha-error {
+    flex: 0 0 auto;
+    width: 128px;
+    height: 46px;
+    border-radius: 10px;
+    font-size: 11.5px;
+}
+
+html[data-ui-theme='sky-editor'] .account-captcha-hint {
+    padding-left: 2px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--sk-fg-mute);
+}
+
+/* 操作行：主按钮带一层很淡的强调色投影，悬停微抬 */
+html[data-ui-theme='sky-editor'] .account-form-actions {
+    gap: 10px;
+    margin-top: 6px;
+}
+
+html[data-ui-theme='sky-editor'] .account-primary-button {
+    min-height: 42px;
+    border-radius: 12px;
+    font-weight: 600;
+    box-shadow: 0 6px 16px -8px var(--sk-accent-ring);
+    transition: background-color 0.14s ease, border-color 0.14s ease,
+        box-shadow 0.14s ease, filter 0.14s ease, transform 0.12s ease;
+}
+
+html[data-ui-theme='sky-editor'] .account-primary-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px -8px var(--sk-accent-ring), 0 0 0 3px var(--sk-accent-ring);
+}
+
+html[data-ui-theme='sky-editor'] .account-primary-button:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 4px 12px -8px var(--sk-accent-ring);
+}
+
+html[data-ui-theme='sky-editor'] .account-form-actions .account-ghost-button {
+    min-height: 42px;
+    border-radius: 12px;
+}
+
+/* ---- 四、提示条 ---- */
+html[data-ui-theme='sky-editor'] .account-notice {
+    padding: 11px 14px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    line-height: 1.6;
+}
+
+html[data-ui-theme='sky-editor'] .account-error {
+    padding: 11px 14px 11px 13px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    line-height: 1.55;
+}
+
+/* ---- 五、已登录账号卡片 ---- */
+html[data-ui-theme='sky-editor'] .account-card {
+    max-width: 420px;
+    margin: 12px auto 14px;
+    padding: 26px 20px 24px;
+    border-radius: 18px;
+    background-color: var(--sk-surface);
+    background-image: radial-gradient(130% 100% at 50% 0%, var(--sk-accent-soft), transparent 70%);
+    box-shadow: var(--sk-shadow-1);
+}
+
+html[data-ui-theme='sky-editor'] .account-card:hover {
+    border-color: var(--sk-line-strong);
+    box-shadow: var(--sk-shadow-1);
+}
+
+html[data-ui-theme='sky-editor'] .account-avatar,
+html[data-ui-theme='sky-editor'] .account-avatar-placeholder {
+    width: 68px;
+    height: 68px;
+    box-shadow: 0 0 0 3px var(--sk-accent-soft);
+}
+
+html[data-ui-theme='sky-editor'] .account-avatar-placeholder {
+    border-color: var(--sk-line);
+    background-color: var(--sk-surface-hover);
+    color: var(--sk-fg-strong);
+    font-size: 24px;
+}
+
+html[data-ui-theme='sky-editor'] .account-card-id-value {
+    font-size: 19px;
+    letter-spacing: -0.005em;
+}
+
+html[data-ui-theme='sky-editor'] .account-card-bio,
+html[data-ui-theme='sky-editor'] .account-card-bio-fallback {
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+html[data-ui-theme='sky-editor'] .account-cloud-hint {
+    margin: 0 auto 12px;
+    line-height: 1.65;
+}
+
+html[data-ui-theme='sky-editor'] .account-danger-button {
+    min-height: 36px;
+    margin: 6px auto 14px;
+    border-radius: 12px;
+}
+
+/* ---- 六、减少动效 ---- */
+@media (prefers-reduced-motion: reduce) {
+    html[data-ui-theme='sky-editor'] .account-landing,
+    html[data-ui-theme='sky-editor'] .account-methods,
+    html[data-ui-theme='sky-editor'] .account-form {
+        animation: none;
+    }
+
+    html[data-ui-theme='sky-editor'] .account-login-box,
+    html[data-ui-theme='sky-editor'] .account-method-button,
+    html[data-ui-theme='sky-editor'] .account-method-button::after,
+    html[data-ui-theme='sky-editor'] .account-primary-button {
+        transition: none;
+        transform: none;
+    }
+}
+
+/* ==== TurboWarp 主题：设置弹窗（官方形态） ====
+   官方没有「左侧栏 + 右侧内容」的设置窗口，设置是弹窗 +
+   顶部横排标签。B 端结构保持不变，仅在此把竖栏翻成顶栏：
+   - .window-shell 行方向 → 列方向
+   - .window-sidebar 竖排块 → 顶部一行横标签（可横向滚动）
+   - 分类标题（SKY 折叠分组）在横排下无意义，直接隐藏并把分组容器打平
+   - 视觉全部贴近官方弹窗：无圆角卡片、无强调色指示条、选中态用官方强调条 */
+html[data-ui-theme='turbowarp'] .window-shell {
+    display: flex;
+    flex-direction: column;
     position: absolute;
     top: 0;
     left: 0;
@@ -164,223 +1835,215 @@
     overflow: hidden;
 }
 
-.window-sidebar {
+html[data-ui-theme='turbowarp'] .window-sidebar-wrap {
+    position: relative;
+    box-sizing: border-box;
     flex-shrink: 0;
-    width: 220px;
-    display: flex;
-    flex-direction: column;
-    padding: 8px 0;
-    border-right: 1px solid rgba(0, 0, 0, 0.4);
-    /* SKYEditor 风格：深灰 #2D2D2D 竖向标签栏（图3） */
-    background-color: #2D2D2D;
-    overflow-y: auto;
-}
-
-/* 浅色模式：左侧栏与内容页一致的白底（默认深色模式保持深灰） */
-.window-sidebar-light {
-    background-color: $ui-modal-background;
-}
-
-/* 浅色模式：白底上图标统一渲染为深色（深色模式保持原本的浅色，不加滤镜） */
-.window-sidebar-light .window-tab-icon {
-    filter: brightness(0);
-}
-
-.window-tab {
-    display: flex;
-    align-items: center;
-    gap: 8px;
     width: 100%;
-    padding: 8px 16px;
-    margin: 0.25rem 0;
-    text-align: left;
-    border: none;
-    border-radius: 4px;
-    background: transparent;
-    /* 图3：未选中子项浅灰 #CCCCCC */
-    color: #CCCCCC;
-    font: inherit;
-    font-size: 14px;
-    cursor: default;
-    white-space: nowrap;
+    border-right: none;
+    border-bottom: 1px solid $ui-black-transparent;
+    background-color: transparent;
 }
 
-.window-tab-icon {
-    flex-shrink: 0;
-}
-
-.window-category {
+html[data-ui-theme='turbowarp'] .window-sidebar {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 2px;
+    box-sizing: border-box;
     width: 100%;
-    padding: 8px 16px;
-    text-align: left;
-    border: none;
-    border-bottom: 1px solid transparent;
-    background: transparent;
-    /* 图2/图3：分类项浅灰文字、无按钮底色、无图标 */
-    color: #CCCCCC;
-    font: inherit;
-    font-size: 14px;
-    cursor: default;
-    white-space: nowrap;
+    padding: 6px 8px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background-color: transparent;
 }
 
-/* 图2：展开中的分类项加深字色并带浅灰下划线 */
-.window-category-expanded {
-    color: #FFFFFF;
-    border-bottom-color: #555555;
+/* 横排下隐藏分类标题（官方设置弹窗没有分组标题），并把折叠容器打平 */
+html[data-ui-theme='turbowarp'] .window-category {
+    display: none;
 }
 
-.window-category:hover {
-    color: #FFFFFF;
+html[data-ui-theme='turbowarp'] .window-category-items,
+html[data-ui-theme='turbowarp'] .window-category-items-inner {
+    display: contents;
 }
 
-.window-category-label {
-    flex: 1;
-}
-
-.window-category-caret {
-    display: inline-block;
-    width: 14px;
+/* 横标签：官方菜单/弹窗口径 —— 无圆角卡片、无左侧指示条 */
+html[data-ui-theme='turbowarp'] .window-tab {
+    position: relative;
+    display: flex;
     flex-shrink: 0;
-    text-align: center;
-    transition: transform .15s ease;
+    align-items: center;
+    gap: 6px;
+    box-sizing: border-box;
+    width: auto;
+    min-height: 32px;
+    margin: 0;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: $text-primary;
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    opacity: 0.75;
+    transition: opacity 0.1s ease;
 }
 
-.window-category-caret-expanded {
-    transform: rotate(90deg);
+html[data-ui-theme='turbowarp'] .window-tab:hover {
+    opacity: 1;
+    background-color: $ui-black-transparent;
 }
 
-.window-tab:hover {
-    color: #FFFFFF;
-    background-color: $badge-border;
+html[data-ui-theme='turbowarp'] .window-tab-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    opacity: 1;
 }
 
-/* 选中态：与内容页普通按钮选中样式同步（$badge-background 高亮底），不再用黑底粗体 */
-.window-tab-active {
-    background-color: $badge-background;
-    color: #FFFFFF;
+html[data-ui-theme='turbowarp'] .window-tab-active {
+    color: $text-primary;
+    background-color: transparent;
+    font-weight: bold;
+    opacity: 1;
 }
 
-/* 浅色模式（白底左栏）：文字改深色，hover 浅灰底，选中深底白字 */
-.window-sidebar-light .window-category {
-    color: #575E75;
-    border-bottom-color: #D9D9D9;
+/* 选中强调线贴底，宽度对齐标签内容（官方标签页口径） */
+html[data-ui-theme='turbowarp'] .window-tab-active::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 0;
+    width: auto;
+    height: 2px;
+    margin: 0;
+    border-radius: 0;
+    background-color: $looks-secondary;
 }
 
-.window-sidebar-light .window-category-expanded {
-    color: #1A1A1A;
-    border-bottom-color: #B0B0B0;
-}
-
-.window-sidebar-light .window-category:hover,
-.window-sidebar-light .window-tab:hover {
-    color: #1A1A1A;
-    background-color: $badge-border;
-}
-
-.window-sidebar-light .window-tab {
-    color: #575E75;
-}
-
-.window-sidebar-light .window-tab-active {
-    background-color: $badge-background;
-    color: #1A1A1A;
-}
-
-.window-content {
-    flex: 1;
+html[data-ui-theme='turbowarp'] .window-content {
+    flex: 1 1 auto;
+    min-height: 0;
     min-width: 0;
     overflow-y: auto;
 }
 
-/* ==== Win11 设置窗口：语言下拉菜单 ==== */
-.language-dropdown {
-    position: relative;
-    padding: 0 0.75rem;
+/* ==== TurboWarp 主题：设置内容区（官方口径） ====
+   顶栏 + 内容区结构不变，这里只把 SKYEditor 的内容排版换成官方弹窗视觉：
+   - 分区标题走官方小标题（灰字、无强调色方块图标）
+   - 选项行/下拉框/卡片选择统一改官方控件口径（4px 圆角、1px 分隔线、强调色文字）
+   - 不使用任何 --sk-* 令牌与 SKY 阴影、位移动效 */
+html[data-ui-theme='turbowarp'] .window-settings {
+    padding: 12px 16px 16px;
+    color: $ui-modal-foreground;
+    font-size: 13px;
+    line-height: 1.5;
 }
 
-.language-dropdown-button {
+html[data-ui-theme='turbowarp'] .window-settings > :first-child {
+    margin-top: 0;
+}
+
+html[data-ui-theme='turbowarp'] .window-section-title {
+    margin: 14px 0 6px;
+    padding: 0;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0;
+    color: $text-primary-transparent;
+    white-space: normal;
+}
+
+html[data-ui-theme='turbowarp'] .window-section-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: .5rem;
-    width: 100%;
-    padding: 0.5rem 1rem;
+    gap: 8px;
+    margin: 16px 0 8px;
+    padding: 0;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0;
+}
+
+html[data-ui-theme='turbowarp'] .window-section-header img {
+    box-sizing: content-box;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border-radius: 0;
+    background-color: transparent;
+}
+
+html[data-ui-theme='turbowarp'] .window-shell-light .window-section-header img {
+    filter: none;
+    opacity: 1;
+}
+
+html[data-ui-theme='turbowarp'] .window-section-divider {
+    flex-grow: 1;
+    margin-left: 10px;
+    border-top: 1px solid $ui-black-transparent;
+    opacity: 1;
+}
+
+html[data-ui-theme='turbowarp'] .window-placeholder {
+    margin-top: 8px;
+    padding: 16px 12px;
     border: 1px solid $ui-black-transparent;
     border-radius: 4px;
-    background: transparent;
+    background-color: transparent;
+    color: $text-primary-transparent;
+    font-size: 12px;
+    line-height: 1.6;
+    text-align: center;
+}
+
+html[data-ui-theme='turbowarp'] .window-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 30px;
+    margin: 0;
+    padding: 4px 8px;
+    border-radius: 4px;
     color: $ui-modal-foreground;
-    font: inherit;
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
     white-space: nowrap;
+    transition: none;
 }
 
-.language-dropdown-button:hover {
-    background-color: $badge-border;
+html[data-ui-theme='turbowarp'] .window-option:hover {
+    background-color: $ui-black-transparent;
 }
 
-.language-dropdown-caret {
-    font-size: .7rem;
-    line-height: 1;
-    transition: transform .15s ease;
-}
-
-.language-dropdown-caret-open {
-    transform: rotate(180deg);
-}
-
-.language-dropdown-menu {
-    position: absolute;
-    left: 8px;
-    right: 8px;
-    top: calc(100% + 2px);
-    max-height: 240px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    background-color: $ui-primary;
-    border: 1px solid $ui-black-transparent;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px $ui-black-transparent;
-    z-index: 10;
-}
-
-/* ==== Win11 设置窗口：合并主题页分区标题与分割线 ====
-   顶部距离与标题样式对齐原高级设置页（.header: margin .5rem 0 0; 加粗 16px） */
-.window-section-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0.5rem 0 0;
-    padding: 0 0 0.25rem;
+html[data-ui-theme='turbowarp'] .window-option:has(.selected) {
+    background-color: transparent;
+    color: $looks-secondary;
     font-weight: bold;
-    font-size: 16px;
 }
 
-.window-section-divider {
-    flex-grow: 1;
-    margin-left: 1rem;
-    border-top: 1px dashed $ui-tertiary;
+html[data-ui-theme='turbowarp'] .window-option.disabled,
+html[data-ui-theme='turbowarp'] .window-option.disabled:hover {
+    background-color: transparent;
+    opacity: 0.4;
+    cursor: default;
 }
 
-.square-color-icon {
-    width: 24px;
-    height: 24px;
-    border: 3px solid $menu-bar-foreground;
-    box-sizing: border-box;
-}
-
-/* ==== Win11 设置窗口：合并主题页卡片样式（图1 方框） ==== */
-.theme-card-row {
+html[data-ui-theme='turbowarp'] .theme-card-row {
     display: flex;
     gap: 8px;
-    padding: 4px 16px 8px;
+    padding: 2px 0 4px;
 }
 
-.theme-card {
+html[data-ui-theme='turbowarp'] .theme-card {
+    box-sizing: border-box;
     flex: 1;
     min-width: 0;
     display: flex;
@@ -388,58 +2051,641 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 12px 8px;
-    /* 角色造型区同款：正常态 2px 浅灰细框，内部空白 */
-    border: 2px solid $ui-black-transparent;
-    border-radius: 8px;
+    padding: 10px 6px;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 4px;
     background-color: transparent;
-    cursor: pointer;
+    font-size: 12px;
     text-align: center;
     user-select: none;
-    transition: border-color .12s ease, box-shadow .12s ease, background-color .12s ease;
+    cursor: pointer;
+    transform: none;
+    box-shadow: none;
+    transition: none;
 }
 
-/* 角色造型区同款：悬停态 2px 蓝色实线框 + 白底 */
-.theme-card:hover {
+html[data-ui-theme='turbowarp'] .theme-card:hover {
+    border-color: $ui-black-transparent;
+    background-color: $ui-black-transparent;
+    transform: none;
+    box-shadow: none;
+}
+
+html[data-ui-theme='turbowarp'] .theme-card-selected,
+html[data-ui-theme='turbowarp'] .theme-card-selected:hover {
     border-color: $looks-secondary;
-    background-color: $theme-card-background;
+    background-color: transparent;
+    transform: none;
+    box-shadow: none;
 }
 
-/* 角色造型区同款：选中态 2px 蓝色实线框 + 白底 + 4px 紧贴光晕环 */
-.theme-card-selected {
-    border-color: $looks-secondary;
-    background-color: $theme-card-background;
-    box-shadow: 0px 0px 0px 4px $looks-transparent;
+html[data-ui-theme='turbowarp'] .language-dropdown {
+    position: relative;
+    margin: 2px 0;
 }
 
-.theme-card.disabled {
-    opacity: 0.5;
-    cursor: default;
-}
-
-.theme-card-icon {
+html[data-ui-theme='turbowarp'] .language-dropdown-button {
     display: flex;
     align-items: center;
-    justify-content: center;
-    min-height: 26px;
-}
-
-/* 亮色主题下将白色图标反色为深色，保证在浅色卡片上可见 */
-.theme-card-icon-invert {
-    filter: invert(1);
-}
-
-.theme-card-label {
-    font-size: .75rem;
-    line-height: 1.3;
-    word-break: break-word;
-    white-space: normal;
-}
-
-.theme-card-label a {
-    text-decoration: none;
-}
-
-.open-link {
+    justify-content: space-between;
+    gap: 8px;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 32px;
+    padding: 0 8px;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 4px;
+    background-color: $input-background;
+    color: $ui-modal-foreground;
+    font: inherit;
+    font-size: 13px;
     cursor: pointer;
+    white-space: nowrap;
+    transition: none;
+}
+
+html[data-ui-theme='turbowarp'] .language-dropdown-button:hover {
+    border-color: $ui-black-transparent;
+    background-color: $input-background;
+}
+
+html[data-ui-theme='turbowarp'] .language-dropdown-button:focus-visible {
+    outline: none;
+    border-color: $looks-secondary;
+    box-shadow: none;
+}
+
+html[data-ui-theme='turbowarp'] .language-dropdown-caret {
+    font-size: 10px;
+    line-height: 1;
+    opacity: 0.6;
+    transition: none;
+}
+
+html[data-ui-theme='turbowarp'] .language-dropdown-menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    max-height: 240px;
+    padding: 4px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: $ui-primary;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 4px;
+    box-shadow: 0 0 0 4px $ui-black-transparent;
+    z-index: 10;
+}
+
+
+/* ============================================================================
+   账号登录页 · 现代登录卡片（2026-11-22 追加覆盖层 · 视口自适应版）
+   ----------------------------------------------------------------------------
+   目标：
+   · 居中卡片 + 清晰的标题/副标题层级 + 简洁输入区 + 单一主按钮；
+   · 次要登录方式（Sky Studio 占位、返回 / 注册入口）降级为文字层级；
+   · 非最大化设置窗口（约 960x576，内容区高约 536px）下整页完整显示、
+     不出现上下滚动条：面板改为纵向 flex、卡片在剩余空间内垂直居中，
+     间距 / 字号 / 控件高度全部由 cqh 容器单位随可用高度收敛（clamp 设上下限）。
+   口径：
+   · 只在文件末尾追加，不改上方任何既有规则、不改 JSX、不新增 i18n 键；
+   · 颜色取 --sk-* 令牌（实心主按钮为白字），深浅色自动适配；
+   · 弹性参数集中在 --sva-* 变量，便于整体调校。
+   ============================================================================ */
+
+/* ---- 0. 账号面板的内容区声明为尺寸容器（仅账号面板生效，不影响其它面板） ---- */
+html[data-ui-theme='sky-editor'] .window-content:has(.account-landing),
+html[data-ui-theme='sky-editor'] .window-content:has(.account-methods),
+html[data-ui-theme='sky-editor'] .window-content:has(.account-form),
+html[data-ui-theme='sky-editor'] .window-content:has(.account-card) {
+    container-type: size;
+    container-name: skyAccountViewport;
+}
+
+/* ---- 1. 弹性参数：基础值先按 536px 可用高度定，再由 @supports 内换成随高收敛 ---- */
+html[data-ui-theme='sky-editor'] .account-landing,
+html[data-ui-theme='sky-editor'] .account-methods,
+html[data-ui-theme='sky-editor'] .account-form,
+html[data-ui-theme='sky-editor'] .account-card {
+    --sva-gap: 10px;
+    --sva-half-gap: 5px;
+    --sva-pad-y: 20px;
+    --sva-pad-x: 22px;
+    --sva-title: 20px;
+    --sva-sub: 12.5px;
+    --sva-label: 11.5px;
+    --sva-input: 36px;
+    --sva-button: 40px;
+    --sva-radius: 12px;
+    --sva-row-gap: 5px;
+}
+
+@supports (height: 1cqh) {
+    html[data-ui-theme='sky-editor'] .account-landing,
+    html[data-ui-theme='sky-editor'] .account-methods,
+    html[data-ui-theme='sky-editor'] .account-form,
+    html[data-ui-theme='sky-editor'] .account-card {
+        --sva-gap: clamp(7px, 1.9cqh, 12px);
+        --sva-half-gap: clamp(3.5px, 0.95cqh, 6px);
+        --sva-pad-y: clamp(14px, 3.6cqh, 22px);
+        --sva-pad-x: clamp(16px, 3.2cqw, 22px);
+        --sva-title: clamp(17px, 3.7cqh, 21px);
+        --sva-sub: clamp(11.5px, 2.3cqh, 13px);
+        --sva-label: clamp(11px, 2.2cqh, 12px);
+        --sva-input: clamp(30px, 6.8cqh, 38px);
+        --sva-button: clamp(32px, 7.5cqh, 42px);
+        --sva-radius: clamp(10px, 2.2cqh, 13px);
+        --sva-row-gap: clamp(3px, 0.95cqh, 6px);
+    }
+}
+
+/* ---- 2. 面板：铺满可用高度，让卡片在其间垂直居中 ---- */
+html[data-ui-theme='sky-editor'] .window-settings:has(> .account-landing),
+html[data-ui-theme='sky-editor'] .window-settings:has(> .account-methods),
+html[data-ui-theme='sky-editor'] .window-settings:has(> .account-form),
+html[data-ui-theme='sky-editor'] .window-settings:has(> .account-card) {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    padding: clamp(10px, 2.2cqh, 18px) clamp(16px, 3.2cqw, 28px) clamp(12px, 3cqh, 22px);
+}
+
+/* 顶部分组标题：退成居中细标签，去掉右侧分隔线，给卡片让出高度 */
+html[data-ui-theme='sky-editor'] .window-settings:has(> .account-landing) > .window-section-header,
+html[data-ui-theme='sky-editor'] .window-settings:has(> .account-methods) > .window-section-header,
+html[data-ui-theme='sky-editor'] .window-settings:has(> .account-form) > .window-section-header,
+html[data-ui-theme='sky-editor'] .window-settings:has(> .account-card) > .window-section-header {
+    flex: 0 0 auto;
+    justify-content: center;
+    margin: 0 0 clamp(8px, 1.8cqh, 14px);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--sk-fg-mute);
+}
+
+html[data-ui-theme='sky-editor'] .window-settings:has(> :is(.account-landing, .account-methods, .account-form, .account-card)) > .window-section-header .window-section-divider {
+    display: none;
+}
+
+html[data-ui-theme='sky-editor'] .window-settings:has(> :is(.account-landing, .account-methods, .account-form, .account-card)) > .window-section-header img {
+    width: 14px;
+    height: 14px;
+    padding: 3px;
+    border-radius: 7px;
+    opacity: 0.85;
+}
+
+/* ---- 3. 卡片本体：居中、发丝线、克制阴影 ---- */
+html[data-ui-theme='sky-editor'] .account-landing,
+html[data-ui-theme='sky-editor'] .account-methods,
+html[data-ui-theme='sky-editor'] .account-form {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: min(100%, 440px);
+    max-width: none;
+    margin: auto;
+    padding: var(--sva-pad-y) var(--sva-pad-x);
+    border: 1px solid var(--sk-line);
+    border-radius: calc(var(--sva-radius) + 4px);
+    background-color: var(--sk-surface);
+    background-image: radial-gradient(120% 100% at 50% -25%, var(--sk-accent-soft), transparent 62%);
+    box-shadow: var(--sk-shadow-1);
+    text-align: center;
+    animation: skyAccountPanelIn 0.24s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* ---- 4. 未登录落地页 ---- */
+html[data-ui-theme='sky-editor'] .account-landing {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sva-gap);
+}
+
+html[data-ui-theme='sky-editor'] .account-landing .account-login-title {
+    padding: 0;
+    font-size: var(--sva-title);
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--sk-fg-strong);
+}
+
+/* 标题下的强调短横取消：层级改由字号与字重承担 */
+html[data-ui-theme='sky-editor'] .account-landing .account-login-title::after {
+    content: none;
+}
+
+html[data-ui-theme='sky-editor'] .account-landing .account-login-intro {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    font-size: var(--sva-sub);
+    line-height: 1.62;
+    color: var(--sk-fg-mute);
+}
+
+/* 唯一主按钮：实心强调色 */
+html[data-ui-theme='sky-editor'] .account-landing .account-login-box {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    min-height: var(--sva-button);
+    margin: 2px 0 0;
+    padding: 0 16px;
+    border: 1px solid var(--sk-accent);
+    border-radius: var(--sva-radius);
+    background-color: var(--sk-accent);
+    background-image: none;
+    color: #ffffff;
+    box-shadow: 0 6px 16px -10px var(--sk-accent);
+    transition: filter 0.16s ease, box-shadow 0.16s ease, transform 0.14s ease;
+}
+
+html[data-ui-theme='sky-editor'] .account-landing .account-login-box:hover {
+    border-color: var(--sk-accent);
+    background-color: var(--sk-accent);
+    filter: brightness(1.07);
+    box-shadow: 0 0 0 3px var(--sk-accent-ring), 0 8px 18px -10px var(--sk-accent);
+    transform: translateY(-1px);
+}
+
+html[data-ui-theme='sky-editor'] .account-landing .account-login-box:active {
+    filter: brightness(0.97);
+    transform: translateY(0);
+}
+
+html[data-ui-theme='sky-editor'] .account-landing .account-login-box-label {
+    flex-direction: row;
+    align-items: center;
+    gap: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: #ffffff;
+}
+
+html[data-ui-theme='sky-editor'] .account-landing .account-login-box-label::before {
+    width: 18px;
+    height: 18px;
+    background-color: currentColor;
+    -webkit-mask-size: 18px;
+    mask-size: 18px;
+}
+
+/* 注册入口：降为卡片底部的弱化文字链 */
+html[data-ui-theme='sky-editor'] .account-landing > .account-register-entry {
+    align-self: center;
+    width: auto;
+    min-height: 26px;
+    margin: 0;
+    padding: 0 6px;
+    border: none;
+    background-color: transparent;
+    box-shadow: none;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--sk-fg-mute);
+}
+
+html[data-ui-theme='sky-editor'] .account-landing > .account-register-entry:hover {
+    border: none;
+    background-color: transparent;
+    color: var(--sk-accent);
+    box-shadow: none;
+}
+
+/* ---- 5. 登录方式：创客次元为主路径，Sky Studio 占位做虚线弱化 ---- */
+html[data-ui-theme='sky-editor'] .account-methods {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+}
+
+html[data-ui-theme='sky-editor'] .account-methods .account-method-button {
+    justify-content: flex-start;
+    gap: 10px;
+    width: 100%;
+    min-height: calc(var(--sva-button) + 6px);
+    padding: 0 13px;
+    border-radius: var(--sva-radius);
+    font-size: 13.5px;
+    font-weight: 500;
+    box-shadow: none;
+}
+
+html[data-ui-theme='sky-editor'] .account-methods .account-method-button:nth-of-type(1) {
+    border: 1px dashed var(--sk-line-strong);
+    background-color: transparent;
+    color: var(--sk-fg-mute);
+    box-shadow: none;
+}
+
+html[data-ui-theme='sky-editor'] .account-methods .account-method-button:nth-of-type(1)::before {
+    background-color: var(--sk-fg-mute);
+    opacity: 0.75;
+}
+
+html[data-ui-theme='sky-editor'] .account-methods .account-method-button:nth-of-type(1):hover {
+    border-color: var(--sk-accent);
+    background-color: var(--sk-surface-hover);
+    color: var(--sk-fg);
+    box-shadow: 0 0 0 3px var(--sk-accent-ring);
+}
+
+html[data-ui-theme='sky-editor'] .account-methods .account-method-button:nth-of-type(1):hover::before {
+    background-color: var(--sk-accent);
+    opacity: 1;
+}
+
+html[data-ui-theme='sky-editor'] .account-methods .account-method-button:nth-of-type(2) {
+    border: 1px solid var(--sk-accent);
+    background-color: var(--sk-accent-soft);
+    color: var(--sk-fg-strong);
+    font-weight: 600;
+    box-shadow: none;
+}
+
+html[data-ui-theme='sky-editor'] .account-methods .account-method-button:nth-of-type(2)::before {
+    background-color: var(--sk-accent);
+    opacity: 1;
+}
+
+html[data-ui-theme='sky-editor'] .account-methods .account-method-button:nth-of-type(2):hover {
+    border-color: var(--sk-accent);
+    background-color: var(--sk-accent-soft);
+    box-shadow: 0 0 0 3px var(--sk-accent-ring);
+}
+
+html[data-ui-theme='sky-editor'] .account-methods > .account-ghost-button {
+    min-height: 28px;
+    border-color: transparent;
+    background-color: transparent;
+    box-shadow: none;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--sk-fg-mute);
+}
+
+html[data-ui-theme='sky-editor'] .account-methods > .account-ghost-button:hover {
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--sk-fg);
+}
+
+html[data-ui-theme='sky-editor'] .account-methods > .account-ghost-button.account-register-entry {
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--sk-accent);
+    box-shadow: none;
+}
+
+html[data-ui-theme='sky-editor'] .account-methods > .account-ghost-button.account-register-entry:hover {
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--sk-accent);
+}
+
+/* ---- 6. 登录 / 注册表单 ---- */
+html[data-ui-theme='sky-editor'] .account-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: var(--sva-gap);
+    text-align: left;
+}
+
+html[data-ui-theme='sky-editor'] .account-form > * {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+}
+
+/* 短字段两列并排，压缩纵向占用；含验证码的行保持整行 */
+html[data-ui-theme='sky-editor'] .account-form > .account-form-row:not(:has(.account-captcha-row)) {
+    flex: 0 0 calc(50% - var(--sva-half-gap));
+    width: auto;
+    min-width: 0;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-register-title {
+    padding: 0;
+    font-size: var(--sva-title);
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--sk-fg-strong);
+    text-align: center;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-login-intro {
+    padding: 0;
+    font-size: var(--sva-sub);
+    line-height: 1.55;
+    color: var(--sk-fg-mute);
+    text-align: center;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-form-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sva-row-gap);
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-form-label {
+    font-size: var(--sva-label);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    color: var(--sk-fg-mute);
+}
+
+html[data-ui-theme='sky-editor'] .account-form .cloud-server-input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: var(--sva-input);
+    height: var(--sva-input);
+    padding: 0 12px;
+    border: 1px solid var(--sk-line);
+    border-radius: calc(var(--sva-radius) - 2px);
+    background-color: var(--sk-surface-hover);
+    color: var(--sk-fg);
+    font-size: 13px;
+    transition: border-color 0.14s ease, background-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .cloud-server-input:hover {
+    border-color: var(--sk-line-strong);
+    background-color: var(--sk-surface-hover);
+}
+
+html[data-ui-theme='sky-editor'] .account-form .cloud-server-input:focus {
+    border-color: var(--sk-accent);
+    background-color: var(--sk-surface-hover);
+    box-shadow: 0 0 0 3px var(--sk-accent-ring);
+    outline: none;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-captcha-row {
+    align-items: center;
+    gap: 10px;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-captcha-row .cloud-server-input {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    height: var(--sva-input);
+    min-height: var(--sva-input);
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-captcha-image,
+html[data-ui-theme='sky-editor'] .account-form .account-captcha-placeholder,
+html[data-ui-theme='sky-editor'] .account-form .account-captcha-error {
+    flex: 0 0 auto;
+    width: 96px;
+    height: var(--sva-input);
+    border-radius: calc(var(--sva-radius) - 2px);
+    font-size: 11px;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-captcha-hint {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--sk-fg-mute);
+    opacity: 0.9;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-form-actions {
+    gap: 8px;
+    margin: 2px 0 0;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-form-actions > .account-primary-button {
+    flex: 1 1 auto;
+    min-height: var(--sva-button);
+    border-radius: calc(var(--sva-radius) - 2px);
+    font-size: 13.5px;
+    font-weight: 600;
+    box-shadow: 0 6px 16px -10px var(--sk-accent);
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-form-actions > .account-primary-button:hover {
+    box-shadow: 0 0 0 3px var(--sk-accent-ring), 0 6px 16px -10px var(--sk-accent);
+    transform: none;
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-form-actions > .account-ghost-button {
+    flex: 0 0 auto;
+    min-width: 76px;
+    min-height: var(--sva-button);
+    padding: 0 12px;
+    border: 1px solid var(--sk-line);
+    border-radius: calc(var(--sva-radius) - 2px);
+    background-color: transparent;
+    box-shadow: none;
+    font-size: 12.5px;
+    color: var(--sk-fg-mute);
+}
+
+html[data-ui-theme='sky-editor'] .account-form .account-form-actions > .account-ghost-button:hover {
+    border-color: var(--sk-line-strong);
+    background-color: var(--sk-surface-hover);
+    color: var(--sk-fg);
+}
+
+html[data-ui-theme='sky-editor'] .account-form > .account-notice,
+html[data-ui-theme='sky-editor'] .account-form > .account-error {
+    padding: 8px 11px;
+    border-radius: calc(var(--sva-radius) - 2px);
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: left;
+}
+
+html[data-ui-theme='sky-editor'] .account-form > .account-register-entry {
+    align-self: center;
+    width: auto;
+    min-height: 26px;
+    padding: 0 6px;
+    border: none;
+    background-color: transparent;
+    box-shadow: none;
+    font-size: 12px;
+    color: var(--sk-fg-mute);
+}
+
+html[data-ui-theme='sky-editor'] .account-form > .account-register-entry:hover {
+    border: none;
+    background-color: transparent;
+    color: var(--sk-accent);
+}
+
+/* ---- 7. 已登录卡片：与登录卡同一宽度口径 ---- */
+html[data-ui-theme='sky-editor'] .account-card {
+    box-sizing: border-box;
+    width: min(100%, 440px);
+    max-width: none;
+    margin: 4px auto 10px;
+    padding: var(--sva-pad-y) var(--sva-pad-x);
+    border-radius: calc(var(--sva-radius) + 4px);
+    background-color: var(--sk-surface);
+    background-image: radial-gradient(120% 100% at 50% -20%, var(--sk-accent-soft), transparent 65%);
+    box-shadow: var(--sk-shadow-1);
+}
+
+html[data-ui-theme='sky-editor'] .account-card .account-avatar,
+html[data-ui-theme='sky-editor'] .account-card .account-avatar-placeholder {
+    width: 56px;
+    height: 56px;
+}
+
+html[data-ui-theme='sky-editor'] .account-card .account-card-id-value {
+    font-size: 17px;
+}
+
+html[data-ui-theme='sky-editor'] .account-cloud-hint {
+    max-width: 440px;
+    margin: 0 auto 10px;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+html[data-ui-theme='sky-editor'] .account-danger-button {
+    min-height: 32px;
+    margin: 0 auto 6px;
+    border-radius: 10px;
+    font-size: 12.5px;
+}
+
+/* ---- 8. 焦点可见性 + 降低动效 ---- */
+html[data-ui-theme='sky-editor'] .account-login-box:focus-visible,
+html[data-ui-theme='sky-editor'] .account-method-button:focus-visible,
+html[data-ui-theme='sky-editor'] .account-primary-button:focus-visible,
+html[data-ui-theme='sky-editor'] .account-ghost-button:focus-visible,
+html[data-ui-theme='sky-editor'] .account-danger-button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--sk-accent-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html[data-ui-theme='sky-editor'] .account-landing,
+    html[data-ui-theme='sky-editor'] .account-methods,
+    html[data-ui-theme='sky-editor'] .account-form {
+        animation: none;
+    }
+
+    html[data-ui-theme='sky-editor'] .account-landing .account-login-box:hover {
+        transform: none;
+    }
 }

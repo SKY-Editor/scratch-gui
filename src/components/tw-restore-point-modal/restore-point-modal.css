@@ -134,3 +134,17 @@
     border: 2px solid rgba(255, 0, 0, 0.568);
     font-weight: bold;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .button {
+    border-radius: var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .restore-point {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .thumbnail-image {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .disabled {
+    border-radius: var(--sky-radius);
+}

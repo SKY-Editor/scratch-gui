@@ -1,0 +1,282 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   SKY 右键菜单统一皮肤 v5 —— 全部右键菜单共用同一套规则
+   ──────────────────────────────────────────────────────────────────────────
+   本文件是「右键菜单统一样式」的唯一收口层。v5 把覆盖范围由 4 套扩到 7 套，
+   使编辑器里**所有**右键菜单（含窗口标题栏系统菜单）落在完全相同的规格上：
+
+     A. react-contextmenu           → nav.react-contextmenu / .react-contextmenu-item
+        （角色/造型/声音列表项、背包、变量与列表监视器、各 addon 注入项、
+           folders 插件菜单、addons/contextmenu.js 自绘菜单）
+     B. Blockly 积木区右键菜单       → .blocklyContextMenu / .goog-menuitem
+     C. 仿 Win11 窗口系统菜单        → [class*='win11-context-menu'] / [class*='win11-menu-item']
+        （React 版 win11-window、引擎版 sky-win11-window.js、
+           设置窗口 tw-settings-modal、调试器窗口内菜单）
+     D. 项目资源树自绘菜单           → [class*='menuLayer'] [class*='contextMenu']
+     E. 音乐播放器右键菜单（v5 新增） → [class*='_context-menu_'] / [class*='context-menu-item']
+        （CSS Modules 局部名 context-menu / context-menu-item / context-menu-separator，
+           生成类名为 music-player_context-menu_hash，故按子串匹配）
+     F. AI 窗口设置右键菜单（v5 新增） → .sea-settings-ctx-menu / -item / -divider / -disabled
+        （skyeditor-agent 包，全局裸类名，与编辑器同文档渲染）
+     G. 调试器卡片右键菜单（v5 新增）  → .sa-perf-menu / .sa-perf-menu-item / -divider
+
+   统一视觉规格（7 套完全一致）：
+     · 外容器：圆角（--sky-radius）、内边距 5px、1px 极淡描边、统一投影
+     · 菜单项：每一项自身是完整圆角矩形，四角统一用同心内圆角
+               （内圆角 = 外圆角 − 容器描边 1px − 容器内边距）
+     · 项间距：相邻两项之间 2px 细缝
+     · 默认态：无背景、无描边，只有外容器底色透出
+     · 悬停态：仅当前项显示填充色，无描边环、无外轮廓
+     · 分割线：1px 纤细浅色横线，左右各内缩 8px 不通栏，上下各 5px 留白
+     · 深浅主题：同一批令牌，暗色仅重定义令牌，不另写规则
+   约束：不改字号与项内边距、不改菜单宽度与交互逻辑、不新增 i18n 键、
+         不新增运行时样式表、不改无分割线菜单的结构；积木区分割线由
+         addons/api.js 注入独立 1px 节点（.sa-blockly-menu-separator），
+         只是把「菜单项边框冒充分割线」换成真实节点，样式仍在本文件收口。
+   注：scratch-gui 全部 .css 走 CSS Modules，故所有选择器必须整条包 :global()。
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. 令牌：浅色（默认） ─────────────────────────────────────────────── */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme)) {
+    --sky-ctx2-radius: var(--sky-radius, 12px);
+    /* 容器描边宽度：必须与第 3 节外容器的 border 宽度保持一致 */
+    --sky-ctx2-bw: 1px;
+    --sky-ctx2-pad: 5px;
+    /* 同心公式：内圆角 = 外圆角 − 容器描边 − 容器内边距（不为负） */
+    --sky-ctx2-inner: max(calc(var(--sky-ctx2-radius) - var(--sky-ctx2-bw) - var(--sky-ctx2-pad)), 4px);
+    /* 相邻项细缝 2px —— 仅用于相邻菜单项之间 */
+    --sky-ctx2-gap: 2px;
+    /* 分割线：左右内缩 8px、上下留白 5px（独立留白，不依附菜单项） */
+    --sky-ctx2-inset: 8px;
+    --sky-ctx2-divgap: 5px;
+
+    --sky-ctx2-outer-bg: #ffffff;
+    --sky-ctx2-hover-bg: #eef1f5;
+    --sky-ctx2-hover-ring: rgba(0, 0, 0, 0.18);
+    --sky-ctx2-fg: #33363f;
+    --sky-ctx2-line: rgba(0, 0, 0, 0.13);
+    --sky-ctx2-border: rgba(0, 0, 0, 0.12);
+    --sky-ctx2-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* ── 2. 令牌：暗色 ────────────────────────────────────────────────────── */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme)[data-ui-dark='true']) {
+    --sky-ctx2-outer-bg: #1e1e1e;
+    --sky-ctx2-hover-bg: #2c2c2c;
+    --sky-ctx2-hover-ring: rgba(255, 255, 255, 0.22);
+    --sky-ctx2-fg: #ffffff;
+    --sky-ctx2-line: rgba(255, 255, 255, 0.16);
+    --sky-ctx2-border: rgba(255, 255, 255, 0.06);
+    --sky-ctx2-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+}
+
+/* ══ 3. 外容器（A~G 七套菜单同一份声明） ═════════════════════════════════ */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'] [class*='contextMenu'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu)) {
+    padding: var(--sky-ctx2-pad) !important;
+    box-sizing: border-box;
+    background-color: var(--sky-ctx2-outer-bg) !important;
+    border: 1px solid var(--sky-ctx2-border) !important;
+    border-radius: var(--sky-ctx2-radius) !important;
+    box-shadow: var(--sky-ctx2-shadow) !important;
+    color: var(--sky-ctx2-fg) !important;
+}
+
+/* ══ 4. 菜单项基础态：透明底 + 无描边 + 完整圆角矩形 ═════════════════════
+   · .sa-perf-menu-item-checked 是调试器菜单的「已选中」态（强调色底），
+     属于状态指示而非悬停反馈，此处排除，保留其原有强调色。 */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu) :is(.react-contextmenu-item:not(.react-contextmenu-item--divider), .goog-menuitem:not(.goog-menuseparator), [class*='win11-menu-item']:not([class*='win11-menu-item-divider']), [class*='menuItem']:not([class*='menuSeparator']), [class*='context-menu-item']:not([class*='context-menu-item-icon']):not([class*='context-menu-item-text']):not([class*='context-menu-item-arrow']), .sea-settings-ctx-item, .sa-perf-menu-item:not(.sa-perf-menu-item-checked))) {
+    margin: 0 !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: var(--sky-ctx2-inner) !important;
+    color: var(--sky-ctx2-fg) !important;
+}
+
+/* ── 4.1 相邻两项之间留 2px 细缝（有分割线的位置不叠加） ── */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu) :is(.react-contextmenu-item:not(.react-contextmenu-item--divider), .goog-menuitem:not(.goog-menuseparator), [class*='win11-menu-item']:not([class*='win11-menu-item-divider']), [class*='menuItem']:not([class*='menuSeparator']), [class*='context-menu-item']:not([class*='context-menu-item-icon']):not([class*='context-menu-item-text']):not([class*='context-menu-item-arrow']), .sea-settings-ctx-item, .sa-perf-menu-item:not(.sa-perf-menu-item-checked)) + :is(.react-contextmenu-item:not(.react-contextmenu-item--divider), .goog-menuitem:not(.goog-menuseparator), [class*='win11-menu-item']:not([class*='win11-menu-item-divider']), [class*='menuItem']:not([class*='menuSeparator']), [class*='context-menu-item']:not([class*='context-menu-item-icon']):not([class*='context-menu-item-text']):not([class*='context-menu-item-arrow']), .sea-settings-ctx-item, .sa-perf-menu-item:not(.sa-perf-menu-item-checked))) {
+    margin-top: var(--sky-ctx2-gap) !important;
+}
+
+/* ══ 5. 悬停态：只显示鼠标所在项的填充色，无描边环、无外轮廓 ══ */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu) :is(.react-contextmenu-item:not(.react-contextmenu-item--divider), .goog-menuitem:not(.goog-menuseparator), [class*='win11-menu-item']:not([class*='win11-menu-item-divider']), [class*='menuItem']:not([class*='menuSeparator']), [class*='context-menu-item']:not([class*='context-menu-item-icon']):not([class*='context-menu-item-text']):not([class*='context-menu-item-arrow']), .sea-settings-ctx-item, .sa-perf-menu-item:not(.sa-perf-menu-item-checked)):is(:hover, :focus-visible, .goog-menuitem-highlight, .react-contextmenu-item--selected)) {
+    background-color: var(--sky-ctx2-hover-bg) !important;
+    color: var(--sky-ctx2-fg) !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+    border: 0 !important;
+}
+
+/* ══ 6. 分割线：1px 纤细浅色，左右内缩 8px 不通栏，上下各 5px 独立留白 ══
+   间距只由分割线自身的上下留白提供（5 + 1 + 5 = 11px），
+   不再叠加相邻项 2px 细缝，也不会再额外加组间留白。 */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu) :is(.react-contextmenu-item--divider, .goog-menuseparator, [class*='sa-blockly-menu-separator'], [class*='win11-menu-item-divider'], [class*='menuSeparator'], [class*='context-menu-separator'], .sea-settings-ctx-divider, .sa-perf-menu-divider)) {
+    display: block !important;
+    box-sizing: border-box !important;
+    width: auto !important;
+    height: 1px !important;
+    min-height: 0 !important;
+    margin: var(--sky-ctx2-divgap) 0 !important;
+    padding: 0 var(--sky-ctx2-inset) !important;
+    border: 0 !important;
+    background-color: var(--sky-ctx2-line) !important;
+    background-image: none !important;
+    background-clip: content-box !important;
+    box-shadow: none !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    pointer-events: none !important;
+}
+
+/* ── 6.1 分割线两侧的菜单项不再额外加间距（避免与 5px 留白叠加） ── */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu) :is(.react-contextmenu-item--divider, .goog-menuseparator, [class*='sa-blockly-menu-separator'], [class*='win11-menu-item-divider'], [class*='menuSeparator'], [class*='context-menu-separator'], .sea-settings-ctx-divider, .sa-perf-menu-divider) + :is(.react-contextmenu-item:not(.react-contextmenu-item--divider), .goog-menuitem:not(.goog-menuseparator), [class*='win11-menu-item']:not([class*='win11-menu-item-divider']), [class*='menuItem']:not([class*='menuSeparator']), [class*='context-menu-item']:not([class*='context-menu-item-icon']):not([class*='context-menu-item-text']):not([class*='context-menu-item-arrow']), .sea-settings-ctx-item, .sa-perf-menu-item:not(.sa-perf-menu-item-checked)):not(:first-child)) {
+    margin-top: 0 !important;
+}
+
+/* ══ 7. 无 DOM 分割线的分组（react-contextmenu 的 menu-item-bordered 项）：
+      用 ::before 画同规格 1px 内缩线；积木区已改用 .sa-blockly-menu-separator
+      独立节点，不再走本节 ══════════════════════════════════════════════ */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu [class*='menu-item-bordered'])) {
+    position: relative !important;
+    border-top: 0 !important;
+    border-top-width: 0 !important;
+    border-top-style: none !important;
+    border-top-color: transparent !important;
+}
+
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu [class*='menu-item-bordered'])):not(:first-child) {
+    margin-top: calc(var(--sky-ctx2-divgap) * 2 + 1px) !important;
+}
+
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu [class*='menu-item-bordered'])):not(:first-child)::before {
+    content: '' !important;
+    position: absolute !important;
+    left: var(--sky-ctx2-inset) !important;
+    right: var(--sky-ctx2-inset) !important;
+    top: calc(-1 * (var(--sky-ctx2-divgap) + 1px)) !important;
+    height: 1px !important;
+    background-color: var(--sky-ctx2-line) !important;
+    pointer-events: none !important;
+}
+
+/* ══ 8. 禁用项：无背景、无悬停描边，仅降低不透明度 ══════════════════════ */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu) :is(.react-contextmenu-item--disabled, .goog-menuitem-disabled, [class*='win11-menu-item-disabled'], [class*='menuItemDisabled'], [class*='menu-item-disabled'], .sea-settings-ctx-disabled, .sa-perf-menu-item-disabled)) {
+    opacity: 0.5 !important;
+    color: var(--sky-ctx2-fg) !important;
+    cursor: default !important;
+}
+
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu) :is(.react-contextmenu-item--disabled:hover, .goog-menuitem-disabled.goog-menuitem-highlight, .goog-menuitem-disabled:hover, [class*='win11-menu-item-disabled']:hover, [class*='menuItemDisabled']:hover, [class*='menu-item-disabled']:hover, .sea-settings-ctx-disabled:hover, .sa-perf-menu-item-disabled:hover):not(:active)) {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    color: var(--sky-ctx2-fg) !important;
+}
+
+/* ══ 9. 危险项（删除等）：悬停仍为红色警示 ══════════════════════════════ */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_']) :is([class*='menu-item-danger'], [class*='win11MenuItemDanger'], [class*='menuItemDanger'], [class*='menuItemDangerous'], [class*='context-menu-item-danger']):hover) {
+    background-color: #e81123 !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+}
+
+/* ══ 10. 快捷键 / 附加说明文字：跟随统一前景色 ═══════════════════════════ */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu) :is(.goog-menuitem-accel)) {
+    color: var(--sky-ctx2-fg) !important;
+    opacity: 0.55;
+}
+
+
+/* ══ 11. 分割线独立化收口（v7）══════════════════════════════════════════
+   规格：分割线是「独立、可选」的视觉分隔元素——有则有、无则无，绝不依附或混入
+   任何菜单按钮。与上下相邻菜单项各自保持 5px 留白，不贴边、不随悬停高亮、
+   不被包进按钮的圆角填充里。本节只做样式覆盖，不改菜单结构、字号与项内边距。 */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu) :is(.react-contextmenu-item--divider, .goog-menuseparator, [class*='sa-blockly-menu-separator'], [class*='win11-menu-item-divider'], [class*='menuSeparator'], [class*='menu-separator'], [class*='context-menu-separator'], .sea-settings-ctx-divider, .sa-perf-menu-divider)) {
+    display: block !important;
+    flex: 0 0 auto !important;
+    align-self: stretch !important;
+    width: auto !important;
+    height: 1px !important;
+    min-height: 1px !important;
+    max-height: 1px !important;
+    margin: var(--sky-ctx2-divgap) 0 !important;
+    padding: 0 var(--sky-ctx2-inset) !important;
+    box-sizing: border-box !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background-color: var(--sky-ctx2-line) !important;
+    background-image: none !important;
+    /* 背景只在内容盒内绘制：左右各内缩 8px，不会被 padding 涂满成通栏 */
+    background-clip: content-box !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+    cursor: default !important;
+    user-select: none !important;
+}
+
+/* 11.1 分割线不参与任何交互态：悬停 / 聚焦 / 按下 / 选中都不改背景、不加描边圆角 */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu) :is(.react-contextmenu-item--divider, .goog-menuseparator, [class*='sa-blockly-menu-separator'], [class*='win11-menu-item-divider'], [class*='menuSeparator'], [class*='menu-separator'], [class*='context-menu-separator'], .sea-settings-ctx-divider, .sa-perf-menu-divider)):is(:hover, :focus, :focus-visible, :active, .goog-menuitem-highlight, .react-contextmenu-item--selected) {
+    background-color: var(--sky-ctx2-line) !important;
+    background-image: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+}
+
+/* 11.2 兜底：即使分割线被错误地嵌套进菜单按钮内部，也强制恢复独立留白，
+       不吃按钮的圆角填充，避免「分割线变成按钮的一部分」 */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu) :is(button, [class*='menu-item'], [class*='menuItem'], [class*='goog-menuitem'], [class*='win11-menu-item']) > :is([class*='context-menu-separator'], [class*='menuSeparator'], [class*='menu-separator'], [class*='win11-menu-item-divider'], [class*='menu-item-divider'])) {
+    display: block !important;
+    height: 1px !important;
+    min-height: 1px !important;
+    margin: var(--sky-ctx2-divgap) 0 !important;
+    padding: 0 var(--sky-ctx2-inset) !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background-color: var(--sky-ctx2-line) !important;
+    background-clip: content-box !important;
+    box-shadow: none !important;
+}
+
+/* 11.3 无独立分割线元素的菜单（react-contextmenu 的 bordered 项；
+      积木区已改用 .sa-blockly-menu-separator 独立节点，不再走本节）：
+      这类菜单没有可选的分隔元素，只能在「项」上腾出空间。做法是给该项加一条
+      透明 19px 上边框当留白区，1px 线画在留白区正中（距上一项 11px、距本项
+      内容 10px）；悬停填充裁到 padding-box，因此填充色不会盖到留白区，
+      视觉上仍是「线 + 上下留白 + 独立按钮」。
+      选择器对相邻项 2px 细缝规则与基础态 border:0 均做了特异性加权。 */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu) :is(nav.react-contextmenu [class*='menu-item-bordered'][class*='menu-item'][class*='menu-item'])):not(:first-child) {
+    position: relative !important;
+    border-top: calc(var(--sky-ctx2-divgap) * 2 + 1px) solid transparent !important;
+    background-clip: padding-box !important;
+}
+
+/* 11.4 上述留白区的悬停/选中填充同样裁到 padding-box，不侵占留白区与分割线 */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) :is(nav.react-contextmenu, .blocklyContextMenu, [class*='win11-context-menu'], [class*='menuLayer'], [class*='_context-menu_'], .sea-settings-ctx-menu, .sa-perf-menu) :is(nav.react-contextmenu [class*='menu-item-bordered'][class*='menu-item'][class*='menu-item'])):is(:hover, :focus-visible, .goog-menuitem-highlight, .react-contextmenu-item--selected) {
+    background-clip: padding-box !important;
+    border-radius: var(--sky-ctx2-inner) !important;
+    border-top-color: transparent !important;
+}
+
+
+/* ══ 12. 积木区菜单项不再自带分割线（v8）═════════════════════════════════
+   积木区右键菜单的分割线一律来自独立节点 .sa-blockly-menu-separator（由
+   addons/api.js 在菜单渲染后插入，菜单项本身保持原样显示）。菜单项既不带
+   border-top，也不再用 ::before 伪元素冒充分割线。本节只做兜底清理，防止旧规则
+   或第三方样式把线画回菜单项上。 */
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) .blocklyContextMenu :is([class*='sa-blockly-menu-item-border'], [class*='blockly-menu-item-border'])) {
+    border-top: 0 !important;
+    border-top-width: 0 !important;
+    border-top-style: none !important;
+    border-top-color: transparent !important;
+    box-shadow: none !important;
+}
+
+:global(html:is([data-ui-theme='sky-editor'], .sky-editor-theme) .blocklyContextMenu :is([class*='sa-blockly-menu-item-border'], [class*='blockly-menu-item-border']))::before {
+    content: none !important;
+    display: none !important;
+}

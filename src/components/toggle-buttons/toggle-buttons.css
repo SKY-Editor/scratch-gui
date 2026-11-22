@@ -85,3 +85,11 @@
 .disabled .button {
     cursor: default;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .button:first-child, [dir="rtl"] .button:last-child, .button:first-child:focus:: {
+    border-radius: var(--sky-radius-sm) 0 0 var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .button:last-child, [dir="rtl"] .button:first-child, .button:last-child:focus::b {
+    border-radius: 0 var(--sky-radius-sm) var(--sky-radius-sm) 0;
+}

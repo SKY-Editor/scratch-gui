@@ -59,3 +59,8 @@
 .input-form[type=number] {
     -moz-appearance: textfield;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .input-form {
+    border-radius: var(--sky-radius);
+}

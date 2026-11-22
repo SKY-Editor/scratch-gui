@@ -102,3 +102,11 @@
     margin-left: 0;
     margin-right: 0;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .alert {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .alert-connection-button {
+    border-radius: var(--sky-radius-sm);
+}

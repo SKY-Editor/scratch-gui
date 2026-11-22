@@ -186,3 +186,14 @@
 .footer-length {
     text-align: center;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .monitor-container {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .value {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .list-value {
+    border-radius: var(--sky-radius);
+}

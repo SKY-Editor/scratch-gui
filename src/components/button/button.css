@@ -27,3 +27,8 @@
 .content {
     white-space: nowrap;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .outlined-button {
+    border-radius: var(--sky-radius-sm);
+}

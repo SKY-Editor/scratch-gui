@@ -91,3 +91,11 @@
     /* relied on by addons */
     display: flex;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .stage-button {
+    border-radius: var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .stage-size-row > *, .unselect-wrapper {
+    border-radius: var(--sky-radius);
+}

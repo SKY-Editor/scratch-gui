@@ -36,3 +36,8 @@
 .menu-item-danger:hover {
     background: $error-primary;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .context-menu {
+    border-radius: var(--sky-radius);
+}

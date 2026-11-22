@@ -72,6 +72,12 @@
     margin-bottom: 20px;
 }
 
+/* SKYEditor 皮肤：波形区容器改用容器级圆角 */
+:global(html.sky-editor-theme) .waveform-container {
+    border-radius: var(--sky-radius);
+}
+
+/* 上游官方原值（局部 SCSS 变量，TurboWarp 主题下按钮 4px 圆角） */
 $border-radius: 0.25rem;
 
 .button {
@@ -90,6 +96,11 @@ $border-radius: 0.25rem;
 
 .button:active {
     background: $looks-transparent;
+}
+
+/* SKYEditor 皮肤：按钮统一为控件级圆角 */
+:global(html.sky-editor-theme) .button {
+    border-radius: var(--sky-radius-sm);
 }
 
 .button:focus::before {
@@ -235,14 +246,14 @@ $border-radius: 0.25rem;
 [dir="rtl"] .button-group .button:last-child,
 .button-group .button:first-child:focus::before,
 [dir="rtl"] .button-group .button:last-child:focus::before {
-    border-radius: $form-radius 0 0 $form-radius;
+    border-radius: 0 $form-radius $form-radius 0;
 }
 
 .button-group .button:last-child,
 [dir="rtl"] .button-group .button:first-child,
 .button-group .button:last-child:focus::before,
 [dir="rtl"] .button-group .button:first-child:focus::before {
-    border-radius: 0 $form-radius $form-radius 0;
+    border-radius: 5px;
 }
 
 .button:disabled > img {
@@ -279,4 +290,183 @@ $border-radius: 0.25rem;
 .too-large {
     background-color: rgba(255, 119, 0, 0.3);
     border-color: rgb(255, 119, 0);
+}
+
+.loop-button {
+    height: 2.5rem;
+    width: 2.5rem;
+    outline: none;
+    background: $ui-white;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 100%;
+    cursor: pointer;
+    padding: 0.5rem;
+    user-select: none;
+    margin-left: calc(1 * $space);
+}
+
+.loop-button > img {
+    flex-grow: 1;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.loop-button-active {
+    background: $looks-secondary;
+    border-color: $looks-secondary;
+}
+
+.loop-button-active > img {
+    filter: brightness(0) invert(1);
+}
+
+.stop-mini-button {
+    height: 2.5rem;
+    width: 2.5rem;
+    padding: 0.5rem;
+    margin-left: calc(1 * $space);
+}
+
+/* Advanced editing toolbar (advanced style only) */
+.advanced-tools {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: calc(2 * $space);
+    padding: calc(1 * $space);
+    background: rgba(145, 145, 255, 0.12);
+    border: 1px solid $ui-black-transparent;
+    border-radius: var(--sky-radius);
+}
+
+.zoom-controls,
+.selection-tools,
+.volume-tools {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.zoom-slider,
+.gain-slider {
+    width: 8rem;
+    margin: 0 calc(1 * $space);
+}
+
+.gain-value {
+    min-width: 3.5rem;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: $text-primary;
+}
+
+.gain-apply-button {
+    height: 2rem;
+    padding: 0 0.75rem;
+    background: $looks-secondary;
+    color: $ui-white;
+    border: none;
+    border-radius: var(--sky-radius-sm);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: bold;
+    outline: none;
+}
+
+.gain-apply-button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.gain-apply-button:not(:disabled):hover {
+    filter: brightness(1.1);
+}
+
+/* Gandi-style advanced views: envelope / spectrum / piano roll / mixer */
+.advanced-view-tabs {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: calc(1 * $space);
+}
+
+.advanced-tab,
+.advanced-tab-active {
+    height: 2rem;
+    padding: 0 0.9rem;
+    font-size: 0.8rem;
+    font-weight: bold;
+    border-radius: var(--sky-radius-sm);
+    cursor: pointer;
+    border: 1px solid $ui-black-transparent;
+    outline: none;
+    background: $ui-white;
+    color: $text-primary;
+}
+
+.advanced-tab-active {
+    background: $looks-secondary;
+    border-color: $looks-secondary;
+    color: $ui-white;
+}
+
+.advanced-view-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: calc(1 * $space);
+    padding: calc(1 * $space);
+    background: rgba(145, 145, 255, 0.12);
+    border: 1px solid $ui-black-transparent;
+    border-radius: var(--sky-radius);
+}
+
+.envelope-toolbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: calc(1 * $space);
+}
+
+.envelope-apply-button {
+    height: 2rem;
+    padding: 0 0.75rem;
+    background: $looks-secondary;
+    color: $ui-white;
+    border: none;
+    border-radius: var(--sky-radius-sm);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: bold;
+    outline: none;
+}
+
+.envelope-apply-button:hover {
+    filter: brightness(1.1);
+}
+
+.advanced-hint {
+    font-size: 0.75rem;
+    color: $text-primary;
+    opacity: 0.75;
+}
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .alert {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .button-group .button:first-child, [dir="rtl"] .button-group .button:last-child, {
+    border-radius: var(--sky-radius-sm) 0 0 var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .button-group .button:last-child, [dir="rtl"] .button-group .button:first-child, {
+    border-radius: 0 var(--sky-radius-sm) var(--sky-radius-sm) 0;
 }

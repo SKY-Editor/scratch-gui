@@ -75,3 +75,9 @@
 .sprite-input {
     width: 8rem;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .sprite-info {
+    border-top-left-radius: var(--sky-radius);
+    border-top-right-radius: var(--sky-radius);
+}

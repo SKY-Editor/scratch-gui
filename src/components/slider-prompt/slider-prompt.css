@@ -55,3 +55,13 @@
 [dir="rtl"] .button-row button + button {
     margin-right: 0.5rem;
 }
+/* SKYEditor 皮肤：弹窗按钮统一控件级圆角，白底文字用中性深灰 */
+:global(html.sky-editor-theme) .button-row button {
+    border-radius: var(--sky-radius-sm);
+    color: #33363F;
+}
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .min-input, .max-input {
+    border-radius: var(--sky-radius);
+}

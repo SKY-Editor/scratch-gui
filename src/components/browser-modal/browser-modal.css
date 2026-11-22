@@ -70,3 +70,11 @@
     background-color: $looks-secondary;
     color: white;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .modal-content {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .desktop-settings-inner {
+    border-radius: var(--sky-radius);
+}

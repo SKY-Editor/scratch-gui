@@ -109,6 +109,7 @@
     height: auto;
     overflow: hidden;
     padding: 0;
+    position: relative;
 }
 
 .featured-image-container {
@@ -222,21 +223,97 @@
     transform: translate(calc(-2 * $space), calc(2 * $space));
 }
 
-.favorite-container {
-    display: none;
-    background: none;
-    border: none;
-    padding: 0;
-    margin: 0;
+.favorite-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     position: absolute;
     top: 0.5rem;
+    z-index: 3;
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 50%;
+    padding: 3px;
+    margin: 0;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    transition: transform 0.1s ease;
+}
+[dir="ltr"] .favorite-button {
+    right: 0.5rem;
+}
+[dir="rtl"] .favorite-button {
     left: 0.5rem;
 }
+.favorite-button:hover {
+    transform: scale(1.12);
+    background: #ffffff;
+}
+.favorite-button-active {
+    background: rgba(255, 246, 222, 0.95);
+    border-color: rgba(255, 191, 0, 0.55);
+}
 .favorite-icon {
+    /* 上游官方原值：TurboWarp 主题保持 32px 收藏图标 */
     width: 32px;
     height: 32px;
 }
-.favorite-container.active,
-.library-item:hover .favorite-container {
-    display: block;
+
+/* SKYEditor 皮肤：收藏图标缩到 20px 以匹配卡片内小角标密度 */
+:global(html.sky-editor-theme) .favorite-icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* SKY Editor：扩展卡片右下角来源彩色标签（仅 windowed 模式渲染）。
+   圆角矩形（5px）+ 深色下边框，仿 TurboWarp settings_tag；absolute 定位在图片区右下角，
+   图片 object-fit:contain 居中时该区域通常有留白，不遮挡名称/信息区/底部按钮。
+   pointer-events:none 避免拦截卡片点击。 */
+.sky-source-tag {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    z-index: 2;
+    max-width: calc(100% - 1rem);
+    box-sizing: border-box;
+    /* SKY Editor：圆角矩形而非胶囊形 */
+    border-radius: var(--sky-radius);
+    border-bottom: 2px solid rgba(0, 0, 0, 0.25);
+    background: rgba(0, 0, 0, 0.25);
+    color: #ffffff;
+    /* SKY Editor：标签放大（字号与内边距调大） */
+    font-size: 0.75rem;
+    line-height: 1.4;
+    padding: 0.25rem 0.625rem;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+/* SKY Editor：windowed 模式扩展卡信息区类名（kebab-case，配合 CSS Modules camelCase 导出，
+   使 library-item.jsx 中 styles.skyCardInfo / skyCardDescription / skyCardCredits / skyCardLinks
+   能拿到有效哈希类名，div 才会带上类名）。
+   实际样式集中在 sky-library.css 的 .sky-window-body 作用域下用
+   [class*="sky-card-info"] 等属性子串选择器命中本类（localIdentName 为 [name]_[local]_[hash]，
+   local 即本 kebab 类名，可被子串选择器命中）；此处仅作类名占位，保持样式单一来源。 */
+.sky-card-info,
+.sky-card-description,
+.sky-card-credits,
+.sky-card-links,
+.sky-library-footer,
+.sky-library-enable-button {
+    /* 占位：无样式声明，样式见 sky-library.css 的 .sky-window-body [class*="sky-*"] 规则 */
+}
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .library-item {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .library-item-inset-image-container {
+    border-radius: var(--sky-radius);
+}
+:global(html.sky-editor-theme) .coming-soon-text {
+    border-radius: var(--sky-radius);
 }

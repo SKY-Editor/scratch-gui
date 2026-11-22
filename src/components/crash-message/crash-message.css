@@ -40,3 +40,8 @@
     white-space: pre-wrap;
     font-family: monospace;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .reloadButton {
+    border-radius: var(--sky-radius-sm);
+}

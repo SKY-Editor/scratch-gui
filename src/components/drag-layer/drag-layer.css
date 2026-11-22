@@ -36,3 +36,8 @@
     /* Use the same drop shadow as stage dragging */
     box-shadow: 5px 5px 5px $shadow;
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .image {
+    border-radius: var(--sky-radius);
+}

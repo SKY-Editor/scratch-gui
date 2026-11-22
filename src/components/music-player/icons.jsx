@@ -99,6 +99,16 @@ export const ListIcon = function ({size = 16}) {
     );
 };
 
+// 歌词图标：左侧音符 + 右侧歌词横线（桌面歌词/歌词显示开关）
+export const LyricsIcon = function ({size = 16}) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9 3v10.55A4 4 0 1 0 11 17V7h4V3H9z"/>
+            <path d="M4 19.2h18v1.9H4zM4 14.6h12v1.9H4z"/>
+        </svg>
+    );
+};
+
 // 播放模式图标：顺序播放（manual，列表 + 播放三角）
 export const OrderIcon = function ({size = 16}) {
     return (
@@ -149,6 +159,90 @@ export const PlusIcon = function ({size = 16}) {
     return (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+        </svg>
+    );
+};
+
+// 编辑图标（铅笔）：音乐来源设置中编辑已添加歌曲
+export const EditIcon = function ({size = 14}) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+        </svg>
+    );
+};
+
+// ===== v7 新增：右键菜单 / 管理视图所需图标 =====
+export const InfoIcon = function ({size = 16}) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4.75a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5zM13 17h-2v-8h2v8z"/>
+        </svg>
+    );
+};
+
+export const TrashIcon = function ({size = 16}) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9 3h6l1 2h4v2H4V5h4l1-2zm-3 6h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 9zm3 2v9h2v-9H9zm4 0v9h2v-9h-2z"/>
+        </svg>
+    );
+};
+
+export const DownloadIcon = function ({size = 16}) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11 3h2v9.17l3.29-3.3 1.42 1.42L12 16l-5.71-5.71 1.42-1.42L11 12.17V3zM4 18h16v3H4v-3z"/>
+        </svg>
+    );
+};
+
+export const ChevronRightIcon = function ({size = 16}) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9.29 5.71 15.58 12l-6.29 6.29-1.42-1.42L12.75 12 7.87 7.13l1.42-1.42z"/>
+        </svg>
+    );
+};
+
+export const FolderIcon = function ({size = 16}) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 5h6l2 2h10v12H3V5z"/>
+        </svg>
+    );
+};
+
+export const CheckIcon = function ({size = 16}) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9.55 17.6 4 12.05l1.42-1.42 4.13 4.13L18.58 5.7 20 7.12 9.55 17.6z"/>
+        </svg>
+    );
+};
+
+export const SlidersIcon = function ({size = 16}) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M4 5h6v2H4V5zm10 0h6v2h-6V5zM4 11h10v2H4v-2zm14 0h2v2h-2v-2zM4 17h3v2H4v-2zm7 0h9v2h-9v-2z"/>
+            <circle cx="12" cy="6" r="2.2"/><circle cx="17" cy="12" r="2.2"/><circle cx="9" cy="18" r="2.2"/>
+        </svg>
+    );
+};
+
+export const HomeIcon = function ({size = 16}) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 3 3 10.6V21h6.1v-6.1h5.8V21H21V10.6z"/>
+        </svg>
+    );
+};
+
+// v8：「我的」入口的人形图标（未登录时替代头像占位）
+export const UserIcon = function ({size = 16}) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12a4.2 4.2 0 1 0 0-8.4A4.2 4.2 0 0 0 12 12zm0 1.9c-4 0-7.2 2.2-7.2 4.9V21h14.4v-2.2c0-2.7-3.2-4.9-7.2-4.9z"/>
         </svg>
     );
 };

@@ -125,3 +125,14 @@ svg.record-button {
 [dir="rtl"] .rerecord-button img {
     transform: scaleX(-1);
 }
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .main-button-row button {
+    border-radius: var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .button-row button {
+    border-radius: var(--sky-radius-sm);
+}
+:global(html.sky-editor-theme) .meter-container, .waveform-container {
+    border-radius: var(--sky-radius);
+}

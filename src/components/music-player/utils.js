@@ -3,6 +3,8 @@
 // 特殊来源 id：'builtin' = 内置曲库；'favorites' = 我的歌单（收藏列表）
 export const SOURCE_BUILTIN = 'builtin';
 export const SOURCE_FAVORITES = 'favorites';
+// 主页视图（非真实歌单来源，仅用于侧栏选中态与右侧视图切换）
+export const SOURCE_HOME = 'home';
 
 // 播放模式：manual=顺序播放（播完停止）、auto=列表循环、loop=单曲循环
 export const PLAY_MODE = {

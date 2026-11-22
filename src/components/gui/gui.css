@@ -1,6 +1,7 @@
 @import "../../css/units.css";
 @import "../../css/colors.css";
 @import "../../css/z-index.css";
+@import "../sky-scrollbar/sky-scrollbar-global.css";
 
 .page-wrapper {
     height: 100%;
@@ -75,7 +76,8 @@
 }
 
 /* SKYEditor: horizontal tab layout uses the unmodified classic default
-   (.tab-list + .tab below), so no extra styles are defined here. */
+   (.tab-list + .tab below). 竖向差异见下方 .tab-list-sky-sidebar 作用域内的
+   .sky-tab 规则；统一标记协议见文档《SKYEditor-标签栏统一调用指南》。 */
 
 .tab {
     flex-grow: 1;
@@ -201,6 +203,168 @@
     position: relative;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   SKYEditor 主题：舞台面板卡片化描边（对齐 TW 风格参考图）
+   ──────────────────────────────────────────────────────────────────
+   SKYEditor 主题下给舞台面板加左缘 1px 描边，
+   使其与积木区形成卡片式分层（官方默认布局本身不带描边）。
+   ══════════════════════════════════════════════════════════════════ */
+.stage-and-target-wrapper {
+    /* 舞台面板通过 resizer + 底色缝与积木区分层，不再加 1px 描边 */
+    border-left: none;
+    box-sizing: border-box;
+}
+
+/* SKYEditor 主题：舞台区整卡圆角，与积木卡片 8px 圆角对齐参考图 */
+:global(html.sky-editor-theme) .stage-and-target-wrapper {
+    border-radius: var(--sky-radius);
+}
+
+/* ══ 舞台卡片底色令牌 ══ 浅色=白，暗色取积木画布同色系，避免舞台区在暗色下炸白 */
+:global(html.sky-editor-theme) {
+    --sky-stage-shell-bg: #FFFFFF;
+}
+
+:global(html.sky-editor-theme[data-ui-dark='true']) {
+    --sky-stage-shell-bg: #1E2027;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SKYEditor 主题：舞台卡片（控制栏 + 舞台同处一个带描边的矩形框）
+   ──────────────────────────────────────────────────────────────────
+   参考图要求：上方控制栏（绿旗/停止/小舞台/全屏）与舞台画面被同一个
+   矩形框包住，且整个框外围有一圈描边。
+   实现：给 StageWrapper 根节点（内部含 stage-menu-wrapper + stage-canvas-wrapper）
+   加白底 + 1px 描边 + 8px 圆角，舞台自身边框在此主题下去掉，避免双线。
+   全部规则限定 html.sky-editor-theme，不影响其它主题。
+   ══════════════════════════════════════════════════════════════════ */
+:global(html.sky-editor-theme) [class*="stage-wrapper_stage-wrapper_"] {
+    /* 令牌化：浅色 #FFFFFF、暗色 #1E2027，见下方暗色块 */
+    background-color: var(--sky-stage-shell-bg);
+    border: 1px solid var(--sky-stroke);
+    border-radius: var(--sky-radius);
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* 舞台画面自身描边去掉：描边统一由外层卡片提供，防止出现双线 */
+:global(html.sky-editor-theme) [class*="stage_stage_"] {
+    border-width: 0 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SKYEditor 主题：右下角色区做成完整圆角矩形
+   ──────────────────────────────────────────────────────────────────
+   原版两块面板（角色列表面板 sprite-selector、舞台缩略卡片
+   stage-selector）都只给上两角 $space 圆角，并且写了 border-bottom: 0
+   （原本当作贴着窗口底边的直角处理）。参考图要求两块都是完整的圆角
+   矩形，因此这里补成四角圆角。
+   注意：必须同时把底边描边补回来——CSS 中 border-bottom-width 为 0 时
+   底部两个圆角的外弧无法绘制，圆角处会出现缺口，看着像被切掉一块。
+   另需 overflow: hidden，否则内部的搜索框白底、卡片 header 底边等矩形
+   子元素会溢出并盖住圆角，顶角依然显示成方角。
+   全部规则限定 html.sky-editor-theme，不影响其它主题。
+   ══════════════════════════════════════════════════════════════════ */
+:global(html.sky-editor-theme) [class*="sprite-selector_sprite-selector_"] {
+    border-radius: var(--sky-radius);
+    border-bottom: var(--sky-stroke-width) solid var(--sky-stroke);
+    overflow: hidden;
+}
+
+:global(html.sky-editor-theme) [class*="stage-selector_stage-selector_"] {
+    border-radius: var(--sky-radius);
+    border-bottom: var(--sky-stroke-width) solid var(--sky-stroke);
+    overflow: hidden;
+}
+
+/* 舞台缩略卡片选中态：原版单独写了上两角 .625rem，这里统一成四角，
+   避免选中后上圆下尖 */
+:global(html.sky-editor-theme) [class*="stage-selector_stage-selector_"][class*="stage-selector_is-selected"] {
+    border-radius: var(--sky-radius);
+}
+
+/* 舞台缩略卡片内部 header：原版带 0.5rem(8px) 上两角，比外层卡片的
+   --sky-radius 小一圈，会在顶角 8~18px 区间露出一条父级白底，看着像
+   套了两层圆角。这里跟随统一值，让内外两层弧线重合。 */
+:global(html.sky-editor-theme) [class*="stage-selector_header"] {
+    border-radius: var(--sky-radius) var(--sky-radius) 0 0;
+}
+
+/* SKYEditor 主题：舞台卡片上方的 6px 底色缝（严格对齐参考图 y48-53.6 #E7F0FE）
+   ──────────────────────────────────────────────────────────────────
+   参考图中舞台卡片顶端并不紧贴菜单栏，而是先留一条与积木区同宽同色的缝。
+   积木区是靠 .injectionDiv 的 top:6px 透出容器底色实现的；舞台区此前没有
+   对应留缝，卡片上沿直接贴住菜单栏。这里给舞台+角色区的外层容器补 6px
+   padding-top，透出的仍是 body-wrapper 的 --ui-primary（#E5F0FF），与缝色一致。
+   ══════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════
+   SKYEditor 主题：统一下方组件框间距（全站统一 6px）
+   ──────────────────────────────────────────────────────────────────
+   参考图实测：菜单栏下沿到卡片上沿、卡片与卡片之间、卡片与窗口右缘
+   的缝宽一律为 6px（#E7F0FE 底色缝）。原版各处的值并不一致：
+     · 舞台+角色区外层容器  padding-top 6 / 左右 $space(8) / 底 0
+     · 舞台卡片与角色面板之间  padding-top 8
+     · 角色列表面板与舞台缩略条之间  4 + 4 = 8
+   这里统一收口成 6px，含底部：原本角色面板贴着窗口底边（底 0），
+   加 6px 后下沿两个圆角才能完整露出，与其它卡片一致。
+   全部规则限定 html.sky-editor-theme，不影响其它主题。
+   ══════════════════════════════════════════════════════════════════ */
+:global(html.sky-editor-theme) .stage-and-target-wrapper {
+    /* 原版在后面还有 .stage-and-target-wrapper 的 padding-left/right: $space，
+       简写会被它盖掉，这里用 !important 钉死四边一致 */
+    padding: 6px !important;
+}
+
+/* 舞台卡片底沿 → 角色面板上沿：8px → 6px */
+:global(html.sky-editor-theme) .target-wrapper {
+    padding-top: 6px;
+}
+
+/* 角色列表面板 ↔ 舞台缩略条：原版 4px + 4px = 8px，这里各取 3px 合成 6px */
+:global(html.sky-editor-theme) [class*="sprite-selector_sprite-selector_"] {
+    margin-right: 3px;
+}
+
+:global(html.sky-editor-theme) [class*="target-pane_stage-selector-wrapper_"] {
+    margin-left: 3px;
+}
+
+/* SKYEditor 主题：舞台控制栏（绿旗/停止/小舞台/全屏）底色
+   ──────────────────────────────────────────────────────────────────
+   参考图 y26-75 该行底色为 #E8F0FD，与面板缝隙同色（即 --ui-primary #E5F0FF），
+   不是卡片白底。限定非全屏态，避免影响 full-screen 的白底表现。
+   ══════════════════════════════════════════════════════════════════ */
+:global(html.sky-editor-theme) [class*="stage-wrapper_"]:not([class*="full-screen"]) [class*="stage-menu-wrapper"] {
+    background-color: var(--ui-primary, #E5F0FF);
+}
+
+/* SKYEditor 主题：控制栏左右内边距（绿旗/停止组与右上按钮组不贴卡片边缘）
+   ──────────────────────────────────────────────────────────────────
+   参考图实测（按舞台卡片宽度换算）：绿旗图标左沿距卡片内左缘 ≈16px、
+   最右按钮右沿距卡片内右缘 ≈8px；而本主题下 stage-menu-wrapper 默认
+   左右 padding 为 0，按钮直接贴边。
+   因 stage-wrapper 有 1px 描边，menu 左沿比卡片内左缘外扩 1px，
+   故左侧取 12px、右侧取 8px，最终落到 16px / 8px。
+   ══════════════════════════════════════════════════════════════════ */
+:global(html.sky-editor-theme) [class*="stage-wrapper_"]:not([class*="full-screen"]) [class*="stage-menu-wrapper"] {
+    padding-left: 12px;
+    padding-right: 8px;
+}
+
+/* SKYEditor 主题：舞台画面四角圆角（裁出可见弧线，参考图舞台区为圆角卡片）。
+   注意：内置插件 remove-curved-stage-border 会注入
+   [class*="stage_stage"] { border-radius: 0rem !important; }
+   因此这里必须带 !important，且选择器特异性高于插件规则才能压过它。 */
+:global(html.sky-editor-theme) [class*="stage_stage_"] {
+    border-radius: var(--sky-radius) !important;
+    overflow: hidden;
+}
+
+/* 同上：绿旗覆盖层跟随圆角，避免折叠后露出直角 */
+:global(html.sky-editor-theme) [class*="stage_green-flag-overlay-wrapper"] {
+    border-radius: var(--sky-radius) !important;
+}
+
 .stage-and-target-wrapper {
     /*
         Makes rows for children:
@@ -286,6 +450,49 @@ $fade-out-distance: 15px;
     margin-top: 0;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   「添加扩展」按钮：作为左侧分类栏卡片的底部，宽度/描边/圆角与分类栏同步
+   ──────────────────────────────────────────────────────────────────
+   要求：积木区拆成左右两张圆角矩形后，扩展按钮必须跟着左栏卡片走——
+   同宽（54px）、贴同一左缘、四周同位，并补上底部两角圆角，
+   与上方白底分类栏拼成一张完整卡片，四周缝隙与其它组件框统一 6px。
+   原样式是贴容器左下角的 3.75rem 直角蓝块，宽 62px 且压在 6px 缝上，
+   与新的卡片结构不吻合，这里整套覆盖。
+   ══════════════════════════════════════════════════════════════════ */
+:global(html.sky-editor-theme) .extension-button-container {
+    /* z-index 必须高于「拖动中的积木区」：拖动积木时 blocks.css 会把
+       .blocks 整体抬到 60（为了不让积木被角色区 43 挡住），而本按钮挂在
+       侧栏 tab-panel 这棵独立子树里，只拿 42 会被 .blocks 那 60 的上下文
+       整体压住——白色分类栏于是盖住按钮，表现为拖动时按钮消失。
+       取 100：高于 .blocks 的 60，仍低于弹窗 510 与右键菜单 10000。 */
+    z-index: 100;
+    /* 宽度必须与上方分类栏一致（60px）：分类栏宽由 scratch-blocks 的
+       Blockly.Toolbox.prototype.width=310 减 flyout 250 决定，写窄会让
+       左栏卡片上下不齐，也会让 flyout 与分类栏之间露出背景缝 */
+    width: 60px;
+    height: 3.25rem;
+    left: 6px;
+    right: auto;
+    bottom: 6px;
+    box-sizing: border-box;
+    border: 1px solid var(--sky-stroke);
+    border-top: none;
+    /* 底部两角必须用容器级 --sky-radius（12px），与上方白底分类栏
+       （.blocklyToolboxDiv 四角同为 --sky-radius）以及整个积木区卡片
+       保持同一档圆角。原写法用控件级 --sky-radius-sm（6px），这张左栏
+       卡片底部会比分类栏小一号，与右侧积木区卡片底边对不上。 */
+    border-radius: 0 0 var(--sky-radius) var(--sky-radius);
+    background: $looks-secondary;
+    overflow: hidden;
+}
+
+/* 原版在按钮上方画的 15px 渐隐阴影属于"贴边直角块"的视觉补丁，
+   卡片化之后是脏边，去掉 */
+:global(html.sky-editor-theme) .extension-button-container:before {
+    content: none;
+    display: none;
+}
+
 /* Sprite Selection Watermark */
 .watermark {
     position: absolute;
@@ -348,10 +555,17 @@ $fade-out-distance: 15px;
        将编辑器 UI 挤到右侧而不是覆盖 */
     flex-direction: row;
     align-items: stretch;
+    /* 父级 .editorWrapper 是纵向 flex，Tabs 必须吃掉除书包外的全部高度，
+       书包展开/收起时高度实时变化；min-height:0 允许它被压缩到内容以下 */
+    flex: 1 1 auto;
+    min-height: 0;
+    /* SKYEditor：标签栏紧贴菜单栏（参考图标签栏 y48 起），
+       顶部 6px 缝只加在积木区（.injectionDiv top:6px） */
+    margin-top: 0;
 }
 
 .tab-list-sky-sidebar {
-    /* 左侧同级侧边栏：占据固定宽度，不脱离文档流 */
+    /* 左侧同级侧边栏：占据固定宽度，不脱离文档流（参考图 x0-51.6） */
     flex: 0 0 52px;
     width: 52px;
     height: auto;
@@ -360,11 +574,18 @@ $fade-out-distance: 15px;
     flex-direction: column;
     align-items: center;
     flex-shrink: 0;
-    background-color: #101010;
+    /* 跟随主题明暗：浅色主题=浅色栏，深色主题=深色栏 */
+    background-color: var(--ui-secondary);
     padding: 0.5rem 0;
     overflow-y: auto;
     overflow-x: hidden;
+    /* SKYEditor：标签栏本身**不画任何描边**。
+       标签栏与积木分类栏之间的分割线由 .blocks::before 在那条 6px 缝的
+       水平中线上绘制（1px --sky-stroke，纵向与分类栏卡片齐平），积木卡片
+       的外轮廓由 .blocklyToolboxDiv 的 1px 描边负责。
+       这里若再给 border-right，会在缝的左侧多出一条独立竖线（双线观感）。 */
     border: none;
+    box-sizing: border-box;
     box-shadow: none;
 }
 
@@ -372,10 +593,39 @@ $fade-out-distance: 15px;
     /* 编辑器内容占据剩余宽度，被侧边栏自然挤到右侧 */
     flex: 1 1 auto;
     min-width: 0;
+    /* 竖向：面板高度同样要能被压缩，否则积木区高度受内容最小高度顶住，
+       书包展开时压不下去，底部就会露白 */
+    min-height: 0;
     position: relative;
 }
 
-.tab-list-sky-sidebar .tab {
+/* SKYEditor 主题：横向标签的圆角/描边走统一令牌。
+   原生 `.tab` 写死 `1rem 1rem 0 0` 上两角 + `$ui-black-transparent` 描边，
+   与面板语言的 12px / --sky-stroke 不一致；这里在主题作用域内统一。
+   **必须排除竖向标签栏**：竖排图标按钮同样带 `.tab` 类，若不加
+   `:not(.tab-list-sky-sidebar)`，本规则特异性 (0,4,1) 会压过下方
+   `.tab-list-sky-sidebar :global(.sky-tab)` 的 (0,2,0)，给每个竖排图标
+   按钮描一圈边（用户明确不要这圈边）。 */
+:global(html.sky-editor-theme) .tab-list:not(.tab-list-sky-sidebar) .tab {
+    border-radius: var(--sky-radius-sm) var(--sky-radius-sm) 0 0;
+    border: var(--sky-stroke-width) solid var(--sky-stroke);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   统一标签标记协议（SKYEditor 标签栏）
+   ────────────────────────────────────────────────────────────────────
+   所有 SKYEditor 标签（无论竖向/横向）都必须带统一标记类 `.sky-tab`：
+   —— 组件内：gui.jsx 的 tabClassNames.tab 已内置 'sky-tab'，原生 Tab 与
+      renderSkyActionTab / renderSkyContentTab 自动携带，无需手动添加；
+   —— 插件/其他仓库注入 DOM 时：直接给元素加 class="sky-tab" 即可
+      （原样字符串类，不受 CSS Modules hash 影响）。
+   样式自动匹配机制：
+   —— 横向：由基础 `.tab` 规则提供（文字+图标、圆角上边、选中置顶）；
+   —— 竖向：由下方 `.tab-list-sky-sidebar` 作用域内的 :global(.sky-tab)
+      规则覆盖（纯图标、mask 图标、选中蓝底），组件层不再写布局分支。
+   选择器统一用 :global(.sky-tab)，保证插件注入的原样类名也能命中。
+   ════════════════════════════════════════════════════════════════════ */
+.tab-list-sky-sidebar :global(.sky-tab) {
     flex: 0 0 auto;
     width: 2.25rem;
     height: 2.25rem;
@@ -383,7 +633,9 @@ $fade-out-distance: 15px;
     margin: 0.375rem 0;
     padding: 0;
     border: none;
-    border-radius: 0.5rem;
+    /* 控件级圆角：标签栏图标按钮是 2.25rem 的小方块，用面板级 12px 会过钝，
+       故引用 --sky-radius-sm（6px），与面板级 --sky-radius（12px）构成两级圆角体系 */
+    border-radius: var(--sky-radius-sm);
     background-color: transparent;
     color: transparent; /* 纯图标模式：隐藏文字 */
     font-size: 0;
@@ -395,63 +647,366 @@ $fade-out-distance: 15px;
     box-shadow: none;
 }
 
-.tab-list-sky-sidebar .tab:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+/* 兜底：即使上游/后续模块又给 `.tab` 追加描边，竖排图标按钮也必须保持
+   无边框 + 控件级圆角（用户明确要求标签按钮不加边）。 */
+:global(html.sky-editor-theme) .tab-list-sky-sidebar :global(.sky-tab) {
+    border: none;
+    border-radius: var(--sky-radius-sm);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SKYEditor 主题：标签栏 ↔ 积木分类栏之间的分割线（上下贯通整列）
+   ──────────────────────────────────────────────────────────────────
+   结构：.editorWrapper（左侧整列）> Tabs(标签栏 52px + TabPanel/积木区)，
+   然后是底部的书包 Backpack。书包用 padding-left:58px 对齐，所以那条
+   6px 缝在整列高度上是连续的（标签栏右缘 x=52 → 分类栏左缘 x=58）。
+
+   原实现把线画在 `.blocks::before` 上，只在积木区高度内出现，书包那一段
+   断开，看起来"没有上下贯通"。现改为画在整列容器上：top:0/bottom:0
+   从顶部一直通到底部。z-index 45 高于分类栏(40)/label 栏(25)，
+   保证整条线始终可见。
+
+   线的位置（2026-11-20 修正）：原先画在 6px 缝的正中（x=55），左右各只剩
+   3px —— 与分类栏卡片的间距只有 3px，比编辑器里其它板块之间统一的 6px
+   缝窄一半，看着"线与分类栏贴在一起"。现改为贴着标签栏右缘（线右缘 =
+   x=52，即 left = 52px - 线宽），线与分类栏左缘之间保留完整的 6px，
+   与「分类栏↔flyout」「flyout↔工作区」「舞台卡片四周」同一套 6px 间距。
+   只挪线的 x 坐标，标签栏 52px、分类栏与书包的位置、积木区宽度全部不变。
+   ══════════════════════════════════════════════════════════════════ */
+.editorWrapper {
+    /* 左侧整列改成纵向 flex 容器：Tabs（标签栏+积木区）吃剩余高度，
+       底部书包按自身高度占位。
+       原先是 display:block，子元素高度不参与分配——积木区高度退化成
+       Blockly 初始量到的固定值（约 340px），书包展开/收起时积木区不跟着
+       伸缩，下方就露出大片空白（用户看到的"空洞"）。
+       注 1：类名必须写 .editorWrapper（与 gui.jsx 的 styles.editorWrapper 同键），
+       写成 .editor-wrapper 会生成另一个哈希，规则不生效。
+       注 2：一旦变成 flex 容器，宽度就不能再靠内容撑（flex item 的内在宽度
+       会算成侧边栏那点宽度，整列塌成 126px、积木区只剩 74px）。
+       这里补上官方 .editor-wrapper 的横向规则：basis = 1024 - 408 - 两侧边框/留白
+       = calc(616px - 1rem - 4px)，grow 吃剩余宽度。1440 宽下整列正好 786px，
+       与改造前像素一致。 */
+    /* 上游官方原值：TurboWarp 主题按官方弹性基准渲染 */
+    flex-basis: calc(1024px - 408px - (($space + $stage-standard-border-width) * 2));
+    flex-grow: 1;
+    flex-shrink: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* SKYEditor 皮肤：允许纵向被压缩到内容以下，避免书包展开/收起时积木区露空洞 */
+:global(html.sky-editor-theme) .editorWrapper {
+    min-height: 0;
+    min-width: 0;
+}
+
+:global(html.sky-editor-theme) .editorWrapper::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    /* 线右缘贴在标签栏右缘（x=52），线以左是标签栏、以右是完整 6px 缝。
+       分类栏左缘在 x=58（52 + 6px 缝），因此线↔分类栏 = 6px，
+       与编辑器其它板块之间的 6px 间距一致（原为缝中线 55px，只剩 3px）。 */
+    left: calc(52px - var(--sky-stroke-width));
+    width: var(--sky-stroke-width);
+    background-color: var(--sky-stroke);
+    z-index: 45;
+    pointer-events: none;
+}
+
+.tab-list-sky-sidebar :global(.sky-tab):hover {
+    /* ui-black-transparent：浅色=黑色透明、深色=白色透明，自动跟随明暗 */
+    background-color: var(--ui-black-transparent);
     color: transparent;
 }
 
-.tab-list-sky-sidebar .tab.is-selected {
+.tab-list-sky-sidebar :global(.sky-tab).is-selected {
     height: 2.25rem;
-    background-color: #3b82f6;
+    /* 选中态蓝色底：跟随 SKYEditor 主题强调色（--sky-accent），
+       非 sky-editor 主题下回退到原蓝色，视觉保持一致 */
+    background-color: var(--sky-accent, #3b82f6);
     color: transparent;
     z-index: 4;
 }
 
-.tab-list-sky-sidebar .tab.is-selected img {
-    filter: none;
+/* 竖向侧边栏：根治「按下标签/搜索按钮时选中标签底边闪现白色细横条」。
+   白条真实来源是 react-tabs 内置的键盘焦点指示条：元素处于 :focus 时其
+   ::after 伪元素会在底边下方渲染一条写死纯白 rgb(255,255,255) 的 5px 横条
+   （left:-4px / right:-4px / bottom:-5px，横贯选中标签全宽）。按住搜索按钮
+   期间 mousedown 预聚焦令标签保持焦点态，白条随即出现，松开/失焦后消失，
+   深色主题下纯白尤其刺眼。SKY 竖向选中态已有专属蓝色高亮，无需此指示条，
+   故在竖向作用域内彻底禁用 tab 的 ::after 伪元素。
+
+   选择器说明（双重保险，均不需关心 hash 问题）：
+   - `.tab` 是本文件 module 类，编译后 hash 为 `.gui_tab_xxx`，正是 DOM 中
+     tab 元素真实带有的类，必然命中；
+   - `:global([class*="react-tabs__tab"])` 属性选择器匹配 hash 后的
+     `react-tabs_react-tabs__tab_xxx`（含子串 react-tabs__tab），兜底覆盖。
+   两条都作用于竖向侧边栏作用域，特异性 (0,3,1) 高于 react-tabs 原版
+   `.react-tabs__tab:focus::after` 的 (0,2,1)，且本文件加载顺序靠后，
+   必然覆盖原版白色焦点条（原版 `.tab.is-selected:focus:after{display:none}`
+   只在选中态生效，实测在真实 :focus 场景无法镇压非选中 tab 的白条）。 */
+.tab-list-sky-sidebar :global(.sky-tab)::after,
+.tab-list-sky-sidebar :global([class*="react-tabs__tab"])::after {
+    display: none !important;
 }
 
-.tab-list-sky-sidebar .tab img {
+/* SKYEditor 竖向标签图标：mask 渲染，颜色跟随主题文字色（浅色=深图标，深色=白图标） */
+.tab-list-sky-sidebar :global(.sky-tab) .sky-tab-icon {
     width: 1.375rem;
     height: 1.375rem;
-    filter: grayscale(100%);
+    background-color: var(--text-primary);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
     opacity: 0.9;
-    margin: 0;
 }
 
-.tab-list-sky-sidebar .tab:hover img {
-    filter: none;
+.tab-list-sky-sidebar :global(.sky-tab):hover .sky-tab-icon {
     opacity: 1;
 }
 
-.tab-list-sky-sidebar .tab.is-selected img {
-    filter: none;
+.tab-list-sky-sidebar :global(.sky-tab).is-selected .sky-tab-icon {
+    /* 选中态图标改白色（--sky-text-on-accent），解决浅色主题下
+       深色图标叠在蓝底上可读性差的问题 */
+    background-color: var(--sky-text-on-accent, #ffffff);
     opacity: 1;
 }
 
-/* 竖向侧边栏底部独立的搜索标签 */
-.tab-list-sky-sidebar .sky-sidebar-search {
-    flex: 0 0 auto;
-    width: 2.25rem;
-    height: 2.25rem;
-    margin: 0.375rem 0;
-    margin-top: auto; /* 沉底 */
+/* 搜索标签：现在作为竖向标签栏第 5 个标签，复用 .tab 样式（尺寸/圆角/hover 与其余标签一致），
+   不再独立沉底；点击打开独立搜索窗口（find-bar 插件注入的搜索栏会移入该窗口）。 */
+
+/* 删除标签栏上的内嵌搜索栏（find-bar 插件注入的 sa-find-bar，
+   原本应由 addons-display-none-* 隐藏，但隐藏规则缺失导致露出，这里直接补上） */
+.tab-list-sky-sidebar .addons-display-none-find-bar,
+.tab-list-sky-sidebar [class*="sa-find-bar"] {
+    display: none !important;
+}
+
+/* 双保险：用 :global() 阻止 CSS Modules 对选择器做任何 hash/改写（与下方变量
+   标签的处理一致），确保 find-bar 的搜索栏若意外出现在侧边栏内也一定被隐藏。
+   正常情况下竖向布局的搜索栏已由 find-bar 插件改挂到 .sky-find-host 隐藏宿主，
+   侧边栏 DOM 内自始至终不存在 .sa-find-bar，此处仅为兜底。 */
+.tab-list-sky-sidebar :global([class*="sa-find-bar"]) {
+    display: none !important;
+}
+
+/* SKYEditor：find-bar 竖向标签栏布局下的隐藏宿主容器。
+   竖向时搜索栏挂载到此处（而非侧边栏 tab-list），从根本上避免在侧边栏底部
+   露出白色输入条；打开独立搜索窗口时由 SkySearchWindow 移入窗口、关闭时移回。
+   用 :global() 原样输出，不参与 CSS Modules hash。 */
+:global(.sky-find-host) {
+    position: fixed;
+    left: -9999px;
+    top: 0;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+
+/* 隐藏插件自带的变量标签（react-tabs-sa-variable-manager），
+   SKYEditor 竖向标签栏改用原生第 4 个变量 Tab（由 gui.jsx 渲染）。
+   Scratch Addons 注入的是原样类名/id，CSS Module 会 hash 选择器导致匹配失败，
+   故用 :global() 阻止转换 */
+.tab-list-sky-sidebar :global(.addons-display-none-variable-manager),
+.tab-list-sky-sidebar :global(#react-tabs-sa-variable-manager) {
+    display: none !important;
+}
+
+/* SKYEditor 竖向标签栏：第 4 个变量面板容器。
+   插件 variable-manager 会把自己的面板 .sa-var-manager 注入到此容器内 */
+.tabs-sky-sidebar .tab-panel.sky-variable-panel {
+    overflow: hidden;
     padding: 0;
-    border: none;
-    border-radius: 0.5rem;
-    background: transparent;
-    cursor: pointer;
+}
+
+/* 竖向变量面板：让插件注入的变量面板（.sa-var-manager）撑满整个可用高度。
+   插件样式里写死了 `.sa-var-manager { height: 50px }`（上游为「修复滚动」留下的
+   历史 hack），它靠父容器为「flex 列容器」时的 flex-grow 把高度顶开：
+   —— 横向标签栏下，插件面板挂在 .tabs（flex 列）里，height:50px 被 flex-grow 撑满，显示正常；
+   —— 竖向标签栏下，面板容器 .tab-panel 是 flex 行容器，主轴变成水平，height:50px 直接生效，
+      变量列表/新建变量按钮被压成扁扁的一条（可视高度仅约 50px）。
+   这里把竖向变量面板容器改为 flex 列容器，并显式让插件面板高度自适应、由面板自身滚动，
+   使其与横向标签栏表现一致。作用域严格限定在竖向变量面板，不影响横向标签栏与 TW 原样。 */
+.tabs-sky-sidebar .tab-panel.sky-variable-panel.is-selected {
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
 }
 
-.tab-list-sky-sidebar .sky-sidebar-search:hover {
-    background: rgba(255, 255, 255, 0.1);
+.tabs-sky-sidebar .tab-panel.sky-variable-panel :global(.sa-var-manager) {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
-.tab-list-sky-sidebar .sky-sidebar-search img {
-    width: 1.25rem;
-    height: 1.25rem;
-    opacity: 0.9;
+/* SKYEditor 横向标签栏变量面板：变量面板已改挂到原生变量 TabPanel
+   （.sky-variable-panel，SKY 主题下由 gui.jsx 渲染）。基础 .tab-panel.is-selected
+   是 display:flex（默认 row 主轴），会导致插件 .sa-var-manager 的 height:50px hack
+   不再被垂直 flex-grow 撑开；这里把面板容器改为 flex 列容器并让插件面板撑满，
+   与竖向表现一致。作用域仅命中 .sky-variable-panel（SKY 主题原生类名），
+   不影响 TW / 非 SKY 主题。 */
+.tab-panel.sky-variable-panel.is-selected {
+    display: flex;
+    flex-direction: column;
+}
+
+.tab-panel.sky-variable-panel :global(.sa-var-manager) {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* SKYEditor 远程协作面板容器（竖向/横向通用）。
+   remote-cooperation addon 会把协作面板 .sa-remote-coop 注入到此容器内 */
+.tabs-sky-sidebar .tab-panel.skyRemoteCoopPanel {
+    overflow: hidden;
+    padding: 0;
+}
+
+/* 竖向远程协作面板：让 addon 注入的协作面板撑满整个可用高度 */
+.tabs-sky-sidebar .tab-panel.skyRemoteCoopPanel.is-selected {
+    display: flex;
+    flex-direction: column;
+}
+
+.tabs-sky-sidebar .tab-panel.skyRemoteCoopPanel :global(.sa-remote-coop) {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   全站圆角兜底：统一到 --sky-radius（12px）
+   ──────────────────────────────────────────────────────────────────
+   以上各处已把 border-radius 逐条改成 var(--sky-radius)，剩下三类
+   不归主题 CSS 管的元素，在这里兜底：
+     1. TurboWarp addon 注入的元素（.sa-* / .pause-btn 等），源样式在
+        src/addons 下，且对所有主题生效，故只在 sky-editor-theme 作用域
+        内覆盖，不污染其它主题；
+     2. 第三方库自绘的浮层（react-tooltip）；
+     3. 个别自带样式表的表单控件。
+   圆角值来源只有 --sky-radius 一处，今后调数值只改变量。
+   ══════════════════════════════════════════════════════════════════ */
+:global(html.sky-editor-theme) [class*="react_component_tooltip"],
+:global(html.sky-editor-theme) :global(.sa-find-input),
+:global(html.sky-editor-theme) :global(.sa-find-dropdown-out),
+:global(html.sky-editor-theme) :global(.sa-comment-preview-inner) {
+    border-radius: var(--sky-radius) !important;
+}
+
+/* ══ 暗色（html[data-ui-dark='true']）补充 ══ */
+
+/* 积木注释预览气泡：源样式是半透明白底 + 深色字，暗色下会糊成一片白 */
+:global(html[data-ui-dark='true']) :global(.sa-comment-preview-inner) {
+    background-color: #262A33 !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #E8EAEF !important;
+}
+
+:global(html[data-ui-dark='true']) :global(.sa-comment-preview-inner) :global(.sa-comment-preview-username),
+:global(html[data-ui-dark='true']) :global(.sa-comment-preview-inner) :global(.sa-comment-preview-text) {
+    color: #E8EAEF !important;
+}
+/* ══════════════════════════════════════════════════════════════════
+   全局 UI 文字禁止鼠标框选（覆盖层，仅追加，不改上方任何既有规则）
+   ──────────────────────────────────────────────────────────────────
+   手段极简：在主题根节点上关掉 user-select，再由下面一份白名单把
+   「必须能选/能复制」的区域重新打开（白名单带 !important，压过任何
+   既有 user-select: none 与第三方库内联规则）。
+
+   关闭范围：编辑器内所有 UI 组成文字（菜单、面板标题、按钮、标签、
+   卡片、弹窗正文、描述性文案等）。
+   重新打开（不影响输入、光标定位、复制粘贴）：
+     1. 表单控件 —— input / textarea / select
+     2. 可编辑容器 —— [contenteditable]（排除 contenteditable="false"）、
+        [role="textbox"]
+     3. Blockly 积木文本与积木内嵌输入框
+     4. 代码 / JSON 编辑区 —— pre、code、monaco、CodeMirror、ace、
+        sa-code-*、jsoneditor / json-editor-*
+     5. 日志 / 控制台输出 —— sa-debugger-log-*、sa-console-*
+     6. 逃生口 —— 任意元素加 .sky-selectable 或 data-sky-selectable
+        即可恢复可选，后续新组件的例外无需再改本文件。
+   注：终端（xterm）自身已声明 user-select: none 并自绘选区，
+       复制走它自己的 Ctrl+C 链路，所以这里不放行、也不影响终端复制。
+
+   不改结构、不改尺寸、不改交互逻辑，不新增 i18n 键。
+   作用域限定在 html.sky-editor-theme / html[data-ui-theme='sky-editor']，
+   不污染 bilup / turbowarp 等其它主题。
+   ══════════════════════════════════════════════════════════════════ */
+:global(html.sky-editor-theme),
+:global(html[data-ui-theme='sky-editor']),
+:global(html.sky-editor-theme) body,
+:global(html[data-ui-theme='sky-editor']) body {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+:global(html.sky-editor-theme) input,
+:global(html[data-ui-theme='sky-editor']) input,
+:global(html.sky-editor-theme) textarea,
+:global(html[data-ui-theme='sky-editor']) textarea,
+:global(html.sky-editor-theme) select,
+:global(html[data-ui-theme='sky-editor']) select,
+:global(html.sky-editor-theme) [contenteditable]:not([contenteditable="false"]),
+:global(html[data-ui-theme='sky-editor']) [contenteditable]:not([contenteditable="false"]),
+:global(html.sky-editor-theme) [contenteditable="true"],
+:global(html[data-ui-theme='sky-editor']) [contenteditable="true"],
+:global(html.sky-editor-theme) [contenteditable="plaintext-only"],
+:global(html[data-ui-theme='sky-editor']) [contenteditable="plaintext-only"],
+:global(html.sky-editor-theme) .blocklyText,
+:global(html[data-ui-theme='sky-editor']) .blocklyText,
+:global(html.sky-editor-theme) .blocklyHtmlInput,
+:global(html[data-ui-theme='sky-editor']) .blocklyHtmlInput,
+:global(html.sky-editor-theme) .blocklyEditableText,
+:global(html[data-ui-theme='sky-editor']) .blocklyEditableText,
+:global(html.sky-editor-theme) pre,
+:global(html[data-ui-theme='sky-editor']) pre,
+:global(html.sky-editor-theme) code,
+:global(html[data-ui-theme='sky-editor']) code,
+:global(html.sky-editor-theme) [class*="monaco"],
+:global(html[data-ui-theme='sky-editor']) [class*="monaco"],
+:global(html.sky-editor-theme) .CodeMirror,
+:global(html[data-ui-theme='sky-editor']) .CodeMirror,
+:global(html.sky-editor-theme) .cm-editor,
+:global(html[data-ui-theme='sky-editor']) .cm-editor,
+:global(html.sky-editor-theme) [class*="ace_editor"],
+:global(html[data-ui-theme='sky-editor']) [class*="ace_editor"],
+:global(html.sky-editor-theme) [class*="sa-code"],
+:global(html[data-ui-theme='sky-editor']) [class*="sa-code"],
+:global(html.sky-editor-theme) [class*="json-editor"],
+:global(html[data-ui-theme='sky-editor']) [class*="json-editor"],
+:global(html.sky-editor-theme) [class*="sa-debugger-log"],
+:global(html[data-ui-theme='sky-editor']) [class*="sa-debugger-log"],
+:global(html.sky-editor-theme) [class*="sa-console"],
+:global(html[data-ui-theme='sky-editor']) [class*="sa-console"],
+:global(html.sky-editor-theme) [class*="jsoneditor"],
+:global(html[data-ui-theme='sky-editor']) [class*="jsoneditor"],
+:global(html.sky-editor-theme) [role="textbox"],
+:global(html[data-ui-theme='sky-editor']) [role="textbox"],
+:global(html.sky-editor-theme) .sky-selectable,
+:global(html[data-ui-theme='sky-editor']) .sky-selectable,
+:global(html.sky-editor-theme) [data-sky-selectable],
+:global(html[data-ui-theme='sky-editor']) [data-sky-selectable] {
+    -webkit-user-select: text !important;
+    user-select: text !important;
+}
+
+/* --- SKY theme scoped overrides (TW keeps upstream values) --- */
+:global(html.sky-editor-theme) .tab {
+    border-radius: var(--sky-radius-sm) var(--sky-radius-sm) 0 0;
 }
