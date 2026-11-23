@@ -1,0 +1,2621 @@
+/* =======================================================================
+ * SKY Editor — 扩展库 Win11 窗口化样式（sky-library.css）
+ * ----------------------------------------------------------------------
+ * 2026-11-18 自 library.css 拆出（原第 72 行起的 SKY 定制块）。
+ * 拆分目的：library.css 回归接近 TurboWarp 上游状态，后续同步上游时不再
+ * 产生整块冲突（总目标 第4.3节「改得越少越安全」）。
+ *
+ * 拆分必读（CSS Modules 类名哈希规则）：
+ * 1. localIdentName 含 [name]：同名类在两个文件中哈希不同
+ *    （library_xxx_哈希 vs sky-library_xxx_哈希）。
+ * 2. 因此本文件引用 library.css 定义的基类必须写成
+ *    [class*="library_基类名_"] 属性选择器；直接写 .基类名 会哈希错位、
+ *    样式静默失效。
+ * 3. JSX 侧由 library.jsx 同时 import 本文件（skyStyles）取 skyWindowBody 等。
+ * 4. 作用域铁律不变：全部规则限定在 .sky-window-body 内（设计铁律 UI-4）。
+ * ====================================================================== */
+@import "../../css/units.css";
+@import "../../css/colors.css";
+
+/* SKY Editor：扩展库以仿 Win11 窗口呈现时的内容布局（仅 windowed 模式生效） */
+/* 顶层改为横向布局：左侧为竖向导航栏，右侧为扩展卡片区。
+   高度链：.win11-body(flex:1,min-height:0,overflow-y:auto) 为 flex 分配高度后，
+   本容器 height:100% 才可解析；min-height:0 允许在 flex 子项链中收缩，
+   max-height:100% 防止内容撑破窗口导致整窗出现滚动条（滚动应只发生在内部网格） */
+.sky-window-body {
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+    position: relative;
+}
+
+.sky-window-body [class*="library_library-scroll-grid_"],
+.sky-window-body [class*="library_library-scroll-grid_"][class*="library_withFilterBar_"] {
+    display: grid;
+    /* 列数由 JS 依据窗口宽度实时写入 CSS 变量 --sky-cols（默认 3）：普通窗口 3 列、
+       全屏 6 列、中间 4/5 列自动排列，见 library.jsx 的 ResizeObserver 逻辑。 */
+    grid-template-columns: repeat(var(--sky-cols, 3), minmax(0, 1fr));
+    gap: 1rem;
+    /* 顶部加大留白：避免第一行卡片紧贴标题栏下沿，解决“标题位置被卡片占”的观感 */
+    padding: 1.5rem 0.75rem 0.75rem;
+    align-content: flex-start;
+    /* 滚动容器三要素：可滚动 + 高度受父 flex 列约束（.sky-extension-grid-area 为
+       flex column，本元素 flex:1 撑满剩余高度；min-height:0 允许收缩出滚动上下文）。
+       不能再用基类的 height:calc(...)（父高度 auto 时会退化为内容高度 → 永不溢出）；
+       flex:1 优先于 height，显式 overflow-y:auto 保证滚动条出现在本容器上 */
+    height: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    /* 窗口过渡动画期间：将网格自身的布局/样式/绘制与外部隔离，
+       避免列数变化与动画触发的重排向外扩散到整个窗口，进一步降低卡顿。
+       保留 layout+paint（滚动容器高度由 flex 约束，contain:layout 不影响该计算） */
+    contain: layout paint;
+}
+
+/* SKY Editor：扩展页顶部导航栏 → 靠左侧的竖向样式（仅 windowed sky-editor 主题生效）
+   与高级设置窗口侧栏（settings-menu 的 .window-sidebar）样式完全一致：
+   width 200px、padding 8px 0、深灰底 #2D2D2D、仅靠标签选中项的蓝色圆角方框表意 */
+.sky-window-body [class*="library_filter-bar_"] {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    width: 200px;
+    min-width: 200px;
+    height: 100%;
+    padding: 8px 0;
+    background-color: #2D2D2D;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    overflow-y: auto;
+}
+
+.sky-window-body [class*="library_filter-bar-item_"] {
+    margin: 0 0 .75rem 0;
+}
+
+/* 搜索框在竖向导航栏中占满整列宽度 */
+.sky-window-body [class*="library_filter-input_"],
+.sky-window-body [class*="library_filter-input_"]:focus,
+.sky-window-body [class*="library_filter-input_"]:not([value=""]) {
+    width: 100%;
+}
+
+/* 竖向导航中不再需要搜索框与标签之间的分隔线 */
+.sky-window-body [class*="library_divider_"] {
+    display: none;
+}
+
+/* 分类标签纵向堆叠、全宽展示 */
+.sky-window-body [class*="library_tag-wrapper_"] {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    height: auto;
+    overflow-y: auto;
+}
+
+/* SKY Editor：windowed 模式下扩展卡片【整体等比缩放】（作用域仅 sky-editor 主题生效）
+   原则：只整体缩放各卡片方框及内部元素的可视比例，不隐藏任何内容，
+   保证布局比例协调；配合缩小的窗口，默认窗口大小下一行恰好显示 3 个扩展项。
+   命中所有卡片变体：
+   - 普通小卡（library-item，不含 featured 变体）：160px 方卡整体缩至 156px，保持方卡比例
+   - 精选大卡（featured-item）：300px 大卡依同一比例整体缩至 208px，内部图/文字/链接/元信息等比随缩
+   注：类名来自子模块（CSS Modules 哈希化），故用属性子串选择器命中 */
+.sky-window-body :global(.sky-library-card) {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    /* 由方卡(1:1)改为内容撑高的长卡：图片在上、名称/简介/开发者/链接在下 */
+    aspect-ratio: auto;
+    box-sizing: border-box;
+    padding: 0.5rem 0.625rem 0.625rem;
+    margin: 0;
+    /* SKY Editor：卡片整体不再可点击（安装/删除只由底部按钮触发），光标回到默认箭头 */
+    cursor: default;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    /* 底部拉长：卡片固定 320px 高（与下方虚拟渲染占位 contain-intrinsic-size 完全一致）。
+       固定高度保证：① 同行卡片严格等高；② 滚动时占位与实际高度一致，不再跳动；
+       ③ FLIP 列数切换动画竖向无位移更顺滑。
+       溢出内容由内部信息区(flex:1 + min-height:0 + overflow:hidden)收缩承接，超限截断留省略号。
+       图片区为固定高度（见下），内容总高不随列数/窗口宽度变化，放大动画不会裁切底部按钮 */
+    height: 20rem; /* 320px */
+    overflow: hidden;
+    /* 虚拟渲染：屏幕外的卡片跳过真实布局/绘制，用估算高度占位（contain-intrinsic-size），
+       大幅降低窗口缩放/列数切换时整网格重排的开销（477 张卡 → 仅可视区十几张参与布局）。
+       仅 windowed 作用域生效，不影响其他主题。 */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 320px;
+    /* hover 微交互过渡：阴影/边框/上浮统一缓动，见下方 :hover 规则 */
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+/* 卡片 hover 微交互：深色窗口风格的高亮描边 + 阴影浮起。
+   注意：这里刻意不使用 transform 位移。卡片为 content-visibility:auto（虚拟渲染），
+   若 hover 时同时施加 transform，会创建新层并触发布局/绘制重算，Chromium 下表现为
+   鼠标移到卡片内按钮上时卡片内容（含「安装」按钮）瞬间消失再出现。
+   因此 hover 只改边框/阴影（视觉上仍有浮起感），并把 hover 中的卡片临时转为
+   content-visibility:visible，彻底规避该重绘跳过问题。 */
+.sky-window-body :global(.sky-library-card):hover {
+    border-color: rgba(255, 255, 255, 0.28);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.25);
+    content-visibility: visible;
+}
+.sky-window-body :global(.sky-library-card):active {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.30);
+}
+/* 长卡内部：图片区固定高度 120px 顶部横图（不随卡片宽度等比伸缩、也不随内容撑高）。
+   若沿用 aspect-ratio:16/10，窗口放大动画的防抖窗口内卡片宽度瞬时增大使图片被拉高、
+   内容总高超过卡片固定高度，底部按钮会被 overflow:hidden 裁切；固定高度后任何列数下
+   内容总高恒定，按钮永不被裁；图标用 object-fit:contain 完整等比居中显示 */
+.sky-window-body :global(.sky-library-card) [class*="library-item-image-container-wrapper"] {
+    flex: 0 0 auto;
+    height: 7.5rem; /* 120px */
+    width: 100%;
+    aspect-ratio: auto;
+    /* 来源彩色标签 .sky-source-tag 为 absolute 定位，需以图片区为定位基准（右下角） */
+    position: relative;
+}
+.sky-window-body :global(.sky-library-card) [class*="library-item-image-container"]:not([class*="library-item-image-container-wrapper"]) {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.sky-window-body :global(.sky-library-card) [class*="library-item-image"] {
+    object-fit: contain;
+    max-width: 100%;
+    max-height: 100%;
+}
+/* 卡片不再作为容器查询基准：窗口化扩展库已统一为普通卡（无 featured 大卡），
+   卡片内部字号全部固定 rem，杜绝字号随卡片宽度变化导致的“样式每次都不一样”。 */
+/* 长卡名称：固定小号、居中显示；允许换行，最多两行省略（完整优先、防撑爆）。
+   flex-shrink:0 让名称保持自身两行以内的高度不被压缩 */
+.sky-window-body :global(.sky-library-card) [class*="library-item-name"] {
+    flex-shrink: 0;
+    width: 100%;
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    text-align: center;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+    max-width: 100%;
+    margin: 0.375rem 0 0.25rem;
+}
+
+/* 普通卡补充信息区（简介/开发者/文档/示例）：仅在 windowed 模式渲染，
+   作为卡片内的弹性收缩区：卡片总高恒 264px，文字区占满剩余高度且可收缩，
+   内容超限时在区内 overflow:hidden 截断（简介留省略号），保证底部按钮区始终贴底对齐 */
+.sky-window-body :global(.sky-library-card) [class*="sky-card-info"] {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.375rem;
+    margin-top: 0.25rem;
+    text-align: left;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-card-description"] {
+    font-size: 0.6875rem;
+    line-height: 1.4;
+    color: $text-primary;
+    opacity: 0.85;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-card-credits"] {
+    font-size: 0.625rem;
+    color: $text-primary;
+    opacity: 0.6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-card-links"] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.625rem;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-card-links"] a {
+    color: $looks-secondary !important;
+    text-decoration: underline;
+}
+
+/* ===== SKY Editor：卡片底部拉长操作区（启用 / 收藏按钮，仅 windowed 生效） ===== */
+/* 按钮区横向布局，配合卡片固定高度用 margin-top:auto 贴底：卡片底部被拉长、按钮固定在最底。
+   flex-shrink:0 保证内容拥挤时信息区先收缩，按钮区高度永不被压缩 */
+.sky-window-body :global(.sky-library-card) [class*="sky-library-footer"] {
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.625rem;
+    /* 与卡片 hover 的阴影/描边分层，保证按钮始终在卡片内容之上、不会被裁切或吞掉鼠标事件 */
+    position: relative;
+    z-index: 2;
+}
+/* 「安装 / 删除」主按钮：主题蓝底白字（已安装时为错误红底），左右撑满。
+   hover 只做颜色/亮度变化，不使用 transform 缩放——缩放与卡片 content-visibility
+   组合会在鼠标进入按钮瞬间触发重绘跳过，表现为按钮“消失”。 */
+.sky-window-body :global(.sky-library-card) [class*="sky-library-enable-button"] {
+    flex: 1;
+    height: 2rem;
+    min-width: 0;
+    padding: 0 0.75rem;
+    border: none;
+    border-radius: var(--sky-radius-sm);
+    background: $motion-primary;
+    color: #ffffff;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    transition: background-color 0.12s ease, opacity 0.12s ease;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-library-enable-button"]:hover {
+    opacity: 0.86;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-library-enable-button"]:active {
+    opacity: 0.72;
+}
+/* 已安装态：按钮变「删除」，用错误色区分，避免与「安装」混淆 */
+.sky-window-body :global(.sky-library-card) [class*="sky-library-enable-button"][class*="sky-library-enable-button-installed"] {
+    background: $error-primary;
+    color: #ffffff;
+}
+/* footer 内的收藏按钮：从卡片右上角绝对定位改为按钮区的静态圆形钮，尺寸与启用按钮等高统一 */
+.sky-window-body :global(.sky-library-card) [class*="sky-library-footer"] [class*="favorite-button"] {
+    position: static;
+    flex: 0 0 2rem;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-library-footer"] [class*="favorite-icon"] {
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+/* 精选大卡：整体等比缩小（官方 300px → 210px，×0.70），对齐 TW 原版 featured 大卡结构：
+   上方横版背景图(2:1) + 左下角叠加图标 + 下方文字区。
+   铁律：高度自适应(height:auto)、绝不裁剪内容（文字必须完整显示）、
+   背景图保持 2:1 不拉伸、图标/文字/边距同比例收缩。 */
+.sky-window-body [class*="featured-item"] {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    padding: 0;
+    overflow: visible;
+    margin: 0;
+    /* 供左下角叠加图标 absolute 定位 */
+    position: relative;
+}
+
+/* 背景图：width 100% + aspect-ratio 2（官方横版比例）；
+   聚合扩展图片并非 2:1 时，用 object-fit: cover 保持原始比例、多余部分裁剪，避免拉伸变形 */
+.sky-window-body [class*="featured-item"] [class*="featured-image"] {
+    aspect-ratio: 2;
+    object-fit: cover;
+}
+
+/* 左下角叠加图标：absolute 定位脱离文档流（不再占用布局空间），
+   用 cqw（卡片宽度）把图标底部对齐背景图底边（图片高 = 卡宽/2 = 50cqw），
+   从而文字区紧贴图片底部、彻底消除底部空洞与文字整体偏上。
+   白边圆角同比例收缩，避免在缩小卡片上变形/错位 */
+.sky-window-body [class*="featured-item"] [class*="library-item-inset-image-container"] {
+    position: absolute;
+    left: 0.875rem;
+    /* 图片高 = 卡宽/2 = 50cqw；图标顶部放在 50cqw - 2.45rem，使图标底部恰与图片底边平齐 */
+    top: calc(50cqw - 2.45rem);
+    width: 2.45rem;
+    height: 2.45rem;
+    margin: 0;
+    border-radius: var(--sky-radius);
+    border-width: 0.175rem;
+}
+.sky-window-body [class*="featured-item"] [class*="library-item-inset-image"] {
+    width: 1.75rem;
+    height: 1.75rem;
+}
+
+/* 大卡文字区：宽度 100% 随卡片缩放，padding/字号同比例收缩，完整显示不裁剪 */
+.sky-window-body [class*="featured-item"] [class*="featured-text"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.4375rem; /* 7px（原 10px × 0.7） */
+    font-size: 0.875rem; /* 14px */
+    text-align: left;
+}
+
+/* 大卡名称：随卡片等比缩放（容器查询单位 cqw，6.5cqw ≈ 217px 卡宽下 14px），单行省略 */
+.sky-window-body [class*="featured-item"] [class*="library-item-name"] {
+    width: 100%;
+    font-size: 0.875rem; /* 兜底 */
+    font-size: clamp(0.6875rem, 6.5cqw, 1.375rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+}
+
+/* 大卡描述：随卡片等比缩放（5cqw ≈ 217px 卡宽下 11px），完整显示不截断
+   （用户要求文字必须完整，故不设行数限制，卡片高度自适应） */
+.sky-window-body [class*="featured-item"] [class*="featured-description"] {
+    font-size: 0.6875rem; /* 11px 兜底 */
+    font-size: clamp(0.5625rem, 5cqw, 1.125rem);
+    line-height: 1.4;
+    padding-top: 0.25rem;
+    padding-bottom: 0.125rem;
+    word-break: break-word;
+}
+
+/* 大卡底部元信息 / 链接区：宽度对齐卡片、边距与字号同比例收缩 */
+.sky-window-body [class*="featured-item"] [class*="featured-extension-metadata"],
+.sky-window-body [class*="featured-item"] [class*="extension-links"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+    padding-bottom: 0.7rem;
+}
+
+.sky-window-body [class*="featured-item"] [class*="featured-extension-metadata"] {
+    font-size: 0.625rem; /* 10px 兜底 */
+    font-size: clamp(0.5rem, 4.6cqw, 1rem);
+}
+
+.sky-window-body [class*="featured-item"] [class*="featured-extension-metadata-detail"] img {
+    width: 14px; /* 兜底 */
+    height: 14px;
+    width: clamp(10px, 6.5cqw, 20px);
+    height: clamp(10px, 6.5cqw, 20px);
+}
+
+.sky-window-body [class*="featured-item"] [class*="extension-links"] {
+    font-size: 0.6875rem; /* 11px 兜底 */
+    font-size: clamp(0.5625rem, 5cqw, 1.125rem);
+}
+/* featured 大卡右上角收藏按钮：默认隐藏、悬停卡片时淡入。
+   对齐 TW 原版 featured 大卡视觉（右上角无常驻圆形按钮，避免遮挡横版背景图），
+   普通方卡上的收藏按钮保持原常显逻辑不受影响 */
+.sky-window-body [class*="featured-item"] [class*="favorite-button"] {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.sky-window-body [class*="featured-item"]:hover [class*="favorite-button"] {
+    opacity: 1;
+}
+
+/* ===== SKY Editor：扩展库左侧栏顶部搜索框（仅 windowed sky-editor 主题生效） ===== */
+/* 搜索框固定在左侧栏顶部，深色半透明胶囊贴合 #2D2D2D 侧栏底，弱化边框/阴影避免突兀 */
+.sky-window-body :global(.sky-extension-filter) {
+    width: calc(100% - 1.5rem);
+    height: 2rem;
+    margin: 0.375rem 0.75rem 0.75rem;
+    border-radius: var(--sky-radius);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: none;
+    flex-grow: 0;
+}
+.sky-window-body :global(.sky-extension-filter):hover,
+.sky-window-body :global(.sky-extension-filter):focus-within {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.28);
+    box-shadow: none;
+}
+.sky-window-body :global(.sky-extension-filter) [class*="library_filter-input_"] {
+    font-size: 0.8125rem;
+    color: #f0f0f0;
+    /* 覆盖 filter.css 的高 input 与宽 padding：适配 2rem 高胶囊，避免文字区被挤没/溢出 */
+    height: auto;
+    min-height: 1.5rem;
+    padding: 0 1.5rem 0 2rem;
+    line-height: 1.5rem;
+}
+.sky-window-body :global(.sky-extension-filter) [class*="library_filter-input_"]::placeholder {
+    color: rgba(255, 255, 255, 0.45);
+}
+.sky-window-body :global(.sky-extension-filter) .filter-icon {
+    /* TWRenderRecoloredImage 输出的是 <img>，用 CSS filter 把深灰图标反白，贴合深色侧栏；
+       覆盖 filter.css 的绝对定位，让图标在 2rem 胶囊内垂直居中 */
+    top: 50%;
+    margin: 0 0 0 0.75rem;
+    transform: translateY(-50%);
+    filter: invert(1);
+    opacity: 0.75;
+}
+.sky-window-body :global(.sky-extension-filter) .x-icon-wrapper {
+    /* 覆盖 filter.css 默认 margin，让清除按钮在 2rem 胶囊内垂直居中不溢出 */
+    margin: 0.375rem;
+}
+
+/* ===== SKY Editor：扩展库标题栏收藏夹按钮（仅 windowed sky-editor 主题生效） ===== */
+/* 低调化：默认半透明白底圆角方钮 + 灰白星，弱化黄底抢眼；hover 提高透明度、
+   激活态才使用主题蓝底白星，保留收藏数量角标 */
+.win11-titlebar-actions .sky-extension-fav-button {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin: 0 0.25rem;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.12);
+    border: none;
+    border-radius: var(--sky-radius-sm);
+    cursor: pointer;
+    transition: background 0.12s ease, opacity 0.12s ease;
+    opacity: 0.75;
+}
+.win11-titlebar-actions .sky-extension-fav-button:hover {
+    background: rgba(255, 255, 255, 0.22);
+    opacity: 1;
+}
+.win11-titlebar-actions .sky-extension-fav-button-active,
+.win11-titlebar-actions .sky-extension-fav-button-active:hover {
+    background: $motion-primary;
+    opacity: 1;
+}
+.win11-titlebar-actions .sky-extension-fav-button img {
+    width: 0.9375rem;
+    height: 0.9375rem;
+    /* 标题栏按钮底色为半透明白/主题蓝，把彩色星 SVG 统一转为纯白星 */
+    filter: brightness(0) invert(1);
+    opacity: 0.85;
+}
+.win11-titlebar-actions .sky-extension-fav-count {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 0.8125rem;
+    height: 0.8125rem;
+    padding: 0 3px;
+    box-sizing: border-box;
+    border-radius: var(--sky-radius);
+    background: #ffffff;
+    color: #33363F;
+    font-size: 0.5625rem;
+    font-weight: 600;
+    line-height: 0.8125rem;
+    text-align: center;
+}
+
+/* ===== SKY Editor：扩展库左侧标签栏（仅 windowed sky-editor 主题生效） ===== */
+/* 样式对齐高级设置页面左侧内容项（.window-tab）：间距 8px × 1rem、行距 .25rem、
+   左右外边距 .75rem、圆角 4px、字号 14px；深色模式未选中浅灰文字、悬停白字+$badge-border 底、
+   选中 $badge-background 底（与 settings-menu.css 的 .window-tab 深色规则完全一致）。
+   加 !important 以压过 Button 组件默认样式（CSS Modules 顺序不可控）。
+   注意：这些类在 JSX 中为字符串类名（sky-extension-* / sky-tag-button），
+   必须用 :global 包裹避免被 CSS Modules 哈希导致选择器失配 */
+.sky-window-body :global(.sky-tag-button) {
+    width: calc(100% - 1.5rem) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 8px 1rem !important;
+    margin: 0.25rem 0.75rem !important;
+    border-radius: var(--sky-radius-sm)!important;
+    border: none !important;
+    background: transparent !important;
+    color: #CCCCCC !important;
+    font-size: 14px !important;
+    text-align: left !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+}
+.sky-window-body :global(.sky-tag-button):hover {
+    background: $badge-border !important;
+    color: #FFFFFF !important;
+}
+/* 选中项 = 浅蓝圆角矩形方框（与高级设置窗口选中态完全一致：仅 $badge-background 底色，
+   文字色继承基础规则 #CCCCCC，悬停时 hover 规则仍给白字），圆角 4px 与高级设置一致 */
+.sky-window-body :global(.sky-tag-button-active),
+.sky-window-body :global(.sky-tag-button-active):hover {
+    background: $badge-background !important;
+}
+
+/* ===== SKY Editor：扩展库网格空态提示（仅 windowed sky-editor 主题生效） =====
+   「我的」收藏为空 / 「实验性」分类为空时的居中说明区。
+   字符串类名须 :global 包裹，否则 CSS Modules 哈希失配 */
+.sky-window-body :global(.sky-extension-favorites-empty),
+.sky-window-body :global(.sky-extension-experimental-empty) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 0;
+    flex: 1;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    letter-spacing: 0.02em;
+}
+
+/* ===== SKY Editor：扩展库网格区域容器（windowed） =====
+   filterBar（侧栏）之外的右侧区域：纵向布局，排序工具条在上、滚动网格填满剩余高度。
+   ★ 必须 :global：JSX 中为字符串类名 sky-extension-grid-area，CSS Modules 会哈希
+      .sky-extension-grid-area 导致失配 → 本容器失去 flex:1/min-height:0 约束 →
+      右侧网格高度退化为内容高度、永不溢出、无滚动条（本轮滚动问题根因之一） */
+.sky-window-body :global(.sky-extension-grid-area) {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* ===== SKY Editor：侧栏「我的」置顶独立项（windowed） =====
+   对齐高级设置窗口「账号」置顶项的 .window-tab 样式：宽度 calc(100%-1.5rem)、
+   margin .25rem .75rem、圆角 4px、hover $badge-border、选中 $badge-background；
+   深色模式未选中 #CCCCCC、悬停 #FFFFFF */
+.sky-window-body :global(.sky-extension-my-button) {
+    width: calc(100% - 1.5rem) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 8px 1rem !important;
+    margin: 0.25rem 0.75rem !important;
+    border-radius: var(--sky-radius-sm)!important;
+    border: none !important;
+    background: transparent !important;
+    color: #CCCCCC !important;
+    font-size: 14px !important;
+    text-align: left !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    transition: background 0.12s ease;
+}
+.sky-window-body :global(.sky-extension-my-button):hover {
+    background: $badge-border !important;
+    color: #FFFFFF !important;
+}
+.sky-window-body :global(.sky-extension-my-button-active),
+.sky-window-body :global(.sky-extension-my-button-active):hover {
+    background: $badge-background !important;
+    color: #FFFFFF !important;
+}
+/* 「我的」按钮收藏数角标（右侧对齐，白字小胶囊，与标题栏旧角标风格一致） */
+.sky-window-body :global(.sky-extension-my-button) :global(.sky-extension-fav-count) {
+    margin-left: auto;
+    min-width: 1rem;
+    height: 1rem;
+    padding: 0 4px;
+    box-sizing: border-box;
+    border-radius: var(--sky-radius-sm);
+    background: rgba(255, 255, 255, 0.16);
+    color: #e8e8e8;
+    font-size: 0.625rem;
+    font-weight: 600;
+    line-height: 1rem;
+    text-align: center;
+}
+
+/* ===== SKY Editor：侧栏「常规」分类标题（windowed） =====
+   对齐高级设置窗口 .window-category：11px 小字、#8A8A8A、gap 6px、padding 6px 16px、
+   左侧 ▼ caret（收起 rotate(-90deg) 朝右、展开朝下），点击切换 collapsedGroups.regular；
+   展开态类 .sky-extension-group-expanded 挂在分类按钮自身（与 .window-category-expanded 同构） */
+.sky-window-body :global(.sky-extension-group-header) {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    width: 100% !important;
+    padding: 6px 16px !important;
+    text-align: left !important;
+    border: none !important;
+    background: transparent !important;
+    color: #8A8A8A !important;
+    font: inherit !important;
+    font-size: 11px !important;
+    font-weight: normal !important;
+    cursor: default !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+}
+.sky-window-body :global(.sky-extension-group-header):hover {
+    color: #CCCCCC !important;
+}
+/* 展开态：深灰字（无下划线，对齐目标图） */
+.sky-window-body :global(.sky-extension-group-expanded) {
+    color: #E6E6E6 !important;
+}
+/* caret：固定 12px 宽、居中、8px 字号，随展开态旋转 */
+.sky-window-body :global(.sky-extension-group-caret) {
+    display: inline-block !important;
+    width: 12px !important;
+    flex-shrink: 0 !important;
+    text-align: center !important;
+    font-size: 8px !important;
+    color: inherit !important;
+    transition: transform .2s ease !important;
+}
+/* 默认（收起态）箭头朝右；展开态（.sky-extension-group-expanded）箭头朝下 */
+.sky-window-body :global(.sky-extension-group-caret) {
+    transform: rotate(-90deg) !important;
+}
+.sky-window-body :global(.sky-extension-group-expanded) :global(.sky-extension-group-caret) {
+    transform: rotate(0deg) !important;
+}
+.sky-window-body :global(.sky-extension-group-label) {
+    flex: 1 !important;
+}
+
+/* ===== SKY Editor：「常规」分类内容区（windowed） =====
+   展开/收回动画与高级设置窗口 .window-category-items 完全一致：
+   grid 0fr→1fr + opacity 过渡；.sky-extension-group-items-expanded 控制展开态。
+   替代旧的 .sky-extension-group-collapsed .sky-tag-button{display:none} 方案
+   （该方案因 CSS Modules 哈希字符串类名失配而失效） */
+.sky-window-body :global(.sky-extension-group-items) {
+    display: grid !important;
+    /* 让唯一列撑满左栏，避免 .window-tab 方框只包住文字 */
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 0fr !important;
+    opacity: 0 !important;
+    transition: grid-template-rows .25s ease, opacity .2s ease !important;
+}
+.sky-window-body :global(.sky-extension-group-items-expanded) {
+    grid-template-rows: 1fr !important;
+    opacity: 1 !important;
+}
+.sky-window-body :global(.sky-extension-group-items-inner) {
+    overflow: hidden !important;
+    min-height: 0 !important;
+    width: 100% !important;
+}
+
+/* ===== SKY Editor：侧栏「实验性」置顶独立项（windowed） =====
+   样式同 .window-tab（同「我的」），激活态 $badge-background */
+.sky-window-body :global(.sky-extension-experimental-button) {
+    width: calc(100% - 1.5rem) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 8px 1rem !important;
+    margin: 0.25rem 0.75rem !important;
+    border-radius: var(--sky-radius-sm)!important;
+    border: none !important;
+    background: transparent !important;
+    color: #CCCCCC !important;
+    font-size: 14px !important;
+    text-align: left !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    transition: background 0.12s ease;
+}
+.sky-window-body :global(.sky-extension-experimental-button):hover {
+    background: $badge-border !important;
+    color: #FFFFFF !important;
+}
+.sky-window-body :global(.sky-extension-experimental-button-active),
+.sky-window-body :global(.sky-extension-experimental-button-active):hover {
+    background: $badge-background !important;
+}
+
+/* 左侧竖向导航栏：白底（与设置窗口 .window-sidebar-light 的 $ui-modal-background 一致），分隔线转深 */
+.sky-window-body.sky-window-body-light [class*="library_filter-bar_"] {
+    background-color: $ui-modal-background;
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* 侧栏顶部搜索框：白底上改用浅灰填充 + 深色淡边框，文字/placeholder/图标一并转深 */
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter) {
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter):hover,
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter):focus-within {
+    background: rgba(0, 0, 0, 0.08);
+    border-color: rgba(0, 0, 0, 0.22);
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter) [class*="library_filter-input_"] {
+    color: #33363F;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter) [class*="library_filter-input_"]::placeholder {
+    color: rgba(0, 0, 0, 0.45);
+}
+/* 放大镜图标：深色模式用 invert(1) 反白，浅色模式还原原色（深灰）并降透明度 */
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter) .filter-icon {
+    filter: none;
+    opacity: 0.55;
+}
+/* 清除按钮（x）图标：浅底上转为深色，避免白图标在白侧栏不可见 */
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter) .x-icon-wrapper img {
+    filter: brightness(0);
+    opacity: 0.55;
+}
+
+/* 来源标签按钮：未选中 #575E75、hover 深字 + $badge-border、选中 $badge-background + 深字
+   （对齐 settings-menu.css 的 .window-sidebar-light .window-tab / .window-tab-active） */
+.sky-window-body.sky-window-body-light :global(.sky-tag-button) {
+    color: #575E75 !important;
+}
+.sky-window-body.sky-window-body-light :global(.sky-tag-button):hover {
+    background: $badge-border !important;
+    color: #33363F !important;
+}
+.sky-window-body.sky-window-body-light :global(.sky-tag-button-active),
+.sky-window-body.sky-window-body-light :global(.sky-tag-button-active):hover {
+    background: $badge-background !important;
+    color: #33363F !important;
+}
+
+/* 侧栏「我的」置顶项：同 .window-tab 浅色规则（置顶项对齐设置窗口「账号」） */
+.sky-window-body.sky-window-body-light :global(.sky-extension-my-button) {
+    color: #575E75 !important;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-my-button):hover {
+    background: $badge-border !important;
+    color: #33363F !important;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-my-button-active),
+.sky-window-body.sky-window-body-light :global(.sky-extension-my-button-active):hover {
+    background: $badge-background !important;
+    color: #33363F !important;
+}
+/* 收藏数角标：半透明白底白字 → 浅灰底深字（选中态的浅蓝底上同样清晰） */
+.sky-window-body.sky-window-body-light :global(.sky-extension-my-button) :global(.sky-extension-fav-count) {
+    background: rgba(0, 0, 0, 0.08);
+    color: #575E75;
+}
+
+/* 「常规」分类标题：未选中 #8A8A8A（深色原值在浅底同样成立，不覆盖），hover/展开态转深字 */
+.sky-window-body.sky-window-body-light :global(.sky-extension-group-header):hover {
+    color: #33363F !important;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-group-expanded) {
+    color: #33363F !important;
+}
+
+/* 「实验性」置顶项：同「我的」项 */
+.sky-window-body.sky-window-body-light :global(.sky-extension-experimental-button) {
+    color: #575E75 !important;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-experimental-button):hover {
+    background: $badge-border !important;
+    color: #33363F !important;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-experimental-button-active),
+.sky-window-body.sky-window-body-light :global(.sky-extension-experimental-button-active):hover {
+    background: $badge-background !important;
+    color: #33363F !important;
+}
+
+/* 空态提示（我的收藏为空 / 实验性为空）：半透明白字 → 半透明黑字 */
+.sky-window-body.sky-window-body-light :global(.sky-extension-favorites-empty),
+.sky-window-body.sky-window-body-light :global(.sky-extension-experimental-empty) {
+    color: rgba(0, 0, 0, 0.45);
+}
+
+/* 卡片 hover/active：深色模式的白色描边与重阴影在白底上不可见/发脏，改为深色淡描边 + 轻阴影 */
+.sky-window-body.sky-window-body-light :global(.sky-library-card):hover {
+    border-color: rgba(0, 0, 0, 0.18);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.sky-window-body.sky-window-body-light :global(.sky-library-card):active {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
+}
+
+/* 「我的」页排序工具条：深色半透明白底 → 浅色半透明黑底 + 深色淡边框 */
+
+/* 「我的」页标题与收藏数角标：浅色下改深字 + 淡黑底角标 */
+
+/* 排序下拉按钮：白字深框 → 深字浅框（hover 仍用主题 $badge-border） */
+
+/* 排序下拉面板：$ui-primary/$ui-modal-foreground 已随主题转浅，仅加深边框与投影，避免与白底糊在一起 */
+
+/* 升降序切换按钮：白字透明底 → 深字透明底，hover/active 用浅色半透明黑 */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SKY Editor：自定义扩展库页面（侧栏「我的」下方入口 → 源管理页）
+   结构：.sky-extension-source-page(flex 列) > 工具条(复用 sort-bar) + 添加表单 + 源列表
+   铁律：仅 .sky-window-body 作用域内生效；浅色另在 .sky-window-body-light 下覆写。
+   字符串类名一律 :global 包裹，否则 CSS Modules 哈希失配。
+   ═══════════════════════════════════════════════════════════════════════════ */
+.sky-window-body :global(.sky-extension-source-page) {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 0.5rem;
+    box-sizing: border-box;
+}
+/* 工具条：左侧页内标题 + 数量角标，右侧「+ 添加扩展库」按钮 */
+.sky-window-body :global(.sky-extension-source-toolbar) {
+    justify-content: space-between;
+}
+.sky-window-body :global(.sky-extension-source-add) {
+    flex: 0 0 auto;
+    height: 1.75rem;
+    padding: 0 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: var(--sky-radius);
+    background: transparent;
+    color: #f0f0f0;
+    font: inherit;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    cursor: pointer;
+    outline: none;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.sky-window-body :global(.sky-extension-source-add):hover {
+    background: $badge-border;
+    border-color: rgba(255, 255, 255, 0.24);
+}
+/* 表单展开态：按钮转为「取消」，用浅蓝底提示当前处于添加模式 */
+.sky-window-body :global(.sky-extension-source-add-open),
+.sky-window-body :global(.sky-extension-source-add-open):hover {
+    background: $badge-background;
+    border-color: $badge-background;
+    color: #FFFFFF;
+}
+/* 添加表单：名称 + 地址 + 底部提示与确认按钮 */
+.sky-window-body :global(.sky-extension-source-form) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    flex: 0 0 auto;
+    margin: 0 0.75rem 0.375rem;
+    padding: 0.625rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: var(--sky-radius);
+    box-sizing: border-box;
+}
+.sky-window-body :global(.sky-extension-source-input) {
+    width: 100%;
+    height: 1.875rem;
+    padding: 0 0.625rem;
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--sky-radius);
+    background: rgba(0, 0, 0, 0.25);
+    color: #f0f0f0;
+    font: inherit;
+    font-size: 0.8125rem;
+    outline: none;
+    transition: border-color 0.12s ease;
+}
+.sky-window-body :global(.sky-extension-source-input)::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+}
+.sky-window-body :global(.sky-extension-source-input):focus {
+    border-color: rgba(255, 255, 255, 0.35);
+}
+.sky-window-body :global(.sky-extension-source-form-footer) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+.sky-window-body :global(.sky-extension-source-hint) {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.6875rem;
+    line-height: 1.3;
+    min-width: 0;
+}
+.sky-window-body :global(.sky-extension-source-confirm) {
+    flex: 0 0 auto;
+    height: 1.75rem;
+    padding: 0 0.875rem;
+    border: 1px solid $looks-secondary;
+    border-radius: var(--sky-radius);
+    background: $looks-secondary;
+    color: #FFFFFF;
+    font: inherit;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    outline: none;
+    transition: filter 0.12s ease;
+}
+.sky-window-body :global(.sky-extension-source-confirm):hover {
+    filter: brightness(1.08);
+}
+.sky-window-body :global(.sky-extension-source-error) {
+    color: #FF6B6B;
+    font-size: 0.75rem;
+    line-height: 1.3;
+}
+/* 源列表：可滚动，每行一个扩展库（名称 + 地址 + 删除） */
+.sky-window-body :global(.sky-extension-source-list) {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.25rem 0.75rem 0.25rem;
+    box-sizing: border-box;
+}
+.sky-window-body :global(.sky-extension-source-row) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.625rem;
+    margin-bottom: 0.375rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--sky-radius);
+    box-sizing: border-box;
+    transition: background 0.12s ease, border-color 0.12s ease;
+}
+.sky-window-body :global(.sky-extension-source-row):hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+.sky-window-body :global(.sky-extension-source-info) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    flex: 1;
+    min-width: 0;
+}
+.sky-window-body :global(.sky-extension-source-name) {
+    color: $text-primary;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sky-window-body :global(.sky-extension-source-url) {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.6875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sky-window-body :global(.sky-extension-source-remove) {
+    flex: 0 0 auto;
+    height: 1.5rem;
+    padding: 0 0.5rem;
+    border: 1px solid $error-primary;
+    border-radius: var(--sky-radius-sm);
+    background: transparent;
+    color: $error-primary;
+    font: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+    outline: none;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+.sky-window-body :global(.sky-extension-source-remove):hover {
+    background: $error-primary;
+    color: #FFFFFF;
+}
+
+/* ─── 浅色模式：白底下的同款面板（半透明黑底 + 深色字） ─────────────────── */
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-add) {
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #575E75;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-add):hover {
+    background: $badge-border;
+    border-color: rgba(0, 0, 0, 0.2);
+    color: #33363F;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-add-open),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-add-open):hover {
+    background: $badge-background;
+    border-color: $badge-background;
+    color: #33363F;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-form) {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-input) {
+    background: #FFFFFF;
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #33363F;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-input)::placeholder {
+    color: rgba(0, 0, 0, 0.35);
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-input):focus {
+    border-color: rgba(0, 0, 0, 0.3);
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-hint) {
+    color: rgba(0, 0, 0, 0.45);
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-error) {
+    color: #E03131;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-row) {
+    background: #FFFFFF;
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-row):hover {
+    background: #FAFAFA;
+    border-color: rgba(0, 0, 0, 0.14);
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-name) {
+    color: #575E75;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-url) {
+    color: rgba(0, 0, 0, 0.45);
+}
+
+/* 扩展库行标题行：库名（可截断）+ 扩展数量角标 */
+.sky-window-body :global(.sky-extension-source-title-row) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+.sky-window-body :global(.sky-extension-source-count) {
+    flex: 0 0 auto;
+    padding: 0 0.3125rem;
+    border-radius: 999px;
+    background: rgba(139, 92, 246, 0.22);
+    color: #C4B5FD;
+    font-size: 0.625rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    white-space: nowrap;
+}
+/* 未读取到任何扩展：用警示色提示地址可能不是有效清单 */
+.sky-window-body :global(.sky-extension-source-count-empty) {
+    background: rgba(255, 107, 107, 0.18);
+    color: #FF9C9C;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-count) {
+    background: rgba(139, 92, 246, 0.14);
+    color: #6D4AC4;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-count-empty) {
+    background: rgba(224, 49, 49, 0.12);
+    color: #C92A2A;
+}
+
+/* ===== SKY Editor：侧栏「自定义」分类内的库名按钮（windowed） =====
+   库名可能较长，单行省略号，避免 200px 侧栏被撑破 */
+.sky-window-body :global(.sky-tag-button-custom-source) {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* ===== SKY Editor：侧栏「自定义」分类为空时的占位说明（windowed） =====
+   与分组内标签保持同样的左右外边距，视觉上对齐「常规」下的标签 */
+.sky-window-body :global(.sky-extension-custom-empty) {
+    margin: 0.25rem 0.75rem;
+    padding: 8px 1rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sky-window-body-light :global(.sky-extension-custom-empty) {
+    color: rgba(0, 0, 0, 0.45);
+}
+
+/* ===== SKY Editor：按自定义库筛选且该库无扩展时的网格空态（windowed） =====
+   复用「我的」「实验性」空态的居中样式 */
+.sky-window-body :global(.sky-extension-custom-source-empty) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    flex: 1;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    letter-spacing: 0.02em;
+}
+.sky-window-body-light :global(.sky-extension-custom-source-empty) {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SKY Editor：扩展库窗口 UI 重制（Modern Minimal）
+   ───────────────────────────────────────────────────────────────────────────
+   设计原则
+     1. 去色块化：侧栏/工具条不再用硬编码实色底板，改为半透明叠层，与窗口底色
+        自然融合，避免"拼接感"。
+     2. 一致圆角：容器 12px、控件 8~10px、圆形按钮 50%。
+     3. 一致节奏：侧栏项 32px 高 / 2px 间距，网格 gap 14px，卡片内边距 10px。
+     4. 主题色克制使用：仅用于焦点环、主按钮、链接，其余用中性灰阶。
+     5. 深浅双主题共用一套规则，只通过 --skyx-* 变量切换配色。
+   ───────────────────────────────────────────────────────────────────────────
+   铁律（沿用既有约定，不可破坏）
+     · 所有规则限定在 .sky-window-body 作用域内，不影响其它主题/窗口；
+     · 字符串类名（sky-*）一律 :global() 包裹，否则 CSS Modules 哈希失配；
+     · 浅色变体以并列选择器 .sky-window-body.sky-window-body-light 书写，
+       特异性不低于旧规则，保证覆盖；
+     · 卡片 hover 绝不使用 transform（content-visibility:auto 会触发重绘跳过，
+       表现为按钮消失），只改背景/边框/阴影。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 设计令牌（深色为基线，浅色覆盖） ──────────────────────────────────── */
+.sky-window-body {
+    --skyx-line: rgba(255, 255, 255, 0.07);
+    --skyx-line-2: rgba(255, 255, 255, 0.13);
+    --skyx-sidebar-bg: rgba(0, 0, 0, 0.14);
+    --skyx-item-fg: rgba(255, 255, 255, 0.66);
+    --skyx-item-hover-bg: rgba(255, 255, 255, 0.06);
+    --skyx-item-active-bg: rgba(255, 255, 255, 0.10);
+    --skyx-text: rgba(255, 255, 255, 0.94);
+    --skyx-text-2: rgba(255, 255, 255, 0.60);
+    --skyx-text-3: rgba(255, 255, 255, 0.38);
+    --skyx-field-bg: rgba(255, 255, 255, 0.06);
+    --skyx-field-bg-hover: rgba(255, 255, 255, 0.10);
+    --skyx-card-bg: rgba(255, 255, 255, 0.045);
+    --skyx-card-bg-hover: rgba(255, 255, 255, 0.075);
+    --skyx-card-border: rgba(255, 255, 255, 0.07);
+    --skyx-card-border-hover: rgba(255, 255, 255, 0.20);
+    --skyx-card-shadow: none;
+    --skyx-card-shadow-hover: 0 12px 30px rgba(0, 0, 0, 0.42);
+    --skyx-thumb-bg: rgba(255, 255, 255, 0.05);
+    --skyx-badge-bg: rgba(255, 255, 255, 0.10);
+    --skyx-badge-fg: rgba(255, 255, 255, 0.72);
+    --skyx-star-bg: rgba(255, 255, 255, 0.06);
+}
+
+.sky-window-body.sky-window-body-light {
+    --skyx-line: rgba(0, 0, 0, 0.07);
+    --skyx-line-2: rgba(0, 0, 0, 0.12);
+    --skyx-sidebar-bg: rgba(0, 0, 0, 0.022);
+    --skyx-item-fg: #5A6478;
+    --skyx-item-hover-bg: rgba(0, 0, 0, 0.05);
+    --skyx-item-active-bg: rgba(0, 0, 0, 0.075);
+    --skyx-text: #1F2430;
+    --skyx-text-2: #5A6478;
+    --skyx-text-3: rgba(0, 0, 0, 0.40);
+    --skyx-field-bg: rgba(0, 0, 0, 0.045);
+    --skyx-field-bg-hover: rgba(0, 0, 0, 0.07);
+    --skyx-card-bg: #FFFFFF;
+    --skyx-card-bg-hover: #FFFFFF;
+    --skyx-card-border: rgba(0, 0, 0, 0.08);
+    --skyx-card-border-hover: rgba(0, 0, 0, 0.16);
+    --skyx-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --skyx-card-shadow-hover: 0 10px 26px rgba(0, 0, 0, 0.12);
+    --skyx-thumb-bg: rgba(0, 0, 0, 0.035);
+    --skyx-badge-bg: rgba(0, 0, 0, 0.06);
+    --skyx-badge-fg: #5A6478;
+    --skyx-star-bg: rgba(0, 0, 0, 0.04);
+}
+
+/* ── 左侧栏：半透明叠层 + 细分隔线 ────────────────────────────────────── */
+.sky-window-body [class*="library_filter-bar_"],
+.sky-window-body.sky-window-body-light [class*="library_filter-bar_"] {
+    width: 208px;
+    min-width: 208px;
+    padding: 14px 0 16px;
+    box-sizing: border-box;
+    background-color: var(--skyx-sidebar-bg);
+    border-right: 1px solid var(--skyx-line);
+    /* 侧栏内容超过窗口高度时自身滚动，子项保持固定尺寸不被压缩。
+       滚动条统一交回系统原生 overlay 滚动条（悬停/滚动淡入，自带过渡动效），
+       此处严禁再定义 scrollbar-width / scrollbar-color / ::-webkit-scrollbar，
+       否则会与原生条叠加成第二条滚动条。 */
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+}
+
+/* ── 侧栏搜索框：34px 胶囊输入，聚焦时主题色焦点环 ────────────────────── */
+.sky-window-body :global(.sky-extension-filter),
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter) {
+    width: calc(100% - 24px);
+    height: 34px;
+    flex: 0 0 34px;
+    margin: 0 12px 14px;
+    box-sizing: border-box;
+    border-radius: 10px;
+    background: var(--skyx-field-bg);
+    border: 1px solid transparent;
+    box-shadow: none;
+    transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.sky-window-body :global(.sky-extension-filter):hover,
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter):hover {
+    background: var(--skyx-field-bg-hover);
+    border-color: transparent;
+    box-shadow: none;
+}
+.sky-window-body :global(.sky-extension-filter):focus-within,
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter):focus-within {
+    background: var(--skyx-field-bg-hover);
+    border-color: color-mix(in srgb, var(--motion-primary) 62%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--motion-primary) 16%, transparent);
+}
+.sky-window-body :global(.sky-extension-filter) [class*="library_filter-input_"],
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter) [class*="library_filter-input_"] {
+    height: auto;
+    min-height: 20px;
+    padding: 0 26px 0 32px;
+    font-size: 12.5px;
+    line-height: 20px;
+    color: var(--skyx-text);
+}
+.sky-window-body :global(.sky-extension-filter) [class*="library_filter-input_"]::placeholder,
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter) [class*="library_filter-input_"]::placeholder {
+    color: var(--skyx-text-3);
+}
+.sky-window-body :global(.sky-extension-filter) .filter-icon {
+    top: 50%;
+    left: 0;
+    width: 14px;
+    height: 14px;
+    margin: 0 0 0 11px;
+    transform: translateY(-50%);
+    filter: invert(1);
+    opacity: 0.42;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter) .filter-icon {
+    filter: none;
+    opacity: 0.38;
+}
+.sky-window-body :global(.sky-extension-filter) .x-icon-wrapper {
+    margin: 0 11px;
+}
+.sky-window-body :global(.sky-extension-filter) .x-icon-wrapper img {
+    width: 12px;
+    height: 12px;
+    filter: brightness(0) invert(1);
+    opacity: 0.5;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-filter) .x-icon-wrapper img {
+    filter: brightness(0);
+    opacity: 0.45;
+}
+
+/* ── 侧栏导航项（我的 / 自定义扩展库 / 所有 / 标签 / 实验性） ─────────────
+   统一 32px 高、8px 圆角、2px 行距；未选中中性灰、hover 微亮、选中亮底+加粗 */
+.sky-window-body :global(.sky-tag-button),
+.sky-window-body.sky-window-body-light :global(.sky-tag-button),
+.sky-window-body :global(.sky-extension-my-button),
+.sky-window-body.sky-window-body-light :global(.sky-extension-my-button),
+.sky-window-body :global(.sky-extension-experimental-button),
+.sky-window-body.sky-window-body-light :global(.sky-extension-experimental-button) {
+    display: flex !important;
+    flex: 0 0 32px !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: calc(100% - 20px) !important;
+    height: 32px !important;
+    padding: 0 10px !important;
+    margin: 1px 10px !important;
+    box-sizing: border-box !important;
+    border: none !important;
+    border-radius: 8px !important;
+    background: transparent !important;
+    color: var(--skyx-item-fg) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    transition: background 0.14s ease, color 0.14s ease !important;
+}
+.sky-window-body :global(.sky-tag-button):hover,
+.sky-window-body.sky-window-body-light :global(.sky-tag-button):hover,
+.sky-window-body :global(.sky-extension-my-button):hover,
+.sky-window-body.sky-window-body-light :global(.sky-extension-my-button):hover,
+.sky-window-body :global(.sky-extension-experimental-button):hover,
+.sky-window-body.sky-window-body-light :global(.sky-extension-experimental-button):hover {
+    background: var(--skyx-item-hover-bg) !important;
+    color: var(--skyx-text) !important;
+}
+.sky-window-body :global(.sky-tag-button-active),
+.sky-window-body.sky-window-body-light :global(.sky-tag-button-active),
+.sky-window-body :global(.sky-tag-button-active):hover,
+.sky-window-body.sky-window-body-light :global(.sky-tag-button-active):hover,
+.sky-window-body :global(.sky-extension-my-button-active),
+.sky-window-body.sky-window-body-light :global(.sky-extension-my-button-active),
+.sky-window-body :global(.sky-extension-my-button-active):hover,
+.sky-window-body.sky-window-body-light :global(.sky-extension-my-button-active):hover,
+.sky-window-body :global(.sky-extension-experimental-button-active),
+.sky-window-body.sky-window-body-light :global(.sky-extension-experimental-button-active),
+.sky-window-body :global(.sky-extension-experimental-button-active):hover,
+.sky-window-body.sky-window-body-light :global(.sky-extension-experimental-button-active):hover {
+    background: var(--skyx-item-active-bg) !important;
+    color: var(--skyx-text) !important;
+    font-weight: 600 !important;
+}
+/* 自定义库名过长时单行省略 */
+.sky-window-body :global(.sky-tag-button-custom-source),
+.sky-window-body.sky-window-body-light :global(.sky-tag-button-custom-source) {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* 导航项右侧数量角标 */
+.sky-window-body :global(.sky-extension-my-button) :global(.sky-extension-fav-count),
+.sky-window-body.sky-window-body-light :global(.sky-extension-my-button) :global(.sky-extension-fav-count) {
+    margin-left: auto;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    box-sizing: border-box;
+    border-radius: 6px;
+    background: var(--skyx-badge-bg);
+    color: var(--skyx-badge-fg);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 18px;
+    letter-spacing: 0;
+    text-align: center;
+}
+
+/* ── 侧栏分组标题：11px 大写感小标签 ──────────────────────────────────── */
+.sky-window-body :global(.sky-extension-group-header),
+.sky-window-body.sky-window-body-light :global(.sky-extension-group-header) {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    padding: 16px 20px 6px !important;
+    box-sizing: border-box !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--skyx-text-3) !important;
+    font: inherit !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.06em !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    transition: color 0.14s ease !important;
+}
+.sky-window-body :global(.sky-extension-group-header):hover { color: var(--skyx-text-2) !important; }
+.sky-window-body.sky-window-body-light :global(.sky-extension-group-header):hover { color: var(--skyx-text-2) !important; }
+.sky-window-body :global(.sky-extension-group-expanded),
+.sky-window-body.sky-window-body-light :global(.sky-extension-group-expanded) {
+    color: var(--skyx-text-2) !important;
+}
+.sky-window-body :global(.sky-extension-group-caret) {
+    display: inline-block !important;
+    width: 10px !important;
+    flex-shrink: 0 !important;
+    text-align: center !important;
+    font-size: 7px !important;
+    color: inherit !important;
+    opacity: 0.8 !important;
+    transform: rotate(-90deg);
+    transition: transform 0.2s ease !important;
+}
+.sky-window-body :global(.sky-extension-group-expanded) :global(.sky-extension-group-caret) {
+    transform: rotate(0deg);
+}
+.sky-window-body :global(.sky-extension-group-label) { flex: 1 !important; }
+
+/* 自定义分组为空时的占位说明 */
+.sky-window-body :global(.sky-extension-custom-empty),
+.sky-window-body.sky-window-body-light :global(.sky-extension-custom-empty) {
+    margin: 0 10px;
+    padding: 2px 10px 6px;
+    color: var(--skyx-text-3);
+    font-size: 11.5px;
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ═══ 卡片网格 ═══════════════════════════════════════════════════════════ */
+.sky-window-body [class*="library_library-scroll-grid_"] {
+    gap: 14px;
+    padding: 14px 18px 20px;
+}
+
+/* ── 卡片：14px 圆角、淡描边、无重投影；hover 仅提亮背景与描边 ────────── */
+.sky-window-body :global(.sky-library-card) {
+    height: 17.25rem;
+    contain-intrinsic-size: auto 276px;
+    padding: 10px 10px 12px;
+    box-sizing: border-box;
+    border: 1px solid var(--skyx-card-border);
+    border-radius: 14px;
+    background: var(--skyx-card-bg);
+    box-shadow: var(--skyx-card-shadow);
+    transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.sky-window-body :global(.sky-library-card):hover,
+.sky-window-body.sky-window-body-light :global(.sky-library-card):hover {
+    background: var(--skyx-card-bg-hover);
+    border-color: var(--skyx-card-border-hover);
+    box-shadow: var(--skyx-card-shadow-hover);
+    content-visibility: visible;
+}
+.sky-window-body :global(.sky-library-card):active,
+.sky-window-body.sky-window-body-light :global(.sky-library-card):active {
+    box-shadow: none;
+}
+
+/* 缩略图区：圆角浅底托盘，图标内缩留白 */
+.sky-window-body :global(.sky-library-card) [class*="library-item-image-container-wrapper"] {
+    flex: 0 0 auto;
+    height: 5.75rem;
+    width: 100%;
+    aspect-ratio: auto;
+    position: relative;
+    border-radius: 10px;
+    background: var(--skyx-thumb-bg);
+    overflow: hidden;
+}
+.sky-window-body :global(.sky-library-card) [class*="library-item-image-container"]:not([class*="library-item-image-container-wrapper"]) {
+    height: 100%;
+    width: 100%;
+    padding: 12px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.sky-window-body :global(.sky-library-card) [class*="library-item-image"] {
+    object-fit: contain;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* 卡片标题 */
+.sky-window-body :global(.sky-library-card) [class*="library-item-name"] {
+    flex-shrink: 0;
+    width: 100%;
+    max-width: 100%;
+    margin: 9px 0 0;
+    color: var(--skyx-text);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: center;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+/* 信息区：简介 / 开发者 / 文档链接 */
+.sky-window-body :global(.sky-library-card) [class*="sky-card-info"] {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+    margin-top: 6px;
+    padding: 0 2px;
+    text-align: left;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-card-description"] {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--skyx-text-2);
+    opacity: 1;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-card-credits"] {
+    font-size: 10.5px;
+    color: var(--skyx-text-3);
+    opacity: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-card-links"] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 10.5px;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-card-links"] a {
+    color: var(--motion-primary) !important;
+    text-decoration: none;
+    transition: opacity 0.12s ease;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-card-links"] a:hover {
+    text-decoration: underline;
+    opacity: 0.85;
+}
+
+/* 底部操作区 */
+.sky-window-body :global(.sky-library-card) [class*="sky-library-footer"] {
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 8px;
+    position: relative;
+    z-index: 2;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-library-enable-button"] {
+    flex: 1;
+    height: 30px;
+    min-width: 0;
+    padding: 0 10px;
+    border: none;
+    border-radius: 8px;
+    background: var(--motion-primary);
+    color: #FFFFFF;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    transition: filter 0.12s ease, opacity 0.12s ease;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-library-enable-button"]:hover {
+    filter: brightness(1.08);
+    opacity: 1;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-library-enable-button"]:active {
+    filter: brightness(0.94);
+    opacity: 1;
+}
+/* 已安装态：淡红底 + 红色文字的轻量按钮，与主操作区分 */
+.sky-window-body :global(.sky-library-card) [class*="sky-library-enable-button"][class*="sky-library-enable-button-installed"] {
+    background: color-mix(in srgb, var(--error-primary) 14%, transparent);
+    color: var(--error-primary);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--error-primary) 28%, transparent);
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-library-enable-button"][class*="sky-library-enable-button-installed"]:hover {
+    background: color-mix(in srgb, var(--error-primary) 22%, transparent);
+    filter: none;
+}
+
+/* 收藏按钮：与主按钮等高的圆形次级按钮 */
+.sky-window-body :global(.sky-library-card) [class*="sky-library-footer"] [class*="favorite-button"],
+.sky-window-body.sky-window-body-light :global(.sky-library-card) [class*="sky-library-footer"] [class*="favorite-button"] {
+    position: static;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--skyx-star-bg);
+    border: 1px solid var(--skyx-card-border);
+    box-shadow: none;
+    transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-library-footer"] [class*="favorite-button"]:hover,
+.sky-window-body.sky-window-body-light :global(.sky-library-card) [class*="sky-library-footer"] [class*="favorite-button"]:hover {
+    background: var(--skyx-field-bg-hover);
+    border-color: var(--skyx-card-border-hover);
+    transform: none;
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-library-footer"] [class*="favorite-button-active"],
+.sky-window-body.sky-window-body-light :global(.sky-library-card) [class*="sky-library-footer"] [class*="favorite-button-active"] {
+    background: color-mix(in srgb, #FFB800 18%, transparent);
+    border-color: color-mix(in srgb, #FFB800 46%, transparent);
+}
+.sky-window-body :global(.sky-library-card) [class*="sky-library-footer"] [class*="favorite-icon"] {
+    width: 16px;
+    height: 16px;
+}
+
+/* 来源标签：图片区右上角的迷你 pill 徽标 */
+.sky-window-body :global(.sky-library-card) [class*="sky-source-tag"] {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    bottom: auto;
+    z-index: 2;
+    max-width: calc(100% - 16px);
+    box-sizing: border-box;
+    padding: 1px 7px;
+    border: none;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 600;
+    line-height: 16px;
+    letter-spacing: 0.02em;
+    color: #FFFFFF;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+    pointer-events: none;
+}
+
+/* ── 空态：居中说明，弱化色阶 ─────────────────────────────────────────── */
+.sky-window-body :global(.sky-extension-favorites-empty),
+.sky-window-body.sky-window-body-light :global(.sky-extension-favorites-empty),
+.sky-window-body :global(.sky-extension-experimental-empty),
+.sky-window-body.sky-window-body-light :global(.sky-extension-experimental-empty),
+.sky-window-body :global(.sky-extension-custom-source-empty),
+.sky-window-body.sky-window-body-light :global(.sky-extension-custom-source-empty) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 0;
+    flex: 1;
+    padding: 32px 16px;
+    text-align: center;
+    color: var(--skyx-text-3);
+    font-size: 13px;
+    line-height: 1.7;
+    letter-spacing: 0.01em;
+}
+
+/* ═══ 自定义扩展库管理页（侧栏入口 → 源列表） ═══════════════════════════ */
+.sky-window-body :global(.sky-extension-source-page) {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 16px;
+    box-sizing: border-box;
+}
+/* 工具条复用 sort-bar 的透明化样式，仅补充左右对齐 */
+.sky-window-body :global(.sky-extension-source-toolbar),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-toolbar) {
+    justify-content: space-between;
+    padding: 0;
+}
+.sky-window-body :global(.sky-extension-source-add),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-add) {
+    flex: 0 0 auto;
+    height: 28px;
+    padding: 0 12px;
+    box-sizing: border-box;
+    border: 1px solid var(--skyx-line-2);
+    border-radius: 8px;
+    background: var(--skyx-field-bg);
+    color: var(--skyx-text-2);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    outline: none;
+    transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+.sky-window-body :global(.sky-extension-source-add):hover,
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-add):hover {
+    background: var(--skyx-field-bg-hover);
+    border-color: var(--skyx-card-border-hover);
+    color: var(--skyx-text);
+}
+/* 表单展开时按钮转为「取消」：主题色淡底提示当前模式 */
+.sky-window-body :global(.sky-extension-source-add-open),
+.sky-window-body :global(.sky-extension-source-add-open):hover,
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-add-open),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-add-open):hover {
+    background: color-mix(in srgb, var(--motion-primary) 14%, transparent);
+    border-color: color-mix(in srgb, var(--motion-primary) 40%, transparent);
+    color: var(--motion-primary);
+}
+
+/* 添加表单 */
+.sky-window-body :global(.sky-extension-source-form),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-form) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 0 0 auto;
+    margin: 10px 18px 4px;
+    padding: 12px;
+    box-sizing: border-box;
+    background: var(--skyx-card-bg);
+    border: 1px solid var(--skyx-card-border);
+    border-radius: 10px;
+}
+.sky-window-body :global(.sky-extension-source-input),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-input) {
+    width: 100%;
+    height: 32px;
+    padding: 0 10px;
+    box-sizing: border-box;
+    border: 1px solid var(--skyx-line-2);
+    border-radius: 8px;
+    background: var(--skyx-field-bg);
+    color: var(--skyx-text);
+    font: inherit;
+    font-size: 12.5px;
+    outline: none;
+    transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+}
+.sky-window-body :global(.sky-extension-source-input)::placeholder,
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-input)::placeholder {
+    color: var(--skyx-text-3);
+}
+.sky-window-body :global(.sky-extension-source-input):focus,
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-input):focus {
+    border-color: color-mix(in srgb, var(--motion-primary) 62%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--motion-primary) 16%, transparent);
+}
+.sky-window-body :global(.sky-extension-source-form-footer) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.sky-window-body :global(.sky-extension-source-hint),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-hint) {
+    color: var(--skyx-text-3);
+    font-size: 11px;
+    line-height: 1.4;
+    min-width: 0;
+}
+.sky-window-body :global(.sky-extension-source-confirm) {
+    flex: 0 0 auto;
+    height: 28px;
+    padding: 0 14px;
+    box-sizing: border-box;
+    border: none;
+    border-radius: 8px;
+    background: var(--motion-primary);
+    color: #FFFFFF;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: filter 0.12s ease;
+}
+.sky-window-body :global(.sky-extension-source-confirm):hover { filter: brightness(1.08); }
+.sky-window-body :global(.sky-extension-source-error),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-error) {
+    color: var(--error-primary);
+    font-size: 11.5px;
+    line-height: 1.4;
+}
+
+/* 源列表 */
+.sky-window-body :global(.sky-extension-source-list) {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px 18px 0;
+    box-sizing: border-box;
+}
+.sky-window-body :global(.sky-extension-source-row),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-row) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    background: var(--skyx-card-bg);
+    border: 1px solid var(--skyx-card-border);
+    border-radius: 10px;
+    box-shadow: var(--skyx-card-shadow);
+    transition: background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.sky-window-body :global(.sky-extension-source-row):hover,
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-row):hover {
+    background: var(--skyx-card-bg-hover);
+    border-color: var(--skyx-card-border-hover);
+    box-shadow: var(--skyx-card-shadow-hover);
+}
+.sky-window-body :global(.sky-extension-source-info) {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+}
+.sky-window-body :global(.sky-extension-source-title-row) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.sky-window-body :global(.sky-extension-source-name),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-name) {
+    flex: 1;
+    min-width: 0;
+    color: var(--skyx-text);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sky-window-body :global(.sky-extension-source-url),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-url) {
+    color: var(--skyx-text-3);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sky-window-body :global(.sky-extension-source-count),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-count) {
+    flex: 0 0 auto;
+    padding: 0 7px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--motion-primary) 14%, transparent);
+    color: color-mix(in srgb, var(--motion-primary) 88%, var(--skyx-text));
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 18px;
+    white-space: nowrap;
+}
+.sky-window-body :global(.sky-extension-source-count-empty),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-count-empty) {
+    background: color-mix(in srgb, var(--error-primary) 14%, transparent);
+    color: var(--error-primary);
+}
+.sky-window-body :global(.sky-extension-source-remove),
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-remove) {
+    flex: 0 0 auto;
+    height: 26px;
+    padding: 0 10px;
+    box-sizing: border-box;
+    border: 1px solid color-mix(in srgb, var(--error-primary) 34%, transparent);
+    border-radius: 7px;
+    background: transparent;
+    color: var(--error-primary);
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+}
+.sky-window-body :global(.sky-extension-source-remove):hover,
+.sky-window-body.sky-window-body-light :global(.sky-extension-source-remove):hover {
+    background: color-mix(in srgb, var(--error-primary) 14%, transparent);
+    color: var(--error-primary);
+    border-color: color-mix(in srgb, var(--error-primary) 55%, transparent);
+}
+
+/* ── 空态在网格中的定位修正 ──────────────────────────────────────────────
+   空态元素是 .library-scroll-grid 的 grid item，默认只占一列（约 219px）并被
+   拉到左上角，看起来"没居中"。让它横跨整行并居中显示。 */
+.sky-window-body :global(.sky-extension-favorites-empty),
+.sky-window-body.sky-window-body-light :global(.sky-extension-favorites-empty),
+.sky-window-body :global(.sky-extension-experimental-empty),
+.sky-window-body.sky-window-body-light :global(.sky-extension-experimental-empty),
+.sky-window-body :global(.sky-extension-custom-source-empty),
+.sky-window-body.sky-window-body-light :global(.sky-extension-custom-source-empty) {
+    grid-column: 1 / -1;
+    justify-self: center;
+    align-self: center;
+    width: 100%;
+    max-width: 26rem;
+    flex: 0 0 auto;
+    padding: 0 16px;
+    text-align: center;
+}
+
+/* ==========================================================================
+   SKY Editor ·「我的」（收藏）页面 UI 重制 v2
+   目标：压平工具条层级、排序改用胶囊控件组、空态升级为图标卡
+   约束：全部限定在 .sky-window-body 内，颜色统一取 --skyx-* 令牌，深浅主题共用
+   ========================================================================== */
+
+/* ---- 页内工具条：左标题 / 右排序，一行对齐 ---- */
+
+/* ---- 页内标题 + 数量徽标 ---- */
+
+/* ---- 排序控件组 ---- */
+
+/* ---- 排序下拉面板 ---- */
+
+/* 勾选图标：浅色主题下反色，避免白底白勾 */
+
+/* ---- 升/降序切换按钮（纯图标） ---- */
+
+/* ---- 空态：图标 + 标题 + 说明，整体居中 ---- */
+.sky-window-body.sky-window-body :global(.sky-extension-favorites-empty),
+.sky-window-body.sky-window-body :global(.sky-extension-experimental-empty),
+.sky-window-body.sky-window-body :global(.sky-extension-custom-source-empty),
+.sky-window-body.sky-window-body :global(.sky-extension-source-empty) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    grid-column: 1 / -1;
+    justify-self: center;
+    align-self: center;
+    width: auto;
+    max-width: 24rem;
+    min-height: 0;
+    margin: 0;
+    padding: 28px 20px;
+    text-align: center;
+    color: var(--skyx-text-2);
+    font-size: 13px;
+    line-height: 1.7;
+    letter-spacing: 0;
+    box-sizing: border-box;
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-source-empty) {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-empty-icon) {
+    position: relative;
+    display: block;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 14px;
+    border: 1px solid var(--skyx-card-border);
+    border-radius: 16px;
+    background: var(--skyx-field-bg-hover);
+    box-sizing: border-box;
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-empty-icon)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 24px;
+    height: 24px;
+    margin: auto;
+    background-color: var(--skyx-text-2);
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 24px 24px;
+    mask-size: 24px 24px;
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-empty-icon-star)::after {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20fill%3D%27%23000%27%20d%3D%27M12%203.1l2.78%205.63%206.22.9-4.5%204.39%201.06%206.19L12%2017.28l-5.56%202.93%201.06-6.19L3%209.63l6.22-.9z%27%2F%3E%3C%2Fsvg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20fill%3D%27%23000%27%20d%3D%27M12%203.1l2.78%205.63%206.22.9-4.5%204.39%201.06%206.19L12%2017.28l-5.56%202.93%201.06-6.19L3%209.63l6.22-.9z%27%2F%3E%3C%2Fsvg%3E");
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-empty-icon-folder)::after {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20fill%3D%27%23000%27%20d%3D%27M3.5%207.2c0-1.05.85-1.9%201.9-1.9h3.4l1.9%201.9h8.4c1.05%200%201.9.85%201.9%201.9v8.7c0%201.05-.85%201.9-1.9%201.9H5.4c-1.05%200-1.9-.85-1.9-1.9z%27%2F%3E%3C%2Fsvg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20fill%3D%27%23000%27%20d%3D%27M3.5%207.2c0-1.05.85-1.9%201.9-1.9h3.4l1.9%201.9h8.4c1.05%200%201.9.85%201.9%201.9v8.7c0%201.05-.85%201.9-1.9%201.9H5.4c-1.05%200-1.9-.85-1.9-1.9z%27%2F%3E%3C%2Fsvg%3E");
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-empty-icon-info)::after {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20fill%3D%27%23000%27%20d%3D%27M12%203a9%209%200%201%200%200%2018%209%209%200%200%200%200-18zm0%204.2a1.2%201.2%200%201%201%200%202.4%201.2%201.2%200%200%201%200-2.4zm1%2011.1h-2v-6.6h2z%27%2F%3E%3C%2Fsvg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20fill%3D%27%23000%27%20d%3D%27M12%203a9%209%200%201%200%200%2018%209%209%200%200%200%200-18zm0%204.2a1.2%201.2%200%201%201%200%202.4%201.2%201.2%200%200%201%200-2.4zm1%2011.1h-2v-6.6h2z%27%2F%3E%3C%2Fsvg%3E");
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-empty-icon-lab)::after {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20fill%3D%27%23000%27%20d%3D%27M10%203h4v1.6h-.8v4.2l4.2%207.6c.7%201.2-.2%202.6-1.5%202.6H8.1c-1.4%200-2.2-1.4-1.5-2.6l4.2-7.6V4.6H10z%27%2F%3E%3C%2Fsvg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20fill%3D%27%23000%27%20d%3D%27M10%203h4v1.6h-.8v4.2l4.2%207.6c.7%201.2-.2%202.6-1.5%202.6H8.1c-1.4%200-2.2-1.4-1.5-2.6l4.2-7.6V4.6H10z%27%2F%3E%3C%2Fsvg%3E");
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-empty-title) {
+    display: block;
+    margin: 0 0 6px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+    color: var(--skyx-text);
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-empty-desc) {
+    display: block;
+    max-width: 20rem;
+    font-size: 12.5px;
+    line-height: 1.75;
+    color: var(--skyx-text-3);
+}
+
+/* 「我的」页网格上内边距过大，标题下方收紧 */
+.sky-window-body.sky-window-body :global(.sky-extension-grid-area) :global(.library-scroll-grid) {
+    padding-top: 14px;
+}
+
+/* ==========================================================================
+   SKY Editor ·「我的」页头 v3
+   目标：标题升级为页面级页头（17px），排序控件合并为一枚分段胶囊
+        （当前排序名 + 方向切换同框、1px 分隔线、无外露「排序」文字）
+   约束：仅改观感，DOM 结构不变；选择器与 v2 同特异性，靠"后出现者生效"覆盖
+   ========================================================================== */
+
+/* ---- 排序：整组一枚分段胶囊（左：当前排序，右：方向） ---- */
+
+/* 方向按钮：与排序名同框，左侧 1px 分隔线；自身无边框无底色 */
+
+/* 菜单面板：与整组右缘对齐（右侧让出方向按钮 32px + 1px 边框） */
+
+/* 页头与内容首行之间留白 */
+.sky-window-body.sky-window-body :global(.sky-extension-grid-area) :global(.library-scroll-grid) {
+    padding-top: 10px;
+}
+/* 排序下拉的箭头：纯 CSS 三角（替代 ▾ 字符），不受字体基线影响，稳定垂直居中 */
+
+/* 胶囊内边距微调：文字与箭头更舒展 */
+
+/* 页头 v3b：拉开标题与控件的层级差（标题更大更黑、控件更弱更小） */
+
+/* 页头收口：底部一条极淡分隔线，把标题行与内容区分开（不使用阴影，保持平直） */
+
+.sky-window-body.sky-window-body :global(.sky-extension-grid-area) :global(.library-scroll-grid) {
+    padding-top: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   【v5】「我的」页页头：图标 + 双行标题（标题 / 当前排序说明）+ 单一排序入口
+   排序的全部选项收进一个轻面板（方式用勾选行、顺序用分段按钮），
+   页面上只留一枚 30px 图标按钮，避免"下拉框 + 按钮"的工具条观感。
+   ═══════════════════════════════════════════════════════════════════════════ */
+.sky-window-body :global(.sky-extension-pagehead) {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex: 0 0 auto;
+    padding: 15px 18px 11px;
+    z-index: 3;
+}
+/* 底部发丝分隔：两端渐隐，弱化"横线切开"的硬边感 */
+.sky-window-body :global(.sky-extension-pagehead)::after {
+    content: '';
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--skyx-line) 14%,
+        var(--skyx-line) 86%,
+        transparent
+    );
+}
+
+.sky-window-body :global(.sky-extension-pagehead-lead) {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+}
+
+/* 星形图标：直接用 mask 染色，跟随主题色，不带方块底板 */
+.sky-window-body :global(.sky-extension-pagehead-icon) {
+    flex: 0 0 auto;
+    width: 25px;
+    height: 25px;
+    background-color: $looks-secondary;
+    opacity: 0.9;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3.1l2.62 5.55 6.05.77-4.45 4.2 1.12 6L12 16.7l-5.34 2.92 1.12-6-4.45-4.2 6.05-.77z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3.1l2.62 5.55 6.05.77-4.45 4.2 1.12 6L12 16.7l-5.34 2.92 1.12-6-4.45-4.2 6.05-.77z'/%3E%3C/svg%3E");
+    -webkit-mask-size: 18px 18px;
+    mask-size: 18px 18px;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+
+.sky-window-body :global(.sky-extension-pagehead-text) {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.sky-window-body :global(.sky-extension-pagehead-title) {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+    color: var(--skyx-text);
+}
+
+.sky-window-body :global(.sky-extension-pagehead-meta) {
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--skyx-text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── 排序入口 ─────────────────────────────────────────────────────────── */
+.sky-window-body :global(.sky-extension-sort) {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.sky-window-body :global(.sky-extension-sort-trigger) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--skyx-text-2);
+    cursor: pointer;
+    transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+.sky-window-body :global(.sky-extension-sort-trigger):hover {
+    border-color: var(--skyx-line);
+    background: var(--skyx-field-bg-hover);
+    color: var(--skyx-text);
+}
+.sky-window-body :global(.sky-extension-sort-trigger):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(76, 151, 255, 0.22);
+}
+.sky-window-body :global(.sky-extension-sort-trigger-open) {
+    border-color: var(--skyx-line-2);
+    background: var(--skyx-item-active-bg);
+    color: var(--skyx-text);
+}
+
+.sky-window-body :global(.sky-extension-sort-trigger-icon) {
+    width: 16px;
+    height: 16px;
+    background-color: currentColor;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8.6 3.3L4.2 7.7h2.7v7.1h1.7V7.7h2.7L8.6 3.3zM15.4 20.7l4.4-4.4h-2.7V9.2h-1.7v7.1h-2.7l2.7 4.4z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8.6 3.3L4.2 7.7h2.7v7.1h1.7V7.7h2.7L8.6 3.3zM15.4 20.7l4.4-4.4h-2.7V9.2h-1.7v7.1h-2.7l2.7 4.4z'/%3E%3C/svg%3E");
+    -webkit-mask-size: 15px 15px;
+    mask-size: 15px 15px;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+
+/* ── 排序面板 ─────────────────────────────────────────────────────────── */
+.sky-window-body :global(.sky-extension-sort-panel) {
+    position: absolute;
+    top: calc(100% + 7px);
+    right: 0;
+    width: 194px;
+    padding: 6px;
+    border: 1px solid var(--skyx-line);
+    border-radius: 12px;
+    background: var(--skyx-card-bg);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.08);
+    z-index: 20;
+    animation: skyxSortPanelIn 0.13s ease-out;
+}
+
+@keyframes skyxSortPanelIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.sky-window-body :global(.sky-extension-sort-panel-label) {
+    padding: 5px 8px 4px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--skyx-text-3);
+}
+
+.sky-window-body :global(.sky-extension-sort-panel-item) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    height: 30px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--skyx-text-2);
+    font-size: 12.5px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+.sky-window-body :global(.sky-extension-sort-panel-item):hover {
+    background: var(--skyx-item-hover-bg);
+    color: var(--skyx-text);
+}
+.sky-window-body :global(.sky-extension-sort-panel-item) svg {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+}
+
+.sky-window-body :global(.sky-extension-sort-panel-sep) {
+    height: 1px;
+    margin: 6px;
+    background: var(--skyx-line);
+}
+
+.sky-window-body :global(.sky-extension-sort-seg) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 9px;
+    background: var(--skyx-field-bg-hover);
+}
+
+.sky-window-body :global(.sky-extension-sort-seg-btn) {
+    height: 26px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--skyx-text-2);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+.sky-window-body :global(.sky-extension-sort-seg-btn):hover {
+    color: var(--skyx-text);
+}
+.sky-window-body :global(.sky-extension-sort-seg-btn):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(76, 151, 255, 0.28);
+}
+.sky-window-body :global(.sky-extension-sort-seg-btn-active),
+.sky-window-body :global(.sky-extension-sort-seg-btn-active):hover {
+    background: var(--skyx-card-bg);
+    color: var(--skyx-text);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   【v5】加载层：三点呼吸跳动（不转圈），横跨整行并在内容区居中
+   ═══════════════════════════════════════════════════════════════════════════ */
+.sky-window-body :global(.sky-extension-loader) {
+    flex: 1 1 auto;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 13px;
+    width: 100%;
+    min-height: 200px;
+    padding: 24px 0;
+}
+
+/* 加载态下隐藏网格容器，让加载层独占内容区 */
+.sky-window-body :global(.sky-extension-grid-hidden) {
+    display: none !important;
+}
+
+
+.sky-window-body :global(.sky-extension-loader-dots) {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 16px;
+}
+
+.sky-window-body :global(.sky-extension-loader-dots) span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: $looks-secondary;
+    animation: skyxLoaderBreathe 1.15s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+.sky-window-body :global(.sky-extension-loader-dots) span:nth-child(2) {
+    animation-delay: 0.14s;
+}
+.sky-window-body :global(.sky-extension-loader-dots) span:nth-child(3) {
+    animation-delay: 0.28s;
+}
+
+@keyframes skyxLoaderBreathe {
+    0%,
+    68%,
+    100% {
+        opacity: 0.28;
+        transform: translateY(0) scale(0.72);
+    }
+    34% {
+        opacity: 1;
+        transform: translateY(-7px) scale(1);
+    }
+}
+
+.sky-window-body :global(.sky-extension-loader-text) {
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    color: var(--skyx-text-3);
+}
+
+
+/* ── 面板内勾选标记：默认隐藏，选中显示；浅色主题下把白色勾反成深色 ──────── */
+.sky-window-body :global(.sky-extension-sort-panel-item) :global(.sky-extension-sort-check) {
+    flex: 0 0 auto;
+    width: 15px;
+    height: 12px;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+.sky-window-body :global(.sky-extension-sort-panel-item) :global(.sky-extension-sort-check-selected) {
+    opacity: 1;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-sort-panel-item) :global(.sky-extension-sort-check) {
+    filter: brightness(0) saturate(100%);
+    opacity: 0;
+}
+.sky-window-body.sky-window-body-light :global(.sky-extension-sort-panel-item) :global(.sky-extension-sort-check-selected) {
+    filter: brightness(0) saturate(100%);
+    opacity: 0.72;
+}
+
+/* ── 自定义扩展库页复用同一页头：覆盖旧规则里 padding:0 的写法 ───────────── */
+.sky-window-body.sky-window-body :global(.sky-extension-pagehead),
+.sky-window-body.sky-window-body-light :global(.sky-extension-pagehead.sky-extension-source-toolbar) {
+    padding: 15px 18px 11px;
+}
+
+/* ─── 我的页顶部栏 v4：单行标题 + 计数徽标 + 文字排序按钮 ─────────────────
+   目标：去掉「主标题 + 副标题」的后台式堆叠，改为单行标题 + 极浅计数徽标，
+   右侧排序从孤立圆形图标按钮改为带文字的幽灵按钮（图标 + 文案 + 箭头），
+   页头高度收到 52px，底部仅留 1px 发丝线。 */
+.sky-window-body.sky-window-body :global(.sky-extension-pagehead) {
+    height: 52px;
+    padding: 0 18px;
+    gap: 12px;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-pagehead)::after {
+    height: 1px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--skyx-line);
+    opacity: 1;
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-pagehead-lead) {
+    gap: 8px;
+    align-items: center;
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-pagehead-icon) {
+    width: 16px;
+    height: 16px;
+    opacity: 0.6;
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-pagehead-title) {
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.015em;
+    color: var(--skyx-text);
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-pagehead-count) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 17px;
+    padding: 0 6px;
+    border-radius: 6px;
+    background: var(--skyx-badge-bg);
+    color: var(--skyx-text-3);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    box-sizing: border-box;
+}
+
+/* 旧双行文本块（JSX 已移除，保留兜底隐藏） */
+.sky-window-body.sky-window-body :global(.sky-extension-pagehead-text),
+.sky-window-body.sky-window-body :global(.sky-extension-pagehead-meta) {
+    display: none;
+}
+
+/* 排序按钮：文字 + 图标 + 箭头 */
+.sky-window-body.sky-window-body :global(.sky-extension-sort-trigger) {
+    width: auto;
+    height: 28px;
+    gap: 6px;
+    padding: 0 9px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-sort-trigger-icon) {
+    width: 12px;
+    height: 12px;
+    opacity: 0.7;
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-sort-trigger-text) {
+    white-space: nowrap;
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-sort-trigger-sep) {
+    margin: 0 3px;
+    opacity: 0.4;
+}
+
+.sky-window-body.sky-window-body :global(.sky-extension-sort-trigger-caret) {
+    width: 5px;
+    height: 5px;
+    margin-left: 1px;
+    border-right: 1.4px solid currentColor;
+    border-bottom: 1.4px solid currentColor;
+    transform: rotate(45deg) translateY(-2px);
+    opacity: 0.55;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SKY Editor — ② 扩展库行级虚拟渲染（2026-11-23）
+ * ---------------------------------------------------------------------------
+ * 只渲染「可见区 + 上下各 3 行」的行，其余高度由上下两个占位条撑住。
+ * 结构：滚动网格(display:grid, N 列) > .sky-virtual-pad / .sky-virtual-row
+ * 行容器跨全部列(grid-column:1/-1)，行内再用同宽 N 列网格排列卡片，
+ * 因此列间距与卡片宽度和「全量渲染」时完全一致，不会出现宽度跳动。
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.sky-window-body [class*="library_library-scroll-grid_"] > :global(.sky-virtual-pad),
+.sky-window-body [class*="library_library-scroll-grid_"] > :global(.sky-virtual-row) {
+    grid-column: 1 / -1;
+    min-width: 0;
+}
+
+/* 占位条：仅提供高度，不接收鼠标事件，也不参与绘制 */
+.sky-window-body :global(.sky-virtual-pad) {
+    pointer-events: none;
+    contain: strict;
+}
+
+/* 卡片行：与网格列间距一致的内部网格 */
+.sky-window-body :global(.sky-virtual-row) {
+    display: grid;
+    gap: 14px;
+    align-items: stretch;
+    min-width: 0;
+}
+
+/* 分隔符 / 分组标题行：独占一行、左右不留卡片位 */
+.sky-window-body :global(.sky-virtual-row-sep) {
+    display: block;
+}
+
+/* 行内卡片已由虚拟化裁剪到几十张，无需再用 content-visibility 跳过屏外布局；
+   这里取消它，避免「刚滚入窗口的行」还要二次布局才绘制（滚动更跟手） */
+.sky-window-body :global(.sky-virtual-row) [class*="sky-library-card"] {
+    content-visibility: visible;
+    contain-intrinsic-size: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SKY Editor — ③「我的」页排序浮层层级修复（2026-11-23）
+ * ---------------------------------------------------------------------------
+ * 问题：浮层背景用的是卡片底色 --skyx-card-bg（深色下为 rgba(255,255,255,.045)），
+ *       半透明 → 下层卡片直接透上来，视觉上与卡片“糊在一起”，即用户看到的图层错乱。
+ * 修复：浮层改用不透明的专用底色变量，并补内高光描边与更明确的投影分层。
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.sky-window-body {
+    /* 浮层底色 = 窗口底色 + 一层浅色叠加的「实色」结果，必须不透明 */
+    --skyx-popover-bg: #262A31;
+    --skyx-popover-shadow: 0 18px 40px rgba(0, 0, 0, 0.46), 0 2px 6px rgba(0, 0, 0, 0.30);
+    --skyx-popover-highlight: rgba(255, 255, 255, 0.06);
+}
+
+.sky-window-body.sky-window-body-light {
+    --skyx-popover-bg: #FFFFFF;
+    --skyx-popover-shadow: 0 18px 38px rgba(0, 0, 0, 0.14), 0 1px 3px rgba(0, 0, 0, 0.08);
+    --skyx-popover-highlight: transparent;
+}
+
+.sky-window-body :global(.sky-extension-sort-panel) {
+    background-color: var(--skyx-popover-bg);
+    background-image: linear-gradient(var(--skyx-popover-highlight), var(--skyx-popover-highlight));
+    border: 1px solid var(--skyx-line-2);
+    box-shadow: var(--skyx-popover-shadow);
+    /* 隔离出独立层叠上下文：确保浮层永远压住下方卡片与其 hover 阴影 */
+    isolation: isolate;
+    z-index: 40;
+}
+
+/* 浮层展开时，触发按钮保持「按下」的激活态，与浮层形成同一组 */
+.sky-window-body :global(.sky-extension-sort-trigger-open) {
+    background: var(--skyx-item-active-bg);
+    color: var(--skyx-text);
+}
+
+/* 当前生效的排序方式：底色 + 主色文字，不再只靠右侧一个对勾表达选中 */
+.sky-window-body :global(.sky-extension-sort-panel-item-selected) {
+    background: var(--skyx-item-active-bg);
+    color: var(--skyx-text);
+    font-weight: 600;
+}
+
+.sky-window-body :global(.sky-extension-sort-panel-item-selected):hover {
+    background: var(--skyx-item-active-bg);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SKY Editor — ④ 卡片收藏钮视觉收敛（2026-11-23）
+ * ---------------------------------------------------------------------------
+ * 问题：收藏钮是「白底 + 深描边」的实心圆，在深色卡片上比主色按钮还亮，
+ *       视觉重心被一个次要操作抢走，卡片底部看起来「一蓝一白」两块色斑。
+ * 修复：只改收藏钮的材质——透明底 + 主题描边（幽灵态），悬停/已收藏才浮出淡底，
+ *       主按钮的尺寸与位置一概不动，避免影响已验收过的卡片版式。
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.sky-window-body :global(.sky-library-card) [class*="sky-library-footer"] [class*="favorite-button"] {
+    background: transparent;
+    border: 1px solid var(--skyx-line-2);
+    border-radius: 50%;
+    opacity: 0.68;
+    transition: background-color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+}
+
+.sky-window-body :global(.sky-library-card) [class*="sky-library-footer"] [class*="favorite-button"]:hover {
+    background: var(--skyx-item-hover-bg);
+    opacity: 1;
+}
+
+/* 已收藏态（组件用 favoriteButtonActive 类名标记）：淡底 + 不透明，图标本身为实心星 */
+.sky-window-body :global(.sky-library-card) [class*="sky-library-footer"] [class*="favorite-button-active"] {
+    background: var(--skyx-item-hover-bg);
+    border-color: var(--skyx-line-2);
+    opacity: 1;
+}

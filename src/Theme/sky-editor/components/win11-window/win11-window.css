@@ -1,0 +1,672 @@
+@import "../../../../css/colors.css";
+@import "../../../../css/default-colors.css";
+
+.win11-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 510;
+    background: transparent;
+    pointer-events: none;
+}
+
+.win11-window {
+    position: fixed;
+    max-width: 100vw;
+    max-height: 100vh;
+    background: $ui-modal-background;
+    /* 与编辑器主页各区块（面板/积木区/输入框）统一口径：容器级 --sky-radius */
+    border-radius: var(--sky-radius, 12px);
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: left 0.2s ease, top 0.2s ease, width 0.2s ease, height 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    /* 显式高于外围缩放热区层（z-index:0）：窗口本体压住热区层的内侧部分，
+       于是热区只在「窗口边框之外」那一圈真正生效，窗口内部交互不受干扰。 */
+    z-index: 1;
+    /* Windows-style open: scale up from small + fade in. No fill so the
+       animation does not keep overriding the inline transform used for drag. */
+    animation: win11-open 0.18s ease;
+}
+
+/* 拖动/缩放进行中：让浏览器把窗口提升为独立合成层（GPU 合成）。
+   否则每一帧都要重新光栅化整个窗口（含大范围模糊阴影与内嵌 iframe），
+   这是拖动卡顿的主因。 */
+.win11-window.win11-interacting {
+    will-change: transform;
+    transition: none;
+}
+
+/* 拖动期间把内嵌 iframe 也提升为独立层，避免父层移动时 iframe 内容被反复重绘。 */
+.win11-window.win11-dragging iframe {
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* 拖动期间窗口内容不参与命中测试：鼠标事件全部留给拖动逻辑，
+   同时避免 iframe 内部 hover/动画在窗口移动过程中被反复触发。 */
+.win11-window.win11-dragging .win11-body,
+.win11-window.win11-dragging .win11-body * {
+    pointer-events: none;
+}
+
+/* Windows-style close: shrink down + fade out, then the component unmounts. */
+.win11-window.win11-closing {
+    animation: win11-close 0.15s ease forwards;
+    pointer-events: none;
+}
+
+@keyframes win11-open {
+    from {
+        transform: scale(0.88);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes win11-close {
+    from {
+        transform: scale(1);
+        opacity: 1;
+    }
+    to {
+        transform: scale(0.88);
+        opacity: 0;
+    }
+}
+
+.win11-window.win11-maximized {
+    border-radius: 0;
+}
+
+.win11-titlebar {
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 16px;
+    background: $ui-modal-header-background;
+    color: var(--sky-titlebar-foreground, $ui-modal-header-foreground);
+    user-select: none;
+    cursor: default;
+}
+
+/* ── 标题栏明暗基调（JS 写入 data-sky-titlebar-tone）
+      深色底 → 白字 / 白按钮；浅色底 → 近黑字 / 黑按钮。
+      控制按钮、标题文字、标题图标颜色只由背景明暗决定，
+      所以关闭「主题色窗口标签栏」后按钮依然是清晰可辨的深色线条，不会"没颜色"。 ── */
+.win11-titlebar[data-sky-titlebar-tone='dark'] {
+    --sky-titlebar-foreground: #ffffff;
+    --sky-titlebar-hover: rgba(255, 255, 255, 0.16);
+    --sky-titlebar-active: rgba(255, 255, 255, 0.26);
+}
+
+.win11-titlebar[data-sky-titlebar-tone='light'] {
+    --sky-titlebar-foreground: #1f2430;
+    --sky-titlebar-hover: rgba(0, 0, 0, 0.08);
+    --sky-titlebar-active: rgba(0, 0, 0, 0.14);
+}
+
+/* ── 主题色窗口标签栏开关（设置 → 主题 → 主题色窗口标签栏）
+      关闭时（html[data-sky-tab-bar-theme="white"]）窗口顶部标签栏不再使用主题色，
+      改为纯白；文字与按钮色由上面的明暗基调变量决定，不再是发灰的主题文字色。 ── */
+/* 浅色模式：关闭主题色后标题栏为 #f7f8fa 浅底深字 */
+:global(html[data-sky-tab-bar-theme='white']:not([data-ui-dark='true'])) .win11-titlebar {
+    background: #f7f8fa;
+    color: var(--sky-titlebar-foreground, #1f2430);
+    box-shadow: inset 0 -1px 0 $ui-black-transparent;
+}
+
+/* 深色模式：还原原有深色标签栏（#1E2027 深底浅字），不受「去主题色」影响。
+   变量与图标反色一并覆盖，避免沿用浅色基调导致深底黑字 / 黑图标。 */
+:global(html[data-sky-tab-bar-theme='white'][data-ui-dark='true']) .win11-titlebar {
+    --sky-titlebar-foreground: #e8eaef;
+    --sky-titlebar-hover: rgba(255, 255, 255, 0.12);
+    --sky-titlebar-active: rgba(255, 255, 255, 0.20);
+    background: #1e2027;
+    color: #e8eaef;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.10);
+}
+
+:global(html[data-sky-tab-bar-theme='white'][data-ui-dark='true']) .win11-titlebar .win11-title-icon {
+    filter: brightness(0) invert(1);
+}
+
+.win11-title {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+}
+
+.win11-title-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    display: block;
+    flex-shrink: 0;
+    /* 显式放开最小宽度，保证宽度能补间到 0（否则 flex 项的内容最小尺寸会挡住收缩） */
+    min-width: 0;
+    /* 配合宽度补间：收缩时按比例等比缩，不会压扁成一条竖线 */
+    object-fit: contain;
+    /* 图标显隐走「透明度 + 宽度/外边距收缩」，不用 display:none：
+       宽度与右外边距一起归零后它不占位，又因为两者都可补间，
+       切样式时图标能和标题同步淡入淡出，不会瞬间出现或瞬间消失。 */
+    transition: opacity 0.15s ease, width 0.15s ease, margin-right 0.15s ease;
+}
+
+/* 标题图标是单色图形：深色标题栏转纯白，浅色标题栏转纯黑，
+   不依赖图标文件本身的颜色，换任何单色图标都能自动匹配背景。 */
+.win11-titlebar[data-sky-titlebar-tone='dark'] .win11-title-icon {
+    filter: brightness(0) invert(1);
+}
+
+.win11-titlebar[data-sky-titlebar-tone='light'] .win11-title-icon:not([data-sky-icon-color]) {
+    filter: brightness(0) opacity(0.72);
+}
+
+/* 标题栏中间可注入区域（如扩展库搜索框），相对标题与右侧按钮之间自动撑开 */
+.win11-titlebar-center {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+}
+
+/* 标题栏右侧操作按钮组（如收藏夹按钮），置于窗口控制按钮左侧 */
+.win11-titlebar-actions {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.win11-controls { display:flex; align-items:center; height:100%; padding-right:0; }
+.win11-button { width:46px; height:100%; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; border:none; border-radius:0; background-color:transparent; color:inherit; cursor:default; transition:background-color 0.1s ease, filter 0.12s ease; }
+.win11-button svg { display:block; opacity:1; pointer-events:none; }
+.win11-button:hover { background-color:var(--sky-titlebar-hover, rgba(0,0,0,0.06)); }
+.win11-button:active { background-color:var(--sky-titlebar-active, rgba(0,0,0,0.1)); }
+.win11-close:hover { background-color:#e81123; color:#fff; }
+.win11-button:focus-visible { outline:2px solid rgba(0,0,0,0.55); outline-offset:-2px; }
+/* ── 窗口按钮风格切换过渡（设置 → 主题 → 窗口按钮样式）
+     sky-settings-store.js 按两段式编排相位，取值 out-<目标样式> / in-<目标样式>，
+     先用前缀匹配：out-* 淡出、in-* 淡入。
+     ① out 相位：控制按钮簇与「标题组（窗口图标 + 标题文字）」一起淡出，
+        标题组同时沿水平方向轻退 10px，给位移一个起势；
+     ② 全部透明后才换 data-sky-window-buttons，按钮落到另一侧、标题落到
+        靠左 / 居中 的新位置；
+     ③ in 相位：标题组在自己的新位置上从 10px 外滑回并淡入，按钮簇同步淡入。
+     位置切换只发生在内容不可见时，所以既不会有两端按钮同时可见的错位闪烁，
+     也不会看到标题从左侧「瞬移」到中间；图标是标题的子节点，
+     位移与显隐天然跟标题同步，不会各走一套。
+     淡入走 transition 而非 animation：切换被快速打断时能从当前透明度平滑
+     继续淡出，不会先跳回不透明再重新淡出。── */
+.win11-controls { transition: opacity 0.16s ease; }
+/* 只补间 opacity / transform：居中依据的是左右对称 padding，
+   若 padding 也在补间（且左右时长不一致），淡入过程里文字会左右漂移，
+   所以位移布局的变化一律瞬间完成、由透明度遮住。 */
+.win11-title { transition: opacity 0.15s ease, transform 0.15s ease; }
+/* 淡出：按钮簇与标题组同时归零，标题组向左轻退（比 JS 的 130ms 提前 10ms 完成，
+   确保换位那一帧按钮簇已经全透明，看不到位置跳变） */
+:global(html[data-sky-window-buttons-switching^='out']) .win11-controls {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+}
+/* 相位期间按钮底色 / 阴影 / 图标一律瞬间切换、不参与补间：
+   否则淡入的头 ~100ms 会带着上一套配色（红黄绿交通灯）一起浮现，
+   mac → Windows 时会看到「Windows 按钮先闪一下 mac 颜色」。
+   JS 侧的顺序是：仍在 out 相位（按钮簇全透明）时换 data-sky-window-buttons，
+   再保持一整帧以上才进入 in 相位；这里用 !important 确保相位期间 background-color /
+   box-shadow / opacity 等任何过渡都不会把旧配色的中间值带进淡入首帧。 */
+:global(html[data-sky-window-buttons-switching]) .win11-button {
+    transition: none !important;
+}
+:global(html[data-sky-window-buttons-switching^='out']) .win11-title {
+    opacity: 0;
+    transform: translateX(-10px);
+    pointer-events: none;
+}
+/* 淡入：标题组在目标位置上向右滑回原位，与淡出时的左退连成一段连贯水平位移 */
+:global(html[data-sky-window-buttons-switching^='in']) .win11-title {
+    opacity: 1;
+    transform: translateX(0);
+}
+@media (prefers-reduced-motion: reduce) {
+    .win11-controls,
+    .win11-title,
+    .win11-title-icon { transition: none; }
+    :global(html[data-sky-window-buttons-switching^='out']) .win11-title,
+    :global(html[data-sky-window-buttons-switching^='in']) .win11-title { transform: none; }
+}
+/* ── 窗口按钮样式：Mac 交通灯（html[data-sky-window-buttons="mac"] 时启用）── */
+:global(html[data-sky-window-buttons='mac']) .win11-controls { gap:8px; padding-left:14px; padding-right:0; }
+/* mac 圆点按钮：几何全部钉死（position / 尺寸 / 外边距 / 位移 / 滤镜），
+   只补间「上色 + 阴影」这类纯绘制属性 —— 悬停时不会出现任何
+   transform / translate / top / margin / height / border 变化，视觉上只允许变色。 */
+:global(html[data-sky-window-buttons='mac']) .win11-button {
+    position:relative;
+    width:12px;
+    height:12px;
+    margin:0;
+    padding:0;
+    border:0;
+    border-radius:50%;
+    background-color:rgba(0,0,0,0.12);
+    color:rgba(0,0,0,0.55);
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.09);
+    filter:none;
+    transform:none;
+    translate:none;
+    transition:background-color 0.1s ease, color 0.1s ease;
+}
+:global(html[data-sky-window-buttons='mac']) .win11-button > svg { display:none; }
+/* ── Mac 四枚窗口控制图标（关闭 / 最小化 / 最大化 / 还原）统一重画：
+      隐藏按钮内原有 <svg>（Windows 口径零改动），改用 ::before + data-URI SVG 的
+      mask 上色（background-color:currentColor）→ 不新增 DOM 节点，按钮尺寸 / 间距 /
+      点击热区 / 交互全部保持原样。画布统一 12×12，显示框由 8×8px 放大到 10×10px。
+      显示框用 top/left 50% + 负 margin 绝对居中：图标彻底脱离按钮内容流，
+      悬停只是 opacity 0→1，不可能引起任何布局位移。 ── */
+:global(html[data-sky-window-buttons='mac']) .win11-button::before {
+    content:'';
+    position:absolute;
+    top:50%;
+    left:50%;
+    width:10px;
+    height:10px;
+    margin:-5px 0 0 -5px;
+    background-color:currentColor;
+    -webkit-mask-image:var(--sky-mac-icon);
+    mask-image:var(--sky-mac-icon);
+    -webkit-mask-repeat:no-repeat;
+    mask-repeat:no-repeat;
+    -webkit-mask-position:center;
+    mask-position:center;
+    -webkit-mask-size:100% 100%;
+    mask-size:100% 100%;
+    pointer-events:none;
+    opacity:1;
+    transition:opacity 0.12s ease;
+}
+:global(html[data-sky-window-buttons='mac']) .win11-maximize { background-color:#28c840; }
+:global(html[data-sky-window-buttons='mac']) .win11-minimize { background-color:#febc2e; }
+:global(html[data-sky-window-buttons='mac']) .win11-close { background-color:#ff5f57; color:rgba(110,0,0,0.75); }
+/* 悬停只做「变色」：同色系提亮，不叠加描边环、不改任何几何属性。
+   12px 的圆点上多画一圈 1px 内描边，视觉上等同于边缘外扩，容易被读成按钮变大 / 位移，
+   因此这里彻底不出描边，只换底色。 */
+:global(html[data-sky-window-buttons='mac']) .win11-maximize:hover { background-color:#46d15c; }
+:global(html[data-sky-window-buttons='mac']) .win11-minimize:hover { background-color:#ffcd4d; }
+:global(html[data-sky-window-buttons='mac']) .win11-close:hover { background-color:#ff7b74; }
+:global(html[data-sky-window-buttons='mac']) .win11-maximize:active { background-color:#24b83a; }
+:global(html[data-sky-window-buttons='mac']) .win11-minimize:active { background-color:#f0ab1c; }
+:global(html[data-sky-window-buttons='mac']) .win11-close:active { background-color:#f04c45; }
+/* 悬停 / 按下 / 聚焦：只允许「变色」。
+   这里不再重复声明 position / top / left / right / bottom / width / height /
+   margin / padding / border / transform / translate / filter ——
+   这些值已由上面 mac 基础规则钉死在常态，重复声明只会让 hover 帧多出一条
+   「同值覆盖」的样式记录：position:static → relative 一类的定位类型切换即便
+   top/left 都是 auto 不改变坐标，也会让该元素在 hover 那一帧换一条绘制路径
+   （相对定位元素走 relative 绘制分支），在真机上可能表现为圆点整体偏移 1px。
+   常态即 relative、hover 不再声明，两态的定位类型与盒模型逐项相同。 */
+/* 阴影三态恒定（只有一条 0.5px 内沿暗线），hover 不再重复声明同值阴影：
+   盒阴影变化会触发元素重新光栅化，是圆形按钮边缘出现 1px 抖动的来源之一。 */
+:global(html[data-sky-window-buttons='mac']) .win11-button:focus-visible {
+    outline:2px solid rgba(255,255,255,0.85);
+    outline-offset:1px;
+}
+/* ── 按钮顺序：DOM 结构保持 Windows 口径（最小化 → 最大化 → 关闭）不动；
+      Mac 样式按交通灯从左到右 红 → 黄 → 绿 重排，即 关闭 → 最小化 → 最大化 ── */
+:global(html[data-sky-window-buttons='mac']) .win11-close { order: 1; }
+:global(html[data-sky-window-buttons='mac']) .win11-minimize { order: 2; }
+:global(html[data-sky-window-buttons='mac']) .win11-maximize { order: 3; }
+/* ── Mac 四枚图标统一口径（关闭 / 最小化 / 最大化 / 还原共用），画布 12×12、显示框 10×10px：
+      四枚图形一律按「墨迹包围盒」对齐，而不是按路径端点对齐——
+      线条图标 round 线帽沿路径法向外扩 stroke/2 = 0.95，端点取 2.30–9.70，
+      含描边后墨迹横跨 1.35–10.65（跨度 9.30），在 12px 圆点里约占 65%；
+      两枚直角三角为纯填充（fill 上色、不描边，避免圆角把尖角磨钝），
+      直角边各 3.70（横向 6.00–9.70、纵向 2.30–6.00 及其中心对称副本），
+      整体墨迹 2.30–9.70 × 2.30–9.70（几何中心同为 6,6）；
+      换算到 12px 圆点上横纵各跨 62%，与 × 的 65% 视觉体量相当。
+      四枚图形的几何中心都在画布中心，视觉面积与线条粗细一致。逐枚对照：
+        · 关闭(×)    两条对角： (2.30,2.30)→(9.70,9.70)、(10.00,2.00)→(2.00,10.00)
+        · 最小化(—)  一条水平： (2.30,6)→(9.70,6)
+        · 最大化     两枚直角三角沿「右上—左下」对角线分布，90° 角分别落在右上角
+                     (10.00,2.00) 与左下角 (2.00,10.00)，两枚尖端各自朝所在角的外侧
+                     → 两个箭头指向外（一个在右上方、一个在左下方）
+        · 还原       同样沿「右上—左下」对角线分布，但每枚三角绕自身斜边中点翻转 180°
+                     （尖端从外角移到中心侧），90° 角落在中心 (6,6) → 两个箭头指向内
+                     （一个在右上方、一个在左下方）
+      最大化 / 还原互为 180° 旋转关系：两态直角边长度、面积、墨迹包围盒
+      （2.30–9.70 × 2.30–9.70，跨度 7.40）完全一致，最大化↔还原切换不跳动、不偏大小。 ── */
+
+/* Mac 最大化：两个箭头指向外，沿对角线分布在右上方 / 左下方，90° 角贴外侧角点 */
+:global(html[data-sky-window-buttons='mac']) .win11-maximize::before { --sky-mac-icon:url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2012%2012%22%20fill=%22%23fff%22%3E%3Cpath%20d=%22M10,2V6L6,2Z%22/%3E%3Cpath%20d=%22M2,10V6L6,10Z%22/%3E%3C/svg%3E"); }
+/* Mac 还原（已最大化时）：两个箭头指向内，同样沿对角线分布在右上方 / 左下方，
+   90° 角落在中心 (6,6) → 尖端朝中心，与最大化互为 180° 旋转 */
+:global(html[data-sky-window-buttons='mac']) .win11-maximized .win11-maximize::before { --sky-mac-icon:url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2012%2012%22%20fill=%22%23fff%22%3E%3Cpath%20d=%22M6,6V2L10,6Z%22/%3E%3Cpath%20d=%22M6,6V10L2,6Z%22/%3E%3C/svg%3E"); }
+/* Mac 关闭(×) / 最小化(—)：圆头线条图标，端点统一 2.30–9.70，与两枚三角同粗（stroke 1.9） */
+:global(html[data-sky-window-buttons='mac']) .win11-close::before { --sky-mac-icon:url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2012%2012%22%20fill=%22none%22%20stroke=%22%23fff%22%20stroke-width=%221.9%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22%3E%3Cpath%20d=%22M2.3,2.3L9.7,9.7%22/%3E%3Cpath%20d=%22M9.7,2.3L2.3,9.7%22/%3E%3C/svg%3E"); }
+:global(html[data-sky-window-buttons='mac']) .win11-minimize::before { --sky-mac-icon:url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2012%2012%22%20fill=%22none%22%20stroke=%22%23fff%22%20stroke-width=%221.9%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22%3E%3Cpath%20d=%22M2.3,6H9.7%22/%3E%3C/svg%3E"); }
+
+/* 整组悬停或按钮聚焦时淡入（与其它 mac 图标同一时机） */
+:global(html[data-sky-window-buttons='mac']) .win11-controls:hover .win11-button::before,
+:global(html[data-sky-window-buttons='mac']) .win11-button:focus-visible::before { opacity:1; }
+/* Mac：控制按钮簇贴标题栏左侧（Windows 口径贴右侧）。
+   标题组在整条标题栏内水平居中：标题占满标题栏剩余宽度（此时它是唯一参与
+   flex 分配的子项），左右各留出比交通灯簇更宽的安全区，于是文字的中点正好
+   落在标题栏中线上，同时不会被左侧圆点压住。
+   左右安全区宽度 = 14px(padding) + 3×12px(圆点) + 2×8px(间距) = 66px，取 76px 留余量。 */
+:global(html[data-sky-window-buttons='mac']) .win11-titlebar { justify-content: center; padding-left: 0; position: relative; }
+:global(html[data-sky-window-buttons='mac']) .win11-controls { position: absolute; top: 0; left: 0; right: auto; }
+:global(html[data-sky-window-buttons='mac']) .win11-title {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+    padding-left: 76px;
+    padding-right: 76px;
+}
+/* 标题栏中间注入了内容（如扩展库搜索框）时，标题保持常规 flex 布局、
+   与中间区域各占一份宽度，宁可中点略偏也不覆盖中间的可交互内容；
+   标题文字仍按上面的省略号规则收尾，不会压到搜索框上。
+   （当前没有窗口使用 titlebarCenter，此处只做兜底，不影响常规窗口的精确居中。） */
+/* Mac 不显示窗口图标：透明度与宽度/右外边距一起归零（不是 display:none），
+   既让它视觉消失又不占位，且归零过程可补间——切到 mac 时图标随标题组一起淡出、
+   切回 windows 时随标题组一起淡入，双向都没有瞬间跳变。 */
+:global(html[data-sky-window-buttons='mac']) .win11-title-icon {
+    opacity: 0;
+    width: 0;
+    margin-right: 0;
+    pointer-events: none;
+}
+/* 标题过长时省略号收尾，避免文字溢出压到左侧交通灯 */
+:global(html[data-sky-window-buttons='mac']) .win11-title > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.win11-body {
+    flex: 1;
+    min-height: 0;
+    /* 纵向滚动由窗口内容自己管；横向必须显式 hidden。
+       规范：overflow-y 为非 visible 时，overflow-x 的 visible 会被计算为 auto，
+       于是内容哪怕只有 1px 横向溢出，窗口底部也会出现一条通宽横向滚动条。 */
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    /* 关键：给内容区建立独立的层叠上下文。
+       position: relative 且 z-index: auto 时不创建层叠上下文，内容里任何
+       position: absolute/fixed + 高 z-index 的元素（插件面板常见 492 / 1000 级）
+       会直接参与「窗口」这一层的层叠比较，从而盖住 z-index 只有两位数的
+       八向缩放热区，表现就是"只有露在标题栏上的那一小段能拖，其余方向全失效"。
+       设为 z-index: 0 后，内容层内部无论多高都被封在本层内，热区稳压整层。 */
+    z-index: 0;
+}
+
+/* ── 外围缩放热区（Windows 口径）──────────────────────────────
+   Windows 的「调整大小」命中区并不落在窗口内部，而是贴着窗口边框
+   向外延伸一段（窗口阴影区同样算命中）。这里用一块与窗口同坐标系的
+   透明层实现：层矩形 = 窗口矩形向外扩 --rzone-out；
+   窗口本体（z-index:1）压在层（z-index:0）之上，
+   所以只有窗口边框之外那一圈真正可点，窗口内部（标题栏按钮、滚动区、
+   下拉菜单）的点击与悬停完全不受影响。 */
+.win11-resize-zone {
+    --rzone-out: 8px;
+    --rzone-corner: 16px;
+    position: fixed;
+    z-index: 0;
+    pointer-events: none;
+    /* 跟随窗口的定位过渡（最大化还原 / 菜单「大小」等瞬移场景），
+       交互中由 .win11-resize-zone-static 关掉，保证缩放时逐个像素跟手 */
+    transition: left 0.2s ease, top 0.2s ease, width 0.2s ease, height 0.2s ease;
+}
+
+.win11-resize-zone.win11-resize-zone-static {
+    transition: none;
+}
+
+.win11-resize-zone > div {
+    position: absolute;
+    pointer-events: auto;
+}
+
+/* 四条边：只占窗口外侧那一圈（层顶/底、层左/右的 --rzone-out 厚度），
+   两端让出角区长度 --rzone-corner，避免与角块抢命中 */
+.win11-resize-zone-n {
+    top: 0;
+    left: var(--rzone-corner);
+    right: var(--rzone-corner);
+    height: var(--rzone-out);
+    cursor: ns-resize;
+}
+.win11-resize-zone-s {
+    bottom: 0;
+    left: var(--rzone-corner);
+    right: var(--rzone-corner);
+    height: var(--rzone-out);
+    cursor: ns-resize;
+}
+.win11-resize-zone-w {
+    left: 0;
+    top: var(--rzone-corner);
+    bottom: var(--rzone-corner);
+    width: var(--rzone-out);
+    cursor: ew-resize;
+}
+.win11-resize-zone-e {
+    right: 0;
+    top: var(--rzone-corner);
+    bottom: var(--rzone-corner);
+    width: var(--rzone-out);
+    cursor: ew-resize;
+}
+
+/* 四个角：从层角起算 (out + corner) 见方，朝窗内的一段会被窗口本体盖住，
+   实际可点的是贴角的外侧 L 形区域 —— 与 Windows 的角部手感一致 */
+.win11-resize-zone-nw,
+.win11-resize-zone-ne,
+.win11-resize-zone-sw,
+.win11-resize-zone-se {
+    width: calc(var(--rzone-out) + var(--rzone-corner));
+    height: calc(var(--rzone-out) + var(--rzone-corner));
+}
+.win11-resize-zone-nw {
+    left: 0;
+    top: 0;
+    cursor: nwse-resize;
+}
+.win11-resize-zone-ne {
+    right: 0;
+    top: 0;
+    cursor: nesw-resize;
+}
+.win11-resize-zone-sw {
+    left: 0;
+    bottom: 0;
+    cursor: nesw-resize;
+}
+.win11-resize-zone-se {
+    right: 0;
+    bottom: 0;
+    cursor: nwse-resize;
+}
+
+.win11-resize-handle-n,
+.win11-resize-handle-s,
+.win11-resize-handle-w,
+.win11-resize-handle-e,
+.win11-resize-handle-nw,
+.win11-resize-handle-ne,
+.win11-resize-handle-sw,
+.win11-resize-handle-se {
+    position: absolute;
+    /* 必须高于 body 及其内部一切内容层：窗口内容里常常有 z-index 很高的
+       浮层（下拉菜单、日志面板等），z-index 过低会让八向热区被内容盖住，
+       表现就是"边缘拖不动、缩放失效"。 */
+    z-index: 30;
+}
+.win11-resize-handle-n {
+    top: 0;
+    left: 18px;
+    right: 18px;
+    height: 8px;
+    cursor: ns-resize;
+}
+.win11-resize-handle-s {
+    bottom: 0;
+    left: 18px;
+    right: 18px;
+    height: 8px;
+    cursor: ns-resize;
+}
+.win11-resize-handle-w {
+    left: 0;
+    top: 18px;
+    bottom: 18px;
+    width: 8px;
+    cursor: ew-resize;
+}
+.win11-resize-handle-e {
+    right: 0;
+    top: 18px;
+    bottom: 18px;
+    width: 8px;
+    cursor: ew-resize;
+}
+.win11-resize-handle-nw,
+.win11-resize-handle-ne,
+.win11-resize-handle-sw,
+.win11-resize-handle-se {
+    width: 18px;
+    height: 18px;
+}
+.win11-resize-handle-nw {
+    left: 0;
+    top: 0;
+    cursor: nwse-resize;
+}
+.win11-resize-handle-ne {
+    right: 0;
+    top: 0;
+    cursor: nesw-resize;
+}
+.win11-resize-handle-sw {
+    left: 0;
+    bottom: 0;
+    cursor: nesw-resize;
+}
+.win11-resize-handle-se {
+    right: 0;
+    bottom: 0;
+    cursor: nwse-resize;
+}
+
+/* 右键菜单样式（TurboWarp 原始浅色为默认值，SKYEditor 样式通过 CSS 变量
+   --sky-ctx-menu-* 覆盖，由「设置 -> SKYEditor 外观 -> 右键菜单样式」下发，
+   同时作用于设置窗口与调试器插件的仿 Win11 窗口右键菜单） */
+.win11-context-menu {
+    position: fixed;
+    min-width: var(--sky-ctx-menu-min-width, 130px);
+    padding: var(--sky-ctx-menu-padding, 5px 0);
+    margin: var(--sky-ctx-menu-margin, 2px 0 0);
+    font-size: var(--sky-ctx-menu-font-size, 0.85rem);
+    text-align: left;
+    background-color: var(--sky-ctx-menu-bg, $ui-white);
+    border: 1px solid var(--sky-ctx-menu-border, $ui-black-transparent);
+    border-radius: var(--sky-ctx-menu-radius, 4px);
+    box-shadow: var(--sky-ctx-menu-shadow, 0 0 5px 1px $shadow);
+    color: var(--sky-ctx-menu-fg, inherit);
+    user-select: none;
+    pointer-events: auto;
+    z-index: var(--sky-ctx-menu-z-index, 530);
+}
+
+.win11-menu-item {
+    color: var(--sky-ctx-menu-fg, inherit);
+    padding: var(--sky-ctx-menu-item-padding, 8px 12px);
+    border-radius: var(--sky-ctx-menu-item-radius, 0);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: var(--sky-ctx-menu-item-transition, 0.1s ease);
+}
+
+.win11-menu-item:hover {
+    background: var(--sky-ctx-menu-hover-bg, $looks-secondary);
+    color: var(--sky-ctx-menu-hover-fg, white);
+}
+
+.win11-menu-item-divider {
+    margin: 4px 0;
+    border-top: 1px solid var(--sky-ctx-menu-divider, $ui-black-transparent);
+}
+
+.win11-menu-item-disabled {
+    opacity: var(--sky-ctx-menu-disabled-opacity, 0.5);
+    cursor: default;
+}
+
+.win11-menu-item-disabled:hover {
+    background: var(--sky-ctx-menu-disabled-hover-bg, transparent);
+    color: var(--sky-ctx-menu-disabled-hover-fg, inherit);
+}
+
+/* ── 窗口配色面板（右键菜单底部）──
+   每个窗口各自一份配色，点击色块只改本窗口；「跟随默认」清除本窗口配色。 */
+.win11-color-label {
+    padding: 2px 12px 6px;
+    font-size: 11px;
+    opacity: 0.7;
+    color: var(--sky-ctx-menu-fg, inherit);
+    letter-spacing: 0.02em;
+}
+
+.win11-color-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px 8px;
+}
+
+.win11-color-swatch {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    box-shadow: inset 0 0 0 0 transparent;
+}
+
+.win11-color-swatch:hover {
+    transform: scale(1.12);
+}
+
+.win11-color-swatch-active {
+    box-shadow: 0 0 0 2px var(--sky-ctx-menu-bg, $ui-white), 0 0 0 3px currentColor;
+}
+
+/* 「跟随默认」用斜线圆表示：不是某个具体颜色，而是"不设置" */
+.win11-color-swatch-default {
+    background-color: transparent;
+    background-image: linear-gradient(
+        135deg,
+        transparent 45%,
+        rgba(0, 0, 0, 0.55) 45%,
+        rgba(0, 0, 0, 0.55) 55%,
+        transparent 55%
+    );
+    color: rgba(0, 0, 0, 0.55);
+    font-size: 9px;
+    line-height: 16px;
+    text-align: center;
+}
